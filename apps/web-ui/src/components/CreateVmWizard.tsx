@@ -31,6 +31,10 @@ const MANUAL_OS_TYPES: { id: string; label: string }[] = [
   { id: 'Other_64', label: 'Other (64-bit)' },
 ];
 
+// MAX_POLL_FAILURES bounds consecutive job-status poll failures before the
+// wizard gives up and surfaces an error instead of spinning forever.
+const MAX_POLL_FAILURES = 10;
+
 // CreateVmWizard is the "New VM" modal. It has three paths: import a prebuilt
 // .ova appliance (works for Kali, Guest Additions already inside), run an
 // unattended install from an Ubuntu/Debian/Windows ISO with Guest Additions
@@ -73,12 +77,16 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
     [],
   );
 
-  // poll watches a job to completion, updating phase/message.
+  // poll watches a job to completion, updating phase/message. It gives up on a
+  // 404 (the agent restarted and lost its in-memory jobs) or after too many
+  // consecutive failures, instead of retrying forever.
   const poll = useCallback(
     (jobId: string) => {
+      let consecutiveFailures = 0;
       pollRef.current = window.setInterval(async () => {
         try {
           const status = await api.getCreateStatus(jobId);
+          consecutiveFailures = 0;
           if (status.state === 'done') {
             window.clearInterval(pollRef.current);
             setMessage(status.message);
@@ -89,12 +97,26 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
             setMessage(status.message);
             setPhase('error');
           }
-        } catch {
-          // transient poll failure; keep trying until the job resolves
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 404) {
+            // The job no longer exists — jobs live in agent memory, so an
+            // agent restart makes them unrecoverable. Stop immediately.
+            window.clearInterval(pollRef.current);
+            setMessage(t('The creation job is no longer available. The agent may have restarted; check the machine list before retrying.'));
+            setPhase('error');
+            return;
+          }
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= MAX_POLL_FAILURES) {
+            window.clearInterval(pollRef.current);
+            setMessage(t('Lost contact with the agent while creating the VM. Check the machine list before retrying.'));
+            setPhase('error');
+          }
+          // Otherwise: transient poll failure; keep trying.
         }
       }, 2000);
     },
-    [onCreated],
+    [onCreated, t],
   );
 
   const submit = useCallback(async () => {

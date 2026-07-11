@@ -292,6 +292,10 @@ export const es: Record<string, string> = {
     'Inicie la VM para ejecutar la instalación; obsérvela en la consola.',
   'Start the VM and install the OS yourself in the console.':
     'Inicie la VM e instale el sistema operativo usted mismo en la consola.',
+  'The creation job is no longer available. The agent may have restarted; check the machine list before retrying.':
+    'El trabajo de creación ya no está disponible. Es posible que el agente se haya reiniciado; revise la lista de máquinas antes de reintentar.',
+  'Lost contact with the agent while creating the VM. Check the machine list before retrying.':
+    'Se perdió el contacto con el agente durante la creación de la VM. Revise la lista de máquinas antes de reintentar.',
 
   // ----- ActivityView -----
   'Recorded machine operations, newest first.':
