@@ -332,6 +332,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleVmHardware(w, r, id)
 		case "guest-os":
 			s.handleVmGuestOS(w, r, id)
+		case "serial-console":
+			s.handleSerialConsoleStatus(w, r, id)
 		case "storage":
 			s.handleVmStorage(w, r, id)
 		case "clipboard":
@@ -357,6 +359,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleVmConsolePrepare(w, r, id)
 		case "console/disable":
 			s.handleVmConsoleDisable(w, r, id)
+		case "serial-console/enable":
+			s.handleEnableSerialConsole(w, r, id)
+		case "serial-console/disable":
+			s.handleDisableSerialConsole(w, r, id)
 		case "shared-folders":
 			s.handleAddSharedFolder(w, r, id)
 		case "shared-folders/remove":
@@ -661,6 +667,55 @@ func (s *Server) handleVmHardware(w http.ResponseWriter, r *http.Request, id str
 
 func (s *Server) handleVmGuestOS(w http.ResponseWriter, r *http.Request, id string) {
 	resp, err := s.vbox.VmGuestOS(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleSerialConsoleStatus(w http.ResponseWriter, r *http.Request, id string) {
+	resp, err := s.vbox.SerialConsoleStatus(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleEnableSerialConsole(w http.ResponseWriter, r *http.Request, id string) {
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.EnableSerialConsole(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleDisableSerialConsole(w http.ResponseWriter, r *http.Request, id string) {
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.DisableSerialConsole(r.Context(), id)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return

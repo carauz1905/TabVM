@@ -282,6 +282,18 @@ type VmGuestOSResponse struct {
 	TerminalCapable bool   `json:"terminalCapable"`
 }
 
+// VmSerialConsoleResponse reports the state of a VM's serial-console terminal:
+// whether COM1 is wired to the host pipe, whether the guest is terminal-capable
+// (Linux), whether the VM is running (the getty is only reachable while live),
+// and whether the serial port can be toggled now (only on a powered-off VM).
+type VmSerialConsoleResponse struct {
+	ID              string `json:"id"`
+	Enabled         bool   `json:"enabled"`
+	TerminalCapable bool   `json:"terminalCapable"`
+	Running         bool   `json:"running"`
+	Editable        bool   `json:"editable"`
+}
+
 // VmHardwareRequest is the body for POST /api/vms/{id}/hardware.
 type VmHardwareRequest struct {
 	CPUs     int `json:"cpus"`
