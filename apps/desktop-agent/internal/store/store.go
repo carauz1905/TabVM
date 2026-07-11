@@ -21,13 +21,10 @@ const (
 
 // AllowedAppSettingKeys is the allowlist of non-secret settings that may be
 // persisted in app_settings. Keys outside this set are rejected to prevent the
-// store from becoming an unrestricted key/value dump.
-var AllowedAppSettingKeys = map[string]bool{
-	"guacamole.java_path":   true,
-	"guacamole.tomcat_home": true,
-	"guacamole.war_path":    true,
-	"guacamole.guacd_path":  true,
-}
+// store from becoming an unrestricted key/value dump. It is intentionally empty
+// until a feature needs a persisted non-secret setting; add the specific key
+// here when that happens.
+var AllowedAppSettingKeys = map[string]bool{}
 
 var (
 	// absolutePathPattern matches Windows-style absolute paths such as

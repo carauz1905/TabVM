@@ -198,16 +198,22 @@ func TestAppSetting_PersistAndRetrieve(t *testing.T) {
 	}
 	defer s.Close()
 
-	if err := s.SetAppSetting(ctx, "guacamole.tomcat_home", "C:\\Tomcat"); err != nil {
+	// Allow a temporary key so the persist/retrieve path can be exercised
+	// without depending on a specific product setting.
+	const key = "test.example"
+	AllowedAppSettingKeys[key] = true
+	defer delete(AllowedAppSettingKeys, key)
+
+	if err := s.SetAppSetting(ctx, key, "value-1"); err != nil {
 		t.Fatalf("unexpected error setting value: %v", err)
 	}
 
-	value, err := s.GetAppSetting(ctx, "guacamole.tomcat_home")
+	value, err := s.GetAppSetting(ctx, key)
 	if err != nil {
 		t.Fatalf("unexpected error getting value: %v", err)
 	}
-	if value != `C:\Tomcat` {
-		t.Fatalf("expected C:\\Tomcat, got %q", value)
+	if value != "value-1" {
+		t.Fatalf("expected value-1, got %q", value)
 	}
 }
 
@@ -240,7 +246,7 @@ func TestAppSetting_MissingReturnsEmpty(t *testing.T) {
 	}
 	defer s.Close()
 
-	value, err := s.GetAppSetting(ctx, "guacamole.java_path")
+	value, err := s.GetAppSetting(ctx, "nonexistent.key")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -1,16 +1,16 @@
 package console
 
-// Protocol identifies a console protocol supported by Guacamole.
+// Protocol identifies a console protocol the agent can model.
 type Protocol string
 
 const (
 	// RDP is the Remote Desktop Protocol path used by VirtualBox VRDE.
 	RDP Protocol = "rdp"
-	// VNC is the Virtual Network Computing path, supported by Guacamole but
-	// requiring guest or host-provided VNC service configuration.
+	// VNC is the Virtual Network Computing path, requiring a guest or
+	// host-provided VNC service.
 	VNC Protocol = "vnc"
-	// SSH is the Secure Shell terminal path, supported by Guacamole but
-	// requiring guest or host-provided SSH service configuration.
+	// SSH is the Secure Shell terminal path, requiring a guest or host-provided
+	// SSH service.
 	SSH Protocol = "ssh"
 )
 
@@ -18,7 +18,7 @@ const (
 type Source string
 
 const (
-	// SourceVirtualBoxVRDE indicates a target produced by VirtualBox VRDE/RDE.
+	// SourceVirtualBoxVRDE indicates a target produced by VirtualBox VRDE/RDP.
 	SourceVirtualBoxVRDE Source = "virtualbox-vrde"
 )
 
@@ -32,9 +32,8 @@ type Capability struct {
 }
 
 // Capabilities returns the protocol-aware console capabilities for the agent.
-// Only RDP through VirtualBox VRDE is auto-configured in this slice; VNC and
-// SSH are Guacamole-supported but require user or guest-provided service
-// configuration in a later slice.
+// Only RDP through VirtualBox VRDE is auto-configured; VNC and SSH require a
+// user, guest, or host-provided service and are exposed as capability metadata.
 func Capabilities() []Capability {
 	return []Capability{
 		{
@@ -47,13 +46,13 @@ func Capabilities() []Capability {
 			ID:               VNC,
 			DisplayName:      "VNC",
 			CanAutoConfigure: false,
-			Description:      "Supported by Guacamole; requires a guest or host VNC service configured in a future slice.",
+			Description:      "Requires a guest or host VNC service; not auto-configured.",
 		},
 		{
 			ID:               SSH,
 			DisplayName:      "SSH",
 			CanAutoConfigure: false,
-			Description:      "Supported by Guacamole; requires a guest SSH service configured in a future slice.",
+			Description:      "Requires a guest or host SSH service; not auto-configured.",
 		},
 	}
 }
