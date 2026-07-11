@@ -1,6 +1,11 @@
-# TabVM
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/logo/tabvm-logo-dark.svg">
+    <img alt="TabVM" src="branding/logo/tabvm-logo-light.svg" width="380">
+  </picture>
+</p>
 
-**Every VM. One tab.**
+<p align="center"><strong>Every VM. One tab.</strong></p>
 
 TabVM turns your local VirtualBox machines into browser tabs. Install nothing but
 VirtualBox — everything else runs on your own computer, from one window on
