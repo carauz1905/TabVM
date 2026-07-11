@@ -780,3 +780,37 @@ button.tv-log[aria-expanded='true'] .tv-log-chev { transform: rotate(90deg); }
   font-size: 10.5px;
   letter-spacing: 0.02em;
 }
+
+/* Activity inline filter — minimal underline field in the log header. */
+.tv-log-search {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid var(--line-2);
+  padding: 3px 2px;
+  transition: border-color 0.16s var(--ease);
+}
+.tv-log-search:focus-within { border-color: var(--accent-line); }
+.tv-log-search svg { width: 13px; height: 13px; stroke: var(--faint); flex: none; }
+.tv-log-search input {
+  border: none;
+  background: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  width: 150px;
+}
+.tv-log-search input::placeholder { color: var(--faint); }
+.tv-log-search .clear {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.tv-log-search .clear:hover { color: var(--text); }

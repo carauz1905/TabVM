@@ -7,14 +7,16 @@ import { useT } from '../i18n/i18n';
 // ActivityView renders the agent's recorded operation log (start/stop/reset,
 // console prepare, shared-folder changes) from GET /api/activity. Each row shows
 // the machine name for quick reading; clicking it expands the full detail (log
-// message + the exact machine id) in place. Rows are collapsed by default and
-// only one is open at a time.
+// message + the exact machine id) in place. A single inline filter narrows the
+// list live across the action, machine name, id and message. Rows are collapsed
+// by default and only one is open at a time.
 export function ActivityView() {
   const { t } = useT();
   const { vms } = useVmStatus();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +40,11 @@ export function ActivityView() {
   // machine no longer exists (e.g. it was deleted after the operation).
   const vmName = (id: string) => vms.find((vm) => vm.id === id)?.name ?? id;
 
+  const q = query.trim().toLowerCase();
+  const matches = (e: ActivityEntry) =>
+    !q || `${e.action} ${vmName(e.vmId)} ${e.vmId} ${e.message ?? ''}`.toLowerCase().includes(q);
+  const visibleCount = q ? entries.filter(matches).length : entries.length;
+
   return (
     <>
       <div className="tv-page-head tv-rise d1">
@@ -48,7 +55,30 @@ export function ActivityView() {
       <section className="tv-sec tv-rise d2">
         <div className="tv-sec-top">
           <h2>{t('Operation log')}</h2>
-          <span className="count">{entries.length}</span>
+          <span className="count">{q ? `${visibleCount} / ${entries.length}` : entries.length}</span>
+          {state === 'ready' && entries.length > 0 && (
+            <label className="tv-log-search">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+              <input
+                type="text"
+                value={query}
+                placeholder={t('filter…')}
+                aria-label={t('Filter activity')}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setQuery('');
+                }}
+              />
+              {query && (
+                <button type="button" className="clear" aria-label={t('Clear filter')} onClick={() => setQuery('')}>
+                  ×
+                </button>
+              )}
+            </label>
+          )}
         </div>
 
         {state === 'loading' && <div className="tv-empty">{t('Loading activity…')}</div>}
@@ -58,10 +88,14 @@ export function ActivityView() {
         {state === 'ready' && entries.length === 0 && (
           <div className="tv-empty">{t('No recorded operations yet.')}</div>
         )}
+        {state === 'ready' && entries.length > 0 && visibleCount === 0 && (
+          <div className="tv-empty">{t('No matches.')}</div>
+        )}
 
-        {state === 'ready' && entries.length > 0 && (
+        {state === 'ready' && visibleCount > 0 && (
           <div className="tv-list">
             {entries.map((entry, index) => {
+              if (!matches(entry)) return null;
               const key = `${entry.recordedAt}-${index}`;
               const isOpen = openKey === key;
               const name = vmName(entry.vmId);
