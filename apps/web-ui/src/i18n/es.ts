@@ -91,8 +91,8 @@ export const es: Record<string, string> = {
   'console attached': 'consola conectada',
 
   // Guest Additions update modal
-  'Guest username': 'Usuario del guest',
-  'Guest password': 'Contraseña del guest',
+  'Guest username': 'Usuario de la máquina virtual',
+  'Guest password': 'Contraseña de la máquina virtual',
   // ----- Serial-console terminal -----
   Terminal: 'Terminal',
   'serial · Linux': 'serial · Linux',
@@ -119,7 +119,7 @@ export const es: Record<string, string> = {
   'The terminal is connected but the guest is not responding.':
     'La terminal está conectada pero el guest no responde.',
   'Activate it with a guest account (root or sudo). It is used once.':
-    'Actívala con una cuenta del guest (root o con sudo). Se usa una sola vez.',
+    'Actívala con una cuenta de la máquina virtual (root o con sudo). Se usa una sola vez.',
   'Activate terminal': 'Activar terminal',
   'Loading…': 'Cargando…',
   cancel: 'cancelar',
