@@ -10,12 +10,19 @@ import (
 	"github.com/tabvm/desktop-agent/internal/models"
 )
 
-// gettyServiceCommand enables and immediately starts a login getty on the guest's
-// first serial port. It targets systemd, which covers the vast majority of modern
-// distros; non-systemd guests (Alpine, Devuan, Void) need a manual inittab entry.
-const gettyServiceCommand = "systemctl enable --now serial-getty@ttyS0.service"
+// gettyEnableScript enables and immediately starts a login getty on the guest's
+// first serial port, detecting the init system so it works across most distros:
+// systemd (systemctl) for the majority, and an /etc/inittab entry + init reload
+// (kill -HUP 1) for busybox/sysvinit/Alpine/Devuan. It deliberately contains no
+// single quotes so it can be wrapped in `sh -c '...'` under sudo without escaping.
+const gettyEnableScript = "if command -v systemctl >/dev/null 2>&1; then " +
+	"systemctl enable --now serial-getty@ttyS0.service; " +
+	"elif [ -f /etc/inittab ]; then " +
+	"grep -q ttyS0 /etc/inittab || echo ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100 >> /etc/inittab; " +
+	"kill -HUP 1; " +
+	"else echo no supported init system found >&2; exit 1; fi"
 
-// guestControlEnableGettyArgs runs the getty command directly as root. The
+// guestControlEnableGettyArgs runs the getty script directly as root. The
 // password travels via --passwordfile, never in argv. Stderr is folded into
 // stdout (2>&1) so a single --wait-stdout captures everything (combining
 // --wait-stdout and --wait-stderr triggers VERR_DUPLICATE on this VBoxManage).
@@ -28,16 +35,17 @@ func guestControlEnableGettyArgs(id, username, pwFilePath string) []string {
 		"--exe", "/bin/sh",
 		"--timeout", "60000",
 		"--wait-stdout",
-		"--", "-c", gettyServiceCommand + " 2>&1",
+		"--", "-c", gettyEnableScript + " 2>&1",
 	}
 }
 
-// guestControlSudoEnableGettyArgs runs the getty command under sudo for a
-// non-root account. sudo -S reads the password from stdin (the file copied into
-// the guest by guestControlCopyPwArgs), never from argv; the copy is removed
-// afterward regardless of exit code.
+// guestControlSudoEnableGettyArgs runs the getty script under sudo for a non-root
+// account. sudo -S reads the password from stdin (the file copied into the guest
+// by guestControlCopyPwArgs), never from argv; the copy is removed afterward
+// regardless of exit code. The script is wrapped in `sh -c '...'` (safe because
+// it has no single quotes) so the whole compound command runs as root.
 func guestControlSudoEnableGettyArgs(id, username, pwFilePath string) []string {
-	outer := "sudo -S -p '' " + gettyServiceCommand + " < " + guestPwPath +
+	outer := "sudo -S -p '' /bin/sh -c '" + gettyEnableScript + "' < " + guestPwPath +
 		" 2>&1; rc=$?; rm -f " + guestPwPath + "; exit $rc"
 	return []string{
 		"guestcontrol", id,
@@ -95,7 +103,7 @@ func (s *service) EnableSerialGetty(ctx context.Context, id, username, password 
 	}
 	pwFile.Close()
 
-	const failMsg = "Could not enable the serial login inside the guest. Check the username/password, that the account is root or has sudo, and that this is a running Linux guest with Guest Additions active. Non-systemd distros need manual setup."
+	const failMsg = "Could not enable the serial login inside the guest. Check the username/password, that the account is root or has sudo, and that this is a running Linux guest with Guest Additions active."
 
 	root := strings.EqualFold(username, "root")
 	if !root {
