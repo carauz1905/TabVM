@@ -1040,3 +1040,32 @@ body {
 .gdz-toast .spin { animation: gdz-spin 0.9s linear infinite; transform-origin: center; }
 @keyframes gdz-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gdz-toast .spin { animation: none; } }
+
+/* Serial-console terminal (SerialTerminalPanel / SerialTerminal) */
+.tv-serial-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tv-serial-getty {
+  display: grid;
+  gap: 8px;
+  max-width: 340px;
+  margin-top: 4px;
+}
+.tv-serial-wrap {
+  height: 340px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+.tv-serial-term,
+.tv-serial-term .xterm {
+  height: 100%;
+  width: 100%;
+}
+.tv-serial-term .xterm-viewport {
+  padding: 6px;
+}

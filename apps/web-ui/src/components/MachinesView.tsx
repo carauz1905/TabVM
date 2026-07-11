@@ -10,6 +10,7 @@ import { StoragePanel } from './StoragePanel';
 import { NetworkPanel } from './NetworkPanel';
 import { ScreenConsole } from './ScreenConsole';
 import { SnapshotsPanel } from './SnapshotsPanel';
+import { SerialTerminalPanel } from './SerialTerminalPanel';
 import { CreateVmWizard } from './CreateVmWizard';
 import { useT } from '../i18n/i18n';
 import type {
@@ -583,6 +584,7 @@ export function MachinesView() {
           <FilesPanel vmId={focusVm.id} vmName={focusVm.name} />
           <NetworkPanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <SnapshotsPanel vmId={focusVm.id} vmName={focusVm.name} onChanged={() => void refresh()} />
+          <SerialTerminalPanel vmId={focusVm.id} running={focusRunning} />
         </section>
       )}
 
