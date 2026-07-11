@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useT } from '../i18n/i18n';
 import { SerialTerminal, type SerialStatus } from './SerialTerminal';
-import { SplashScreen } from './SplashScreen';
+import { TerminalBoot } from './TerminalBoot';
 import type { VmSerialConsoleResponse } from '../types/api';
 
 interface TerminalTabProps {
@@ -121,7 +121,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
 
   return (
     <div className="tv-termtab">
-      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      {showSplash && <TerminalBoot vmName={vmName} onDone={() => setShowSplash(false)} />}
 
       <div className="tv-termtab-stage">
         {!loaded ? (

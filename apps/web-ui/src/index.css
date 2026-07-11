@@ -1113,3 +1113,54 @@ body {
   height: 100%;
   width: 100%;
 }
+
+/* Terminal tab intro — console-style boot (TerminalBoot) */
+.tv-tboot {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #0b1015;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  transition: opacity 0.4s ease;
+}
+.tv-tboot.fade {
+  opacity: 0;
+}
+.tv-tboot-inner {
+  padding: 26px 30px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.95;
+  color: #8b979d;
+}
+.tv-tboot-line {
+  white-space: pre;
+}
+.tv-tboot-line.head,
+.tv-tboot-line.ok {
+  color: #e6edf3;
+}
+.tv-tboot-mark {
+  color: var(--accent);
+}
+.tv-tboot-caret {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  margin-left: 2px;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: tv-tboot-blink 1s steps(1) infinite;
+}
+@keyframes tv-tboot-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-tboot-caret {
+    animation: none;
+  }
+}
