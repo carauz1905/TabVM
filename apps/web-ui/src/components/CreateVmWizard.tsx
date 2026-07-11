@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { api, ApiError } from '../api/client';
 import { useT } from '../i18n/i18n';
 
@@ -60,6 +60,12 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
   const [diskGb, setDiskGb] = useState(25);
   const [username, setUsername] = useState('student');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [capsOn, setCapsOn] = useState(false);
+
+  // Reflect Caps Lock state from a keyboard event on the password fields, so the
+  // user is warned before committing a password they cannot see.
+  const onPwKey = (e: KeyboardEvent<HTMLInputElement>) => setCapsOn(e.getModifierState('CapsLock'));
 
   const pollRef = useRef<number | undefined>(undefined);
 
@@ -147,6 +153,7 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
                 hostname: '',
               });
       setPassword(''); // drop the secret from state once submitted
+      setConfirmPassword('');
       poll(job.jobId);
     } catch (err) {
       const msg =
@@ -167,7 +174,10 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
       ? ovaPath.trim() !== ''
       : mode === 'manual'
         ? isoPath.trim() !== ''
-        : isoPath.trim() !== '' && username.trim() !== '' && password !== '');
+        : isoPath.trim() !== '' &&
+          username.trim() !== '' &&
+          password !== '' &&
+          password === confirmPassword);
 
   return (
     <div className="ga-overlay" role="dialog" aria-label={t('Create a virtual machine')}>
@@ -281,16 +291,40 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
                   </label>
                 </div>
                 {mode === 'install' && (
-                  <div className="tv-wiz-grid2">
+                  <>
+                    <div className="tv-wiz-grid2">
+                      <label className="ga-field">
+                        <span>{t('Guest username')}</span>
+                        <input type="text" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
+                      </label>
+                      <label className="ga-field">
+                        <span>{t('Guest password')}</span>
+                        <input
+                          type="password"
+                          autoComplete="off"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onKeyUp={onPwKey}
+                          onKeyDown={onPwKey}
+                        />
+                      </label>
+                    </div>
                     <label className="ga-field">
-                      <span>{t('Guest username')}</span>
-                      <input type="text" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
+                      <span>{t('Confirm password')}</span>
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onKeyUp={onPwKey}
+                        onKeyDown={onPwKey}
+                      />
                     </label>
-                    <label className="ga-field">
-                      <span>{t('Guest password')}</span>
-                      <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
-                    </label>
-                  </div>
+                    {capsOn && <p className="tv-wiz-warn">{t('Caps Lock is on.')}</p>}
+                    {confirmPassword !== '' && confirmPassword !== password && (
+                      <p className="tv-wiz-warn">{t('The passwords do not match.')}</p>
+                    )}
+                  </>
                 )}
               </>
             )}
