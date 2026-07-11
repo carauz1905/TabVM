@@ -1115,37 +1115,12 @@ body {
 }
 
 
-/* Terminal tab intro — animated brand logo over the dark surface (TerminalIntro) */
-.tv-tintro {
+/* The terminal tab reuses the launch SplashScreen as its intro (same animation:
+   mark assemble + typed slogan), but on the terminal's dark surface — override
+   the brand tokens the splash reads so it reads light on the dark ground. */
+.tv-termtab .tv-splash {
+  --bg: #0b1015;
+  --text: #e6edf3;
+  --muted: #8b979d;
   --mark: #e6edf3;
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  background: #0b1015;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  transition: opacity 0.45s ease;
-}
-.tv-tintro.fade {
-  opacity: 0;
-}
-.tv-tintro-mark {
-  width: 96px;
-  height: 96px;
-}
-.tv-tintro-word {
-  font-family: var(--font-display, var(--font-mono));
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #e6edf3;
-}
-.tv-tintro-slogan {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: #8b979d;
-  letter-spacing: 0.02em;
 }
