@@ -697,3 +697,86 @@
   text-align: center;
 }
 .net-empty p { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+/* ===== Editorial focus panels (feat/focus-refine) =====
+   The panel wrappers already separate sections with a hairline + header, so
+   dissolve the inner content card frames: content sits flat and airy beneath its
+   label instead of reading as stacked embedded boxes. */
+.net-row,
+.files-row {
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+.files-row:hover,
+.net-row:hover {
+  border-color: transparent;
+}
+/* Stacked list items are divided by a hairline, not boxed one by one. */
+.net-list .net-row + .net-row,
+.files-list .files-row + .files-row {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.net-empty,
+.files-empty,
+.snap-empty {
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 2px 0;
+  text-align: left;
+  align-items: flex-start;
+}
+.files-empty {
+  flex-direction: row;
+  gap: 10px;
+}
+.files-empty .glyph svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* A hint placed directly in a column net-row must not inherit the row-width
+   flex-basis (160px) as a height, which would leave a tall empty block. */
+.net-row > .net-hint {
+  flex: none;
+}
+
+/* Activity rows: clickable + expandable in place, keeping the compact look. */
+.tv-log-entry { border-bottom: 1px solid var(--line); }
+button.tv-log {
+  width: 100%;
+  background: none;
+  border: none;        /* the row hairline moved to .tv-log-entry */
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.tv-log:hover { background: var(--raise); }
+.tv-log-chev {
+  flex: none;
+  margin-left: 4px;
+  color: var(--faint);
+  font-size: 10px;
+  transition: transform 0.16s var(--ease);
+}
+button.tv-log[aria-expanded='true'] .tv-log-chev { transform: rotate(90deg); }
+.tv-log-detail {
+  padding: 2px 14px 14px 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.tv-log-msg { margin: 0; color: var(--text); line-height: 1.5; }
+.tv-log-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--faint);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
