@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useHealth } from '../hooks/useHealth';
 import { useVmStatus } from '../hooks/useVmStatus';
@@ -20,8 +20,12 @@ import type {
   VmTelemetryResponse,
 } from '../types/api';
 
-type VmAction = 'start' | 'stop' | 'reset' | 'delete';
-const lifecycleActions: VmAction[] = ['start', 'stop', 'reset', 'delete'];
+type VmAction = 'start' | 'stop' | 'reset' | 'poweroff' | 'delete';
+const lifecycleActions: VmAction[] = ['start', 'stop', 'reset', 'poweroff', 'delete'];
+
+// How long after a stop request the VM may stay running before the UI offers
+// a hard power-off (a guest with no OS never answers the ACPI signal).
+const FORCE_POWER_OFF_DELAY_MS = 10_000;
 
 // formatUptime renders a seconds count as HH:MM:SS for the agent meta line.
 function formatUptime(totalSeconds: number): string {
@@ -77,6 +81,10 @@ export function MachinesView() {
   const [gaPass, setGaPass] = useState('');
   const [gaUpdateBusy, setGaUpdateBusy] = useState(false);
   const [gaUpdateResult, setGaUpdateResult] = useState<GuestAdditionsUpdateResponse | null>(null);
+  // VMs whose stop request went unanswered long enough to offer a hard
+  // power-off, plus the per-VM grace timers backing that offer.
+  const [forceOffered, setForceOffered] = useState<Record<string, boolean>>({});
+  const forceTimersRef = useRef<Record<string, number>>({});
 
   const agentOnline = health.state === 'success' && health.data?.status === 'healthy';
 
@@ -178,6 +186,32 @@ export function MachinesView() {
     };
   }, [runningKey]);
 
+  // Drop the force-power-off offer for any VM that is no longer running: the
+  // ACPI signal worked, the machine was deleted, or it was powered off here.
+  useEffect(() => {
+    setForceOffered((current) => {
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      for (const [id, offered] of Object.entries(current)) {
+        const vm = vms.find((candidate) => candidate.id === id);
+        if (offered && vm && vm.state.toLowerCase() === 'running') next[id] = true;
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [vms]);
+
+  // Clear any pending grace timers when the view unmounts.
+  useEffect(
+    () => () => {
+      for (const timer of Object.values(forceTimersRef.current)) {
+        window.clearTimeout(timer);
+      }
+      forceTimersRef.current = {};
+    },
+    [],
+  );
+
   const installGuestAdditions = useCallback(async (id: string) => {
     setGaBusy((current) => ({ ...current, [id]: true }));
     setActionError(null);
@@ -228,17 +262,43 @@ export function MachinesView() {
     async (id: string, action: VmAction) => {
       setLoadingActions((current) => ({ ...current, [id]: { ...current[id], [action]: true } }));
       setActionError(null);
+      // Any power-state change restarts the stop tracking from scratch.
+      if (action === 'start' || action === 'stop' || action === 'poweroff') {
+        window.clearTimeout(forceTimersRef.current[id]);
+        delete forceTimersRef.current[id];
+        setForceOffered((current) => {
+          if (!(id in current)) return current;
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+      }
       try {
         if (action === 'start') await api.startVm(id);
         else if (action === 'stop') await api.stopVm(id);
         else if (action === 'reset') await api.resetVm(id);
+        else if (action === 'poweroff') await api.forcePowerOffVm(id);
         else if (action === 'delete') await api.deleteVm(id);
+
+        if (action === 'stop') {
+          // If the guest ignores the ACPI signal, re-check the real state after
+          // a grace period and only then surface the force power-off action.
+          forceTimersRef.current[id] = window.setTimeout(() => {
+            delete forceTimersRef.current[id];
+            void refresh().then(() => {
+              setForceOffered((current) => ({ ...current, [id]: true }));
+            });
+          }, FORCE_POWER_OFF_DELAY_MS);
+        }
 
         if (lifecycleActions.includes(action)) await refresh();
       } catch (error: unknown) {
         let message = error instanceof Error ? error.message : String(error);
         if (error instanceof ApiError && error.body.trim() !== '') message = error.body.trim();
         setActionError(message);
+        if (action === 'poweroff') {
+          setForceOffered((current) => ({ ...current, [id]: true }));
+        }
       } finally {
         setLoadingActions((current) => ({ ...current, [id]: { ...current[id], [action]: false } }));
       }
@@ -256,6 +316,19 @@ export function MachinesView() {
       )
     ) {
       void runAction(id, 'reset');
+    }
+  }
+
+  function handleForcePowerOff(id: string, name: string) {
+    if (
+      window.confirm(
+        tf(
+          'Force power off "{name}"? This is like pulling the power plug: the guest will not shut down cleanly and unsaved data inside it will be lost.',
+          { name },
+        ),
+      )
+    ) {
+      void runAction(id, 'poweroff');
     }
   }
 
@@ -422,6 +495,18 @@ export function MachinesView() {
                           >
                             {loading.stop ? t('stopping…') : t('stop')}
                           </button>
+                          {forceOffered[vm.id] && (
+                            <button
+                              type="button"
+                              className="tv-abtn danger"
+                              aria-label={tf('Force power off {vm}', { vm: vm.name })}
+                              title={t('force power off')}
+                              disabled={busy}
+                              onClick={() => handleForcePowerOff(vm.id, vm.name)}
+                            >
+                              {loading.poweroff ? t('powering off…') : t('force power off')}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="tv-abtn danger"

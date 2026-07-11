@@ -351,6 +351,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleVmStop(w, r, id)
 		case "reset":
 			s.handleVmReset(w, r, id)
+		case "poweroff":
+			s.handleVmPowerOff(w, r, id)
 		case "console/prepare":
 			s.handleVmConsolePrepare(w, r, id)
 		case "console/disable":
@@ -417,6 +419,10 @@ func (s *Server) handleVmStop(w http.ResponseWriter, r *http.Request, id string)
 
 func (s *Server) handleVmReset(w http.ResponseWriter, r *http.Request, id string) {
 	s.handleVmOperation(w, r, id, s.vbox.ResetVM, "VM reset requested.")
+}
+
+func (s *Server) handleVmPowerOff(w http.ResponseWriter, r *http.Request, id string) {
+	s.handleVmOperation(w, r, id, s.vbox.ForcePowerOff, "VM power off forced.")
 }
 
 func (s *Server) handleVmConsoleStatus(w http.ResponseWriter, r *http.Request, id string) {

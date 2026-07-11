@@ -59,6 +59,11 @@ export const es: Record<string, string> = {
   'Update Guest Additions': 'Actualizar Guest Additions',
   'stopping…': 'deteniendo…',
   stop: 'detener',
+  'force power off': 'forzar apagado',
+  'powering off…': 'apagando…',
+  'Force power off {vm}': 'Forzar el apagado de {vm}',
+  'Force power off "{name}"? This is like pulling the power plug: the guest will not shut down cleanly and unsaved data inside it will be lost.':
+    '¿Forzar el apagado de "{name}"? Es como desconectar el cable de alimentación: el sistema invitado no se apagará de forma correcta y los datos no guardados que contenga se perderán.',
   reset: 'reiniciar',
   delete: 'eliminar',
   'deleting…': 'eliminando…',

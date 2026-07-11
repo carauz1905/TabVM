@@ -23,6 +23,7 @@ type fakeVboxService struct {
 	startErr          error
 	stopErr           error
 	resetErr          error
+	poweroffErr       error
 	consoleStatus     models.VmConsoleStatusResponse
 	consoleStatusErr  error
 	prepareConsole    models.VmConsoleStatusResponse
@@ -1440,6 +1441,48 @@ func TestPickFolderRequiresToken(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected %d, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
+func (f *fakeVboxService) ForcePowerOff(ctx context.Context, id string) error {
+	f.lastAction = "poweroff"
+	f.lastID = id
+	return f.poweroffErr
+}
+
+func TestVmPowerOffEndpointReturnsOperationResult(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	if fake.lastAction != "poweroff" || fake.lastID != "11111111-1111-1111-1111-111111111111" {
+		t.Fatalf("expected poweroff action for 11111111-1111-1111-1111-111111111111, got %s/%s", fake.lastAction, fake.lastID)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, `"success":true`) {
+		t.Fatalf("expected success=true in body, got %q", body)
+	}
+}
+
+func TestVmPowerOffRouteRequiresAuth(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
 	}
 }
 

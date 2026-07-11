@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { MachinesView } from './MachinesView';
 import { api, ApiError } from '../api/client';
 import { useVmStatus } from '../hooks/useVmStatus';
@@ -50,6 +50,7 @@ vi.mock('../api/client', () => {
       startVm: vi.fn(),
       stopVm: vi.fn(),
       resetVm: vi.fn(),
+      forcePowerOffVm: vi.fn(),
       deleteVm: vi.fn(),
       getGuestAdditionsStatus: vi.fn(),
       installGuestAdditions: vi.fn(),
@@ -101,7 +102,10 @@ describe('MachinesView', () => {
     });
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    vi.useRealTimers();
+    cleanup();
+  });
 
   it('starts a stopped VM and refreshes', async () => {
     vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
@@ -220,6 +224,120 @@ describe('MachinesView', () => {
     const { queryByRole } = render(<MachinesView />);
     await waitFor(() => expect(api.getGuestAdditionsStatus).toHaveBeenCalledWith(RUNNING_ID));
     expect(queryByRole('button', { name: 'Install Guest Additions on VM One' })).toBeNull();
+  });
+
+  it('does not offer force power off before the grace period', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole, queryByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(api.stopVm).toHaveBeenCalledWith(RUNNING_ID);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9000);
+    });
+    expect(queryByRole('button', { name: 'Force power off VM One' })).toBeNull();
+  });
+
+  it('offers force power off when the VM is still running after the grace period', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    expect(getByRole('button', { name: 'Force power off VM One' })).toBeTruthy();
+  });
+
+  it('confirms and force powers off through the API', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+    vi.mocked(api.forcePowerOffVm).mockResolvedValue({
+      success: true,
+      vmId: RUNNING_ID,
+      message: 'powered off',
+    });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(api.forcePowerOffVm).toHaveBeenCalledWith(RUNNING_ID);
+  });
+
+  it('keeps offering force power off when the API call fails', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+    vi.mocked(api.forcePowerOffVm).mockRejectedValue(new Error('force power off failed'));
+
+    const { getByRole, getByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(api.forcePowerOffVm).toHaveBeenCalledWith(RUNNING_ID);
+    expect(getByText('force power off failed')).toBeTruthy();
+    expect(getByRole('button', { name: 'Force power off VM One' })).toBeTruthy();
+  });
+
+  it('does not force power off when the confirmation is cancelled', async () => {
+    vi.useFakeTimers();
+    window.confirm = vi.fn(() => false);
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(api.forcePowerOffVm).not.toHaveBeenCalled();
+  });
+
+  it('never offers force power off when the VM stops on its own', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole, queryByRole, rerender } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // The ACPI signal worked: the next poll reports the VM as powered off.
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    rerender(<MachinesView />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+
+    expect(queryByRole('button', { name: 'Force power off VM One' })).toBeNull();
   });
 
   it('offers and triggers Guest Additions install when not detected', async () => {
