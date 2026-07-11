@@ -1084,44 +1084,65 @@ body {
 .tv-termtab-dot[data-state='error'] {
   background: #e5484d;
 }
-.tv-termtab-body {
-  flex: 1;
+.tv-termtab-headactions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.tv-termtab-body {
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 14px;
-  gap: 12px;
+  position: relative;
 }
 .tv-termtab-note {
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 13px;
 }
-.tv-termtab-setup,
+/* Setup/empty states center in the otherwise-empty terminal area. */
+.tv-termtab-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.tv-termtab-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 380px;
+}
+/* The live terminal fills the whole tab, edge to edge — no box, no border. */
+.tv-termtab-screen {
+  position: absolute;
+  inset: 0;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  background: var(--bg-primary);
+}
+/* Login-getty floats over the terminal instead of pushing it down. */
+.tv-termtab-popover {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  z-index: 5;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
+}
 .tv-termtab-getty {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 360px;
-}
-.tv-termtab-actions {
-  display: flex;
   gap: 8px;
+  width: 280px;
 }
-.tv-termtab-screen {
-  flex: 1;
-  min-height: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg-primary);
-}
-/* xterm host (SerialTerminal) */
+/* xterm host (SerialTerminal) fills its container. */
 .tv-serial-term,
 .tv-serial-term .xterm {
   height: 100%;
   width: 100%;
-}
-.tv-serial-term .xterm-viewport {
-  padding: 6px;
 }
