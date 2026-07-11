@@ -135,6 +135,20 @@ func (s *Server) startCreateJob(name string, work func(ctx context.Context) (mod
 	s.createMu.Unlock()
 
 	go func() {
+		// A panic anywhere in the create call chain must not kill the whole
+		// agent: mark the job failed with a generic message and keep serving.
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("background create/import job panicked", "jobId", jobID, "panic", r)
+				s.createMu.Lock()
+				defer s.createMu.Unlock()
+				if job := s.createJobs[jobID]; job != nil {
+					job.State = "error"
+					job.Message = "Internal server error."
+				}
+			}
+		}()
+
 		ctx, cancel := context.WithTimeout(context.Background(), createJobTimeout)
 		defer cancel()
 		resp, err := work(ctx)
