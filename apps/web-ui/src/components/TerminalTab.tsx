@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useT } from '../i18n/i18n';
 import { SerialTerminal, type SerialStatus } from './SerialTerminal';
-import { TerminalBoot } from './TerminalBoot';
+import { TerminalIntro } from './TerminalIntro';
 import type { VmSerialConsoleResponse } from '../types/api';
 
 interface TerminalTabProps {
@@ -25,7 +25,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conn, setConn] = useState<SerialStatus>('connecting');
-  const [showSplash, setShowSplash] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
 
   // Silence self-diagnosis + one-tap activation.
   const [silent, setSilent] = useState(false);
@@ -121,7 +121,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
 
   return (
     <div className="tv-termtab">
-      {showSplash && <TerminalBoot vmName={vmName} onDone={() => setShowSplash(false)} />}
+      {showIntro && <TerminalIntro onDone={() => setShowIntro(false)} />}
 
       <div className="tv-termtab-stage">
         {!loaded ? (

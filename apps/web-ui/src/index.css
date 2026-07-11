@@ -1114,53 +1114,38 @@ body {
   width: 100%;
 }
 
-/* Terminal tab intro — console-style boot (TerminalBoot) */
-.tv-tboot {
+
+/* Terminal tab intro — animated brand logo over the dark surface (TerminalIntro) */
+.tv-tintro {
+  --mark: #e6edf3;
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 30;
   background: #0b1015;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  transition: opacity 0.4s ease;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  transition: opacity 0.45s ease;
 }
-.tv-tboot.fade {
+.tv-tintro.fade {
   opacity: 0;
 }
-.tv-tboot-inner {
-  padding: 26px 30px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1.95;
-  color: #8b979d;
+.tv-tintro-mark {
+  width: 96px;
+  height: 96px;
 }
-.tv-tboot-line {
-  white-space: pre;
-}
-.tv-tboot-line.head,
-.tv-tboot-line.ok {
+.tv-tintro-word {
+  font-family: var(--font-display, var(--font-mono));
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: #e6edf3;
 }
-.tv-tboot-mark {
-  color: var(--accent);
-}
-.tv-tboot-caret {
-  display: inline-block;
-  width: 8px;
-  height: 15px;
-  margin-left: 2px;
-  background: var(--accent);
-  vertical-align: text-bottom;
-  animation: tv-tboot-blink 1s steps(1) infinite;
-}
-@keyframes tv-tboot-blink {
-  50% {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tv-tboot-caret {
-    animation: none;
-  }
+.tv-tintro-slogan {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #8b979d;
+  letter-spacing: 0.02em;
 }
