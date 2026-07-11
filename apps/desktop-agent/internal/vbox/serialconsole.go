@@ -63,7 +63,7 @@ func (s *service) EnableSerialConsole(ctx context.Context, id string) (models.Vm
 		return models.VmOperationResponse{}, &ValidationError{Message: "The VM is running. Power it off before enabling the serial terminal."}
 	}
 
-	if err := s.runControlCommand(ctx, path, enableSerialConsoleArgs(id, serialPipeName(id)), "enabling serial console"); err != nil {
+	if err := s.runControlCommand(ctx, path, enableSerialConsoleArgs(id, SerialPipeName(id)), "enabling serial console"); err != nil {
 		s.logOperation(ctx, id, "vm.serial.enable", false, "VBoxManage modifyvm uart failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -109,9 +109,9 @@ func (s *service) DisableSerialConsole(ctx context.Context, id string) (models.V
 	}, nil
 }
 
-// serialPipeName returns the deterministic Windows named-pipe path used to
+// SerialPipeName returns the deterministic Windows named-pipe path used to
 // bridge a VM's first serial port (COM1) to the host agent.
-func serialPipeName(id string) string {
+func SerialPipeName(id string) string {
 	return `\\.\pipe\tabvm-serial-` + id
 }
 

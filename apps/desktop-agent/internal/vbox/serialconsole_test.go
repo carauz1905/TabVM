@@ -7,10 +7,10 @@ import (
 
 func TestSerialPipeName(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
-	got := serialPipeName(id)
+	got := SerialPipeName(id)
 	want := `\\.\pipe\tabvm-serial-` + id
 	if got != want {
-		t.Fatalf("serialPipeName = %q, want %q", got, want)
+		t.Fatalf("SerialPipeName = %q, want %q", got, want)
 	}
 }
 

@@ -344,6 +344,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			// VirtualBox COM screen capture streamed to the browser as JPEG
 			// frames over a WebSocket. See screenstream.go and vmscreen.
 			s.handleVmScreenStream(w, r, id)
+		case "serial-stream":
+			// COM1 serial port (VirtualBox host named pipe) bridged to the
+			// browser terminal over a WebSocket. See serialstream.go.
+			s.handleVmSerialStream(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1022,7 +1026,7 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 		}
 
 		presented := r.Header.Get(sessionTokenHeader)
-		if presented == "" && isScreenStreamPath(r.URL.Path) {
+		if presented == "" && (isScreenStreamPath(r.URL.Path) || isSerialStreamPath(r.URL.Path)) {
 			// Browsers' native WebSocket API cannot set arbitrary request
 			// headers, so a WebSocket upgrade request cannot carry
 			// X-TabVM-Session-Token. Fall back to a query parameter for this
