@@ -331,3 +331,261 @@ func TestCreateDiskArgsSizeIsMB(t *testing.T) {
 		t.Errorf("expected 20 GB -> 20480 MB, got %q", joined)
 	}
 }
+
+// manualCreateResults returns a full-success fake command map for a manual
+// create of VM "lab", including the best-effort cleanup commands so failure
+// scenarios can observe them succeeding.
+func manualCreateResults(path, uuid, settings, disk, iso string) map[string]runner.Result {
+	return map[string]runner.Result{
+		path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+		path + " createvm --name lab --ostype Linux_64 --register": {
+			ExitCode:       0,
+			StandardOutput: "UUID: " + uuid + "\nSettings file: '" + settings + "'\n",
+		},
+		path + " modifyvm " + uuid + " --memory 2048 --cpus 2 --ioapic on --nic1 nat --vram 33 --graphicscontroller vmsvga": {ExitCode: 0},
+		path + " createmedium disk --filename " + disk + " --size 20480 --format VDI":                                       {ExitCode: 0},
+		path + " storagectl " + uuid + " --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on":         {ExitCode: 0},
+		path + " storageattach " + uuid + " --storagectl SATA --port 0 --device 0 --type hdd --medium " + disk:              {ExitCode: 0},
+		path + " storageattach " + uuid + " --storagectl SATA --port 1 --device 0 --type dvddrive --medium " + iso:          {ExitCode: 0},
+		path + " unregistervm " + uuid + " --delete":                                                                        {ExitCode: 0},
+		path + " closemedium disk " + disk + " --delete":                                                                    {ExitCode: 0},
+	}
+}
+
+func TestCreateVmManual_CleansUpOnPostRegisterFailure(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+	uuid := "12345678-1234-1234-1234-1234567890ab"
+
+	cases := []struct {
+		name string
+		// failKey returns the command to fail; nil means full success.
+		failKey func(path, uuid, disk, iso string) string
+		// diskExists simulates createmedium having already produced the file.
+		diskExists      bool
+		wantCloseMedium bool
+		// cleanupFails makes the cleanup commands themselves fail, to prove
+		// the original step error is still the one returned.
+		cleanupFails bool
+	}{
+		{
+			name: "no cleanup on success",
+		},
+		{
+			name: "modifyvm failure unregisters without disk cleanup",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " modifyvm " + uuid + " --memory 2048 --cpus 2 --ioapic on --nic1 nat --vram 33 --graphicscontroller vmsvga"
+			},
+		},
+		{
+			name: "createmedium failure unregisters without disk cleanup",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " createmedium disk --filename " + disk + " --size 20480 --format VDI"
+			},
+		},
+		{
+			name: "storagectl failure reclaims the orphaned disk",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " storagectl " + uuid + " --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on"
+			},
+			diskExists:      true,
+			wantCloseMedium: true,
+		},
+		{
+			name: "disk attach failure reclaims the orphaned disk",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " storageattach " + uuid + " --storagectl SATA --port 0 --device 0 --type hdd --medium " + disk
+			},
+			diskExists:      true,
+			wantCloseMedium: true,
+		},
+		{
+			name: "iso attach failure cleans up the created disk",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " storageattach " + uuid + " --storagectl SATA --port 1 --device 0 --type dvddrive --medium " + iso
+			},
+			diskExists:      true,
+			wantCloseMedium: true,
+		},
+		{
+			name: "cleanup failures never mask the original error",
+			failKey: func(path, uuid, disk, iso string) string {
+				return path + " storagectl " + uuid + " --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on"
+			},
+			diskExists:      true,
+			wantCloseMedium: true,
+			cleanupFails:    true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := createTempExecutable(t)
+			dir := t.TempDir()
+			iso := filepath.Join(dir, "alpine.iso")
+			if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			vmDir := filepath.Join(dir, "lab")
+			settings := filepath.Join(vmDir, "lab.vbox")
+			disk := filepath.Join(vmDir, "lab.vdi")
+
+			results := manualCreateResults(path, uuid, settings, disk, iso)
+			if tc.failKey != nil {
+				results[tc.failKey(path, uuid, disk, iso)] = runner.Result{ExitCode: 1, StandardError: "step failed"}
+			}
+			if tc.cleanupFails {
+				results[path+" unregistervm "+uuid+" --delete"] = runner.Result{ExitCode: 1, StandardError: "cleanup failed"}
+				results[path+" closemedium disk "+disk+" --delete"] = runner.Result{ExitCode: 1, StandardError: "cleanup failed"}
+			}
+			if tc.diskExists {
+				if err := os.MkdirAll(vmDir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(disk, []byte("d"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			run := &recordingRunner{results: results}
+			svc := NewService(run, Config{CandidatePaths: []string{path}})
+			_, err := svc.CreateVmManual(context.Background(), models.VmCreateManualRequest{
+				Name: "lab", OsType: "Linux_64", IsoPath: iso, MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+			})
+
+			joined := strings.Join(run.calls, "\n")
+
+			if tc.failKey == nil {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if strings.Contains(joined, "unregistervm") || strings.Contains(joined, "closemedium") {
+					t.Fatalf("cleanup ran on success; calls:\n%s", joined)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatal("expected the create to fail")
+			}
+			execErr, ok := err.(*ExecutionError)
+			if !ok {
+				t.Fatalf("expected the original ExecutionError, got %T: %v", err, err)
+			}
+			if execErr.StandardError != "step failed" {
+				t.Errorf("original step error was masked: %v", execErr)
+			}
+			if !strings.Contains(joined, "unregistervm "+uuid+" --delete") {
+				t.Errorf("expected unregister cleanup; calls:\n%s", joined)
+			}
+			if got := strings.Contains(joined, "closemedium disk "+disk+" --delete"); got != tc.wantCloseMedium {
+				t.Errorf("closemedium cleanup = %v, want %v; calls:\n%s", got, tc.wantCloseMedium, joined)
+			}
+			if tc.diskExists {
+				if _, statErr := os.Stat(disk); !os.IsNotExist(statErr) {
+					t.Errorf("expected the orphaned disk file to be removed; stat err: %v", statErr)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateVmUnattended_CleansUpOnPostRegisterFailure(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+	uuid := "12345678-1234-1234-1234-1234567890ab"
+
+	// unattendedResults covers every step up to (not including) the unattended
+	// install configuration, whose command key embeds a random temp-file path
+	// and therefore cannot be mapped; leaving it unmapped makes it fail.
+	unattendedResults := func(path, settings, disk, iso string) map[string]runner.Result {
+		return map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " createvm --name lab --ostype Ubuntu_64 --register": {
+				ExitCode:       0,
+				StandardOutput: "UUID: " + uuid + "\nSettings file: '" + settings + "'\n",
+			},
+			path + " modifyvm " + uuid + " --memory 2048 --cpus 2 --ioapic on --nic1 nat --vram 33 --graphicscontroller vmsvga": {ExitCode: 0},
+			path + " createmedium disk --filename " + disk + " --size 20480 --format VDI":                                       {ExitCode: 0},
+			path + " storagectl " + uuid + " --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on":         {ExitCode: 0},
+			path + " storageattach " + uuid + " --storagectl SATA --port 0 --device 0 --type hdd --medium " + disk:              {ExitCode: 0},
+			path + " unregistervm " + uuid + " --delete":                                                                        {ExitCode: 0},
+			path + " closemedium disk " + disk + " --delete":                                                                    {ExitCode: 0},
+		}
+	}
+
+	t.Run("modifyvm failure unregisters without disk cleanup", func(t *testing.T) {
+		path := createTempExecutable(t)
+		dir := t.TempDir()
+		iso := filepath.Join(dir, "ubuntu.iso")
+		if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		vmDir := filepath.Join(dir, "lab")
+		settings := filepath.Join(vmDir, "lab.vbox")
+		disk := filepath.Join(vmDir, "lab.vdi")
+
+		results := unattendedResults(path, settings, disk, iso)
+		results[path+" modifyvm "+uuid+" --memory 2048 --cpus 2 --ioapic on --nic1 nat --vram 33 --graphicscontroller vmsvga"] = runner.Result{ExitCode: 1, StandardError: "step failed"}
+
+		run := &recordingRunner{results: results}
+		svc := NewService(run, Config{CandidatePaths: []string{path}})
+		_, err := svc.CreateVmUnattended(context.Background(), models.VmCreateRequest{
+			Name: "lab", OsType: "Ubuntu_64", IsoPath: iso, Username: "student", Password: "pw",
+			MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+		})
+		if err == nil {
+			t.Fatal("expected the create to fail")
+		}
+		joined := strings.Join(run.calls, "\n")
+		if !strings.Contains(joined, "unregistervm "+uuid+" --delete") {
+			t.Errorf("expected unregister cleanup; calls:\n%s", joined)
+		}
+		if strings.Contains(joined, "closemedium") {
+			t.Errorf("closemedium must not run when no disk was created; calls:\n%s", joined)
+		}
+	})
+
+	t.Run("unattended config failure reclaims the created disk", func(t *testing.T) {
+		path := createTempExecutable(t)
+		dir := t.TempDir()
+		iso := filepath.Join(dir, "ubuntu.iso")
+		if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		vmDir := filepath.Join(dir, "lab")
+		settings := filepath.Join(vmDir, "lab.vbox")
+		disk := filepath.Join(vmDir, "lab.vdi")
+		if err := os.MkdirAll(vmDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(disk, []byte("d"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		run := &recordingRunner{results: unattendedResults(path, settings, disk, iso)}
+		svc := NewService(run, Config{CandidatePaths: []string{path}})
+		_, err := svc.CreateVmUnattended(context.Background(), models.VmCreateRequest{
+			Name: "lab", OsType: "Ubuntu_64", IsoPath: iso, Username: "student", Password: "pw",
+			MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+		})
+		if err == nil {
+			t.Fatal("expected the create to fail at the unattended step")
+		}
+		joined := strings.Join(run.calls, "\n")
+		if !strings.Contains(joined, "unattended install "+uuid) {
+			t.Fatalf("expected the flow to reach the unattended step; calls:\n%s", joined)
+		}
+		if !strings.Contains(joined, "unregistervm "+uuid+" --delete") {
+			t.Errorf("expected unregister cleanup; calls:\n%s", joined)
+		}
+		if !strings.Contains(joined, "closemedium disk "+disk+" --delete") {
+			t.Errorf("expected closemedium cleanup; calls:\n%s", joined)
+		}
+		if _, statErr := os.Stat(disk); !os.IsNotExist(statErr) {
+			t.Errorf("expected the orphaned disk file to be removed; stat err: %v", statErr)
+		}
+	})
+}

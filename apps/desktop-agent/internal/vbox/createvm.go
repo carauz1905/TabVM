@@ -56,6 +56,10 @@ const createMediumTimeout = 5 * time.Minute
 // whole disk image and can take many minutes.
 const importTimeout = 30 * time.Minute
 
+// cleanupStepTimeout bounds each best-effort cleanup command after a failed
+// create, so cleanup can never hang a background job indefinitely.
+const cleanupStepTimeout = 2 * time.Minute
+
 // ImportAppliance imports a prebuilt .ova/.ovf appliance (which already ships
 // Guest Additions) under the given VM name. It is long-running; callers run it
 // on a background job.
@@ -149,6 +153,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	for _, step := range steps {
 		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
 			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
+			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
 		}
 	}
@@ -157,6 +162,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	// it never appears in the process argument list.
 	pwFile, err := os.CreateTemp("", "tabvm-unatt-*.txt")
 	if err != nil {
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, fmt.Errorf("creating credential file: %w", err)
 	}
 	pwPath := pwFile.Name()
@@ -164,12 +170,14 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	_ = pwFile.Chmod(0o600)
 	if _, err := pwFile.WriteString(req.Password + "\n"); err != nil {
 		pwFile.Close()
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, fmt.Errorf("writing credential file: %w", err)
 	}
 	pwFile.Close()
 
 	if err := s.runControlCommandTimeout(ctx, path, unattendedInstallArgs(uuid, req, pwPath), "configuring unattended install", createStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage unattended install failed.")
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, err
 	}
 
@@ -240,6 +248,7 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 	for _, step := range steps {
 		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
 			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
+			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
 		}
 	}
@@ -251,6 +260,38 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 		Name:    req.Name,
 		Message: fmt.Sprintf("%q created. Start it and install the OS from the attached ISO.", req.Name),
 	}, nil
+}
+
+// cleanupFailedCreate best-effort undoes a create that failed after
+// `createvm --register` succeeded. It unregisters the VM (deleting any
+// attached media), then reclaims a disk image that was created but never
+// attached: first via `closemedium --delete`, then by removing the file
+// directly if it still exists. Failures are logged and never returned, so the
+// caller's original error is always preserved.
+func (s *service) cleanupFailedCreate(ctx context.Context, path, uuid, diskPath string) {
+	// The create may have failed because ctx was cancelled or timed out;
+	// cleanup still has to run, bounded by its own per-step timeouts.
+	ctx = context.WithoutCancel(ctx)
+
+	if err := s.runControlCommandTimeout(ctx, path, unregisterVmArgs(uuid), "cleaning up a failed create (unregister)", cleanupStepTimeout); err != nil {
+		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage unregistervm cleanup failed.")
+	}
+	if diskPath == "" {
+		return
+	}
+	if _, err := statPath(diskPath); err != nil {
+		return // No orphaned disk image left behind.
+	}
+	// The disk file survived the unregister, so it was never attached. Release
+	// it from the media registry and delete it.
+	if err := s.runControlCommandTimeout(ctx, path, closeMediumDeleteArgs(diskPath), "cleaning up a failed create (disk)", cleanupStepTimeout); err != nil {
+		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage closemedium cleanup failed.")
+	}
+	if _, err := statPath(diskPath); err == nil {
+		if err := os.Remove(diskPath); err != nil {
+			s.logOperation(ctx, uuid, "vm.create.cleanup", false, "Removing the orphaned disk image failed.")
+		}
+	}
 }
 
 // resolveVmUUID looks up a VM's UUID by name after a create/import. Best-effort;
