@@ -61,6 +61,16 @@ type fakeVboxService struct {
 	deleteErr         error
 	hardware          models.VmHardwareResponse
 	hardwareErr       error
+	guestOS           models.VmGuestOSResponse
+	guestOSErr        error
+	serialStatus      models.VmSerialConsoleResponse
+	serialStatusErr   error
+	serialEnableResp  models.VmOperationResponse
+	serialEnableErr   error
+	serialDisableResp models.VmOperationResponse
+	serialDisableErr  error
+	serialGettyResp   models.SerialGettyResponse
+	serialGettyErr    error
 	setHardwareResp   models.VmOperationResponse
 	setHardwareErr    error
 	lastCPUs          int
@@ -253,6 +263,36 @@ func (f *fakeVboxService) VmHardware(ctx context.Context, id string) (models.VmH
 	return f.hardware, f.hardwareErr
 }
 
+func (f *fakeVboxService) VmGuestOS(ctx context.Context, id string) (models.VmGuestOSResponse, error) {
+	f.lastAction = "vmGuestOS"
+	f.lastID = id
+	return f.guestOS, f.guestOSErr
+}
+
+func (f *fakeVboxService) SerialConsoleStatus(ctx context.Context, id string) (models.VmSerialConsoleResponse, error) {
+	f.lastAction = "serialConsoleStatus"
+	f.lastID = id
+	return f.serialStatus, f.serialStatusErr
+}
+
+func (f *fakeVboxService) EnableSerialConsole(ctx context.Context, id string) (models.VmOperationResponse, error) {
+	f.lastAction = "enableSerialConsole"
+	f.lastID = id
+	return f.serialEnableResp, f.serialEnableErr
+}
+
+func (f *fakeVboxService) DisableSerialConsole(ctx context.Context, id string) (models.VmOperationResponse, error) {
+	f.lastAction = "disableSerialConsole"
+	f.lastID = id
+	return f.serialDisableResp, f.serialDisableErr
+}
+
+func (f *fakeVboxService) EnableSerialGetty(ctx context.Context, id, username, password string) (models.SerialGettyResponse, error) {
+	f.lastAction = "enableSerialGetty"
+	f.lastID = id
+	return f.serialGettyResp, f.serialGettyErr
+}
+
 func (f *fakeVboxService) SetVmHardware(ctx context.Context, id string, cpus, memoryMB int) (models.VmOperationResponse, error) {
 	f.lastAction = "setVmHardware"
 	f.lastID = id
@@ -390,6 +430,91 @@ func TestApiEndpointRejectsInvalidToken(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
+func TestVmGuestOSEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.guestOS = models.VmGuestOSResponse{ID: id, OSType: "Ubuntu_64", Family: "linux", TerminalCapable: true}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/guest-os", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "vmGuestOS" || fake.lastID != id {
+		t.Fatalf("expected vmGuestOS on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, `"terminalCapable":true`) || !strings.Contains(body, `"family":"linux"`) {
+		t.Fatalf("expected guest OS fields in body, got %q", body)
+	}
+}
+
+func TestSerialConsoleStatusEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.serialStatus = models.VmSerialConsoleResponse{ID: id, Enabled: true, TerminalCapable: true, Running: true, Editable: false}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/serial-console", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "serialConsoleStatus" || fake.lastID != id {
+		t.Fatalf("expected serialConsoleStatus on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+	if !strings.Contains(rr.Body.String(), `"terminalCapable":true`) {
+		t.Fatalf("expected serial console fields in body, got %q", rr.Body.String())
+	}
+}
+
+func TestEnableSerialConsoleEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.serialEnableResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Serial terminal enabled. Start the VM to use it."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "enableSerialConsole" || fake.lastID != id {
+		t.Fatalf("expected enableSerialConsole on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+}
+
+func TestEnableSerialGettyEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.serialGettyResp = models.SerialGettyResponse{Success: true, VMID: id, Message: "Serial login enabled. Open the terminal to connect."}
+
+	body := strings.NewReader(`{"username":"root","password":"secret"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable-getty", body)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "enableSerialGetty" || fake.lastID != id {
+		t.Fatalf("expected enableSerialGetty on %s, got %s on %s", id, fake.lastAction, fake.lastID)
 	}
 }
 

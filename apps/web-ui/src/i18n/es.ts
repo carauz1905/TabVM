@@ -96,8 +96,37 @@ export const es: Record<string, string> = {
   'console attached': 'consola conectada',
 
   // Guest Additions update modal
-  'Guest username': 'Usuario del guest',
-  'Guest password': 'Contraseña del guest',
+  'Guest username': 'Usuario de la máquina virtual',
+  'Guest password': 'Contraseña de la máquina virtual',
+  // ----- Serial-console terminal -----
+  Terminal: 'Terminal',
+  'serial · Linux': 'serial · Linux',
+  connected: 'conectado',
+  connecting: 'conectando',
+  disconnected: 'desconectado',
+  'A serial console gives you a shell in a tab, no GUI window.':
+    'Una consola serial te da una shell en una pestaña, sin ventana gráfica.',
+  'Enable serial terminal': 'Habilitar terminal serial',
+  'Disable serial terminal': 'Deshabilitar terminal serial',
+  'Power off the VM to enable the serial terminal.':
+    'Apaga la máquina para habilitar la terminal serial.',
+  'Start the VM to use the terminal.': 'Enciende la máquina para usar la terminal.',
+  'Open terminal': 'Abrir terminal',
+  'Enable login (getty)': 'Habilitar inicio de sesión (getty)',
+  'Turns on a login prompt on the serial port. Needs a root or sudo account.':
+    'Activa un inicio de sesión en el puerto serial. Requiere una cuenta root o con sudo.',
+  'Enable login': 'Habilitar inicio de sesión',
+  terminal: 'terminal',
+  'serial terminal': 'terminal serial',
+  'Open {vm} terminal in a new tab': 'Abrir la terminal de {vm} en una pestaña nueva',
+  'The serial terminal is only available for Linux guests.':
+    'La terminal serial solo está disponible para guests Linux.',
+  'The terminal is connected but the guest is not responding.':
+    'La terminal está conectada pero el guest no responde.',
+  'Activate it with a guest account (root or sudo). It is used once.':
+    'Actívala con una cuenta de la máquina virtual (root o con sudo). Se usa una sola vez.',
+  'Activate terminal': 'Activar terminal',
+  'Loading…': 'Cargando…',
   cancel: 'cancelar',
   close: 'cerrar',
   'updating…': 'actualizando…',

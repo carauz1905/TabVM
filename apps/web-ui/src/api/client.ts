@@ -34,6 +34,9 @@ import type {
   VmOperationResponse,
   VmStatusResponse,
   VmTelemetryResponse,
+  VmGuestOSResponse,
+  VmSerialConsoleResponse,
+  SerialGettyResponse,
 } from '../types/api';
 
 const API_BASE = '';
@@ -94,6 +97,14 @@ export function screenStreamUrl(id: string): string {
   return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/screen-stream${query}`;
 }
 
+// serialStreamUrl builds the WebSocket URL for a VM's serial-console terminal.
+// Same transport and token-as-query-param reasoning as screenStreamUrl.
+export function serialStreamUrl(id: string): string {
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const query = sessionToken ? `?token=${encodeURIComponent(sessionToken)}` : '';
+  return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/serial-stream${query}`;
+}
+
 function hasString(value: unknown, key: string): boolean {
   return typeof value === 'object' && value !== null && key in value && typeof (value as Record<string, unknown>)[key] === 'string';
 }
@@ -142,6 +153,39 @@ function isVmListResponse(value: unknown): value is VmListResponse {
 }
 
 function isVmOperationResponse(value: unknown): value is VmOperationResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    hasBoolean(value, 'success') &&
+    hasString(value, 'vmId') &&
+    hasString(value, 'message')
+  );
+}
+
+function isVmGuestOSResponse(value: unknown): value is VmGuestOSResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    hasString(value, 'id') &&
+    hasString(value, 'osType') &&
+    hasString(value, 'family') &&
+    hasBoolean(value, 'terminalCapable')
+  );
+}
+
+function isVmSerialConsoleResponse(value: unknown): value is VmSerialConsoleResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    hasString(value, 'id') &&
+    hasBoolean(value, 'enabled') &&
+    hasBoolean(value, 'terminalCapable') &&
+    hasBoolean(value, 'running') &&
+    hasBoolean(value, 'editable')
+  );
+}
+
+function isSerialGettyResponse(value: unknown): value is SerialGettyResponse {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -672,6 +716,34 @@ export const api = {
     request<GuestAdditionsUpdateResponse>(
       `/api/vms/${encodeURIComponent(id)}/guest-additions/update`,
       isGuestAdditionsUpdateResponse,
+      { method: 'POST', body: { username, password } },
+    ),
+  getVmGuestOS: (id: string) =>
+    request<VmGuestOSResponse>(
+      `/api/vms/${encodeURIComponent(id)}/guest-os`,
+      isVmGuestOSResponse,
+    ),
+  getSerialConsole: (id: string) =>
+    request<VmSerialConsoleResponse>(
+      `/api/vms/${encodeURIComponent(id)}/serial-console`,
+      isVmSerialConsoleResponse,
+    ),
+  enableSerialConsole: (id: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/serial-console/enable`,
+      isVmOperationResponse,
+      { method: 'POST' },
+    ),
+  disableSerialConsole: (id: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/serial-console/disable`,
+      isVmOperationResponse,
+      { method: 'POST' },
+    ),
+  enableSerialGetty: (id: string, username: string, password: string) =>
+    request<SerialGettyResponse>(
+      `/api/vms/${encodeURIComponent(id)}/serial-console/enable-getty`,
+      isSerialGettyResponse,
       { method: 'POST', body: { username, password } },
     ),
 };

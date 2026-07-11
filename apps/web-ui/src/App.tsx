@@ -5,6 +5,7 @@ import { ActivityView } from './components/ActivityView';
 import { AgentView } from './components/AgentView';
 import { DocsView } from './components/docs/DocsView';
 import { ConsoleTab } from './components/ConsoleTab';
+import { TerminalTab } from './components/TerminalTab';
 import { SplashScreen } from './components/SplashScreen';
 import { useHealth } from './hooks/useHealth';
 
@@ -67,6 +68,12 @@ function App() {
   const consoleId = params.get('console');
   if (consoleId) {
     return <ConsoleTab vmId={consoleId} vmName={params.get('name') ?? consoleId} />;
+  }
+
+  // ?terminal=<id>&name=<name> renders only the full-screen serial terminal.
+  const terminalId = params.get('terminal');
+  if (terminalId) {
+    return <TerminalTab vmId={terminalId} vmName={params.get('name') ?? terminalId} />;
   }
 
   return <Workspace />;

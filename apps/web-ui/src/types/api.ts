@@ -256,3 +256,30 @@ export interface VmTelemetryResponse {
   networks: NetworkInterface[];
   disks: DiskUsage[];
 }
+
+// Coarse guest OS classification. terminalCapable is true only for Linux guests,
+// which are the only ones that expose a real login TTY over the serial port.
+export interface VmGuestOSResponse {
+  id: string;
+  osType: string;
+  family: string;
+  terminalCapable: boolean;
+}
+
+// State of a VM's serial-console terminal. enabled: COM1 is wired to the host
+// pipe. running: the VM is live (the getty is only reachable then). editable:
+// the serial port can be toggled now (only on a powered-off VM).
+export interface VmSerialConsoleResponse {
+  id: string;
+  enabled: boolean;
+  terminalCapable: boolean;
+  running: boolean;
+  editable: boolean;
+}
+
+export interface SerialGettyResponse {
+  success: boolean;
+  vmId: string;
+  message: string;
+  output?: string;
+}

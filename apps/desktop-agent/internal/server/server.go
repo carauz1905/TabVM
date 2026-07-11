@@ -331,6 +331,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleNetworkOptions(w, r, id)
 		case "hardware":
 			s.handleVmHardware(w, r, id)
+		case "guest-os":
+			s.handleVmGuestOS(w, r, id)
+		case "serial-console":
+			s.handleSerialConsoleStatus(w, r, id)
 		case "storage":
 			s.handleVmStorage(w, r, id)
 		case "clipboard":
@@ -341,6 +345,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			// VirtualBox COM screen capture streamed to the browser as JPEG
 			// frames over a WebSocket. See screenstream.go and vmscreen.
 			s.handleVmScreenStream(w, r, id)
+		case "serial-stream":
+			// COM1 serial port (VirtualBox host named pipe) bridged to the
+			// browser terminal over a WebSocket. See serialstream.go.
+			s.handleVmSerialStream(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -358,6 +366,12 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleVmConsolePrepare(w, r, id)
 		case "console/disable":
 			s.handleVmConsoleDisable(w, r, id)
+		case "serial-console/enable":
+			s.handleEnableSerialConsole(w, r, id)
+		case "serial-console/disable":
+			s.handleDisableSerialConsole(w, r, id)
+		case "serial-console/enable-getty":
+			s.handleEnableSerialGetty(w, r, id)
 		case "shared-folders":
 			s.handleAddSharedFolder(w, r, id)
 		case "shared-folders/remove":
@@ -664,6 +678,89 @@ func (s *Server) handleVmHardware(w http.ResponseWriter, r *http.Request, id str
 	respondJSON(w, http.StatusOK, resp)
 }
 
+func (s *Server) handleVmGuestOS(w http.ResponseWriter, r *http.Request, id string) {
+	resp, err := s.vbox.VmGuestOS(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleSerialConsoleStatus(w http.ResponseWriter, r *http.Request, id string) {
+	resp, err := s.vbox.SerialConsoleStatus(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleEnableSerialConsole(w http.ResponseWriter, r *http.Request, id string) {
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.EnableSerialConsole(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleDisableSerialConsole(w http.ResponseWriter, r *http.Request, id string) {
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.DisableSerialConsole(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleEnableSerialGetty(w http.ResponseWriter, r *http.Request, id string) {
+	var req models.SerialGettyRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.SerialGettyResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.EnableSerialGetty(r.Context(), id, req.Username, req.Password)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
 func (s *Server) handleSetVmHardware(w http.ResponseWriter, r *http.Request, id string) {
 	var body models.VmHardwareRequest
 	if err := decodeJSONBody(w, r, &body); err != nil {
@@ -963,7 +1060,7 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 		}
 
 		presented := r.Header.Get(sessionTokenHeader)
-		if presented == "" && isScreenStreamPath(r.URL.Path) {
+		if presented == "" && (isScreenStreamPath(r.URL.Path) || isSerialStreamPath(r.URL.Path)) {
 			// Browsers' native WebSocket API cannot set arbitrary request
 			// headers, so a WebSocket upgrade request cannot carry
 			// X-TabVM-Session-Token. Fall back to a query parameter for this

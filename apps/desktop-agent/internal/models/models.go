@@ -272,6 +272,44 @@ type VmHardwareResponse struct {
 	Editable     bool   `json:"editable"`
 }
 
+// VmGuestOSResponse reports a VM's declared guest OS type and a coarse family
+// classification ("linux", "windows", "other", or ""), plus whether the
+// serial-console terminal can be offered for it.
+type VmGuestOSResponse struct {
+	ID              string `json:"id"`
+	OSType          string `json:"osType"`
+	Family          string `json:"family"`
+	TerminalCapable bool   `json:"terminalCapable"`
+}
+
+// VmSerialConsoleResponse reports the state of a VM's serial-console terminal:
+// whether COM1 is wired to the host pipe, whether the guest is terminal-capable
+// (Linux), whether the VM is running (the getty is only reachable while live),
+// and whether the serial port can be toggled now (only on a powered-off VM).
+type VmSerialConsoleResponse struct {
+	ID              string `json:"id"`
+	Enabled         bool   `json:"enabled"`
+	TerminalCapable bool   `json:"terminalCapable"`
+	Running         bool   `json:"running"`
+	Editable        bool   `json:"editable"`
+}
+
+// SerialGettyRequest is the body for POST /api/vms/{id}/serial-console/enable-getty.
+// The credentials are used once for a single guest-control call and never stored.
+type SerialGettyRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// SerialGettyResponse reports the result of enabling the guest's serial login.
+// Output carries the guest-side command output (stdout+stderr) for the UI.
+type SerialGettyResponse struct {
+	Success bool   `json:"success"`
+	VMID    string `json:"vmId"`
+	Message string `json:"message"`
+	Output  string `json:"output,omitempty"`
+}
+
 // VmHardwareRequest is the body for POST /api/vms/{id}/hardware.
 type VmHardwareRequest struct {
 	CPUs     int `json:"cpus"`

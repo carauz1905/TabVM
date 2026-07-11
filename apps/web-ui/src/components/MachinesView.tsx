@@ -85,6 +85,10 @@ export function MachinesView() {
   // power-off, plus the per-VM grace timers backing that offer.
   const [forceOffered, setForceOffered] = useState<Record<string, boolean>>({});
   const forceTimersRef = useRef<Record<string, number>>({});
+  // Which VMs are Linux guests (so the serial-terminal button is offered). The
+  // ostype is VBox metadata, readable regardless of power state, fetched once.
+  const [termCapable, setTermCapable] = useState<Record<string, boolean>>({});
+  const termFetchedRef = useRef<Set<string>>(new Set());
 
   const agentOnline = health.state === 'success' && health.data?.status === 'healthy';
 
@@ -123,6 +127,15 @@ export function MachinesView() {
     window.open(url, '_blank', 'noopener');
   }
 
+  // openTerminalTab opens the serial terminal full-screen in a fresh browser tab
+  // at ?terminal=<id>, mirroring openConsoleTab.
+  function openTerminalTab(id: string, name: string) {
+    const url = `${window.location.pathname}?terminal=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
+    // No 'noopener' here: the terminal tab's close button uses window.close(),
+    // which the browser only honors for a script-opened, script-reachable tab.
+    window.open(url, '_blank');
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function loadLocalState() {
@@ -138,6 +151,25 @@ export function MachinesView() {
       cancelled = true;
     };
   }, []);
+
+  // Probe each VM's guest OS once so the row can offer the serial-terminal button
+  // only for Linux guests. ostype is metadata, so this works for stopped VMs too.
+  useEffect(() => {
+    let cancelled = false;
+    for (const vm of vms) {
+      if (termFetchedRef.current.has(vm.id)) continue;
+      termFetchedRef.current.add(vm.id);
+      api
+        .getVmGuestOS(vm.id)
+        .then((res) => {
+          if (!cancelled) setTermCapable((current) => ({ ...current, [vm.id]: res.terminalCapable }));
+        })
+        .catch(() => termFetchedRef.current.delete(vm.id));
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [vms]);
 
   // Telemetry for the focused running machine. Best-effort; failures leave the
   // panel empty rather than surfacing an error. Only a running VM reports live
@@ -531,6 +563,21 @@ export function MachinesView() {
                           </svg>
                           {t('new tab')}
                         </button>
+                        {termCapable[vm.id] && (
+                          <button
+                            type="button"
+                            className="tv-abtn"
+                            aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
+                            title={t('terminal')}
+                            onClick={() => openTerminalTab(vm.id, vm.name)}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 17l6-6-6-6" />
+                              <path d="M12 19h8" />
+                            </svg>
+                            {t('terminal')}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="tv-abtn go"
@@ -569,6 +616,21 @@ export function MachinesView() {
                           </svg>
                           {loading.delete ? t('deleting…') : t('delete')}
                         </button>
+                        {termCapable[vm.id] && (
+                          <button
+                            type="button"
+                            className="tv-abtn"
+                            aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
+                            title={t('terminal')}
+                            onClick={() => openTerminalTab(vm.id, vm.name)}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 17l6-6-6-6" />
+                              <path d="M12 19h8" />
+                            </svg>
+                            {t('terminal')}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="tv-abtn go"

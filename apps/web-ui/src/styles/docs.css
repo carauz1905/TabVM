@@ -407,3 +407,41 @@
   .docs-hw-done, .docs-store-done, .docs-addport-free { opacity: 0 !important; }
   .docs-sign-caret { animation: none; }
 }
+
+/* Serial-terminal demo (TerminalDemo) — a scripted serial login on a dark screen */
+.docs-term {
+  background: #0b1015;
+  color: #cdd6dd;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  padding: 14px 16px;
+  border-radius: 8px;
+  min-height: 150px;
+}
+.docs-term-line {
+  white-space: pre;
+  opacity: 0;
+  animation: docs-term-reveal 0.01s linear forwards;
+}
+.docs-term-line.l1 { animation-delay: 0.2s; }
+.docs-term-line.l2 { animation-delay: 0.9s; }
+.docs-term-line.l3 { animation-delay: 1.6s; }
+.docs-term-line.l4 { animation-delay: 2s; }
+.docs-term-line.l5 { animation-delay: 2.5s; }
+@keyframes docs-term-reveal { to { opacity: 1; } }
+.docs-term-accent { color: var(--accent); }
+.docs-term-dim { color: #6a757b; }
+.docs-term-caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: docs-term-blink 1s steps(1) infinite;
+}
+@keyframes docs-term-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .docs-term-line { opacity: 1; animation: none; }
+  .docs-term-caret { animation: none; }
+}
