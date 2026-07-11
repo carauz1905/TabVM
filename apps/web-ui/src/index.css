@@ -1124,3 +1124,11 @@ body {
   --muted: #8b979d;
   --mark: #e6edf3;
 }
+
+/* Create-VM wizard inline warnings (Caps Lock, password mismatch). */
+.tv-wiz-warn {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #b3781f;
+}

@@ -92,6 +92,7 @@ describe('CreateVmWizard', () => {
     fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
     await findByText(ISO);
     fireEvent.change(getByLabelText('Guest password'), { target: { value: 'pw123' } });
+    fireEvent.change(getByLabelText('Confirm password'), { target: { value: 'pw123' } });
 
     fireEvent.click(getByRole('button', { name: 'Create' }));
 

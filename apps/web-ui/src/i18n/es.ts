@@ -98,6 +98,9 @@ export const es: Record<string, string> = {
   // Guest Additions update modal
   'Guest username': 'Usuario de la máquina virtual',
   'Guest password': 'Contraseña de la máquina virtual',
+  'Confirm password': 'Confirmar contraseña',
+  'Caps Lock is on.': 'Bloq Mayús está activado.',
+  'The passwords do not match.': 'Las contraseñas no coinciden.',
   // ----- Serial-console terminal -----
   Terminal: 'Terminal',
   'serial · Linux': 'serial · Linux',
