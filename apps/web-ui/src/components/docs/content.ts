@@ -22,6 +22,7 @@ export interface DocsStrings {
     welcome: string;
     quickStart: string;
     operate: string;
+    terminal: string;
     hardware: string;
     storage: string;
     files: string;
@@ -44,6 +45,13 @@ export interface DocsStrings {
     lead: string;
     startStop: Step;
     console: Step;
+    tip: string;
+  };
+  terminal: {
+    lead: string;
+    enable: Step;
+    open: Step;
+    activate: Step;
     tip: string;
   };
   hardware: {
@@ -114,6 +122,7 @@ const en: DocsStrings = {
     welcome: 'Welcome',
     quickStart: 'Quick start',
     operate: 'Operate a VM',
+    terminal: 'Serial terminal',
     hardware: 'CPU & memory',
     storage: 'Disk storage',
     files: 'Files & sharing',
@@ -151,6 +160,22 @@ const en: DocsStrings = {
       body: 'Open console attaches to the machine screen over VirtualBox and streams it here. Click into it to send keyboard and mouse; open it full-screen in a new tab when you need room.',
     },
     tip: 'Selecting a machine — running or powered off — opens its focus panel below, where Files, Network and Snapshots live.',
+  },
+  terminal: {
+    lead: 'Open a text shell to a Linux machine right in a tab — no graphical window. The button appears only on Linux machines, and it runs over the machine’s serial port, so no network or firewall is involved.',
+    enable: {
+      title: 'Turn it on',
+      body: 'The first time, power the machine off and click Enable serial terminal — that wires up the serial port. Then start the machine.',
+    },
+    open: {
+      title: 'Open it',
+      body: 'Click the terminal button on the machine’s row. It opens full-screen in a new tab, just like the console.',
+    },
+    activate: {
+      title: 'If the screen stays blank',
+      body: 'A blank terminal means no one is answering the port yet. A small card asks once for a machine account (root, or a user with sudo) and turns on the login — then the prompt appears.',
+    },
+    tip: 'The serial terminal never uses the network, so firewall rules and policies can’t block it — handy on locked-down machines.',
   },
   hardware: {
     lead: 'Give a machine more (or less) power. The Hardware panel in a machine’s focus view edits its virtual CPUs and memory — no need to open VirtualBox.',
@@ -272,6 +297,7 @@ const es: DocsStrings = {
     welcome: 'Bienvenida',
     quickStart: 'Inicio rápido',
     operate: 'Operar una VM',
+    terminal: 'Terminal serial',
     hardware: 'CPU y memoria',
     storage: 'Almacenamiento',
     files: 'Archivos y compartir',
@@ -309,6 +335,22 @@ const es: DocsStrings = {
       body: 'Abrir consola se conecta a la pantalla de la máquina por VirtualBox y la transmite aquí. Haz clic dentro para enviar teclado y ratón; ábrela a pantalla completa en una pestaña nueva cuando necesites espacio.',
     },
     tip: 'Seleccionar una máquina —en marcha o apagada— abre su panel de enfoque abajo, donde viven Archivos, Red e Instantáneas.',
+  },
+  terminal: {
+    lead: 'Abre una shell de texto de una máquina Linux en una pestaña, sin ventana gráfica. El botón aparece solo en máquinas Linux, y funciona por el puerto serial de la máquina, así que no interviene la red ni el firewall.',
+    enable: {
+      title: 'Actívala',
+      body: 'La primera vez, apaga la máquina y haz clic en Habilitar terminal serial: eso conecta el puerto serial. Luego enciende la máquina.',
+    },
+    open: {
+      title: 'Ábrela',
+      body: 'Haz clic en el botón de terminal en la fila de la máquina. Se abre a pantalla completa en una pestaña nueva, igual que la consola.',
+    },
+    activate: {
+      title: 'Si la pantalla queda en blanco',
+      body: 'Una terminal en blanco significa que nadie atiende el puerto todavía. Una tarjeta te pide una sola vez una cuenta de la máquina virtual (root, o un usuario con sudo) y activa el inicio de sesión: entonces aparece el prompt.',
+    },
+    tip: 'La terminal serial nunca usa la red, así que ni el firewall ni las políticas pueden bloquearla — útil en máquinas restringidas.',
   },
   hardware: {
     lead: 'Dale a una máquina más (o menos) potencia. El panel Hardware en la vista de enfoque de una máquina edita sus CPU virtuales y su memoria, sin abrir VirtualBox.',

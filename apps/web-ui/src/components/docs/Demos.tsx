@@ -99,6 +99,29 @@ export function ConsoleBootDemo({ playKey }: { playKey: number }) {
   );
 }
 
+// TerminalDemo scripts a serial login on a dark screen: a boot line, a login
+// prompt, then a command and its output — the accent tints the prompt and caret.
+// It remounts on playKey to replay.
+export function TerminalDemo({ playKey }: { playKey: number }) {
+  return (
+    <div className="docs-term" key={playKey}>
+      <div className="docs-term-line l1">
+        <span className="docs-term-dim">▚</span> opening /dev/ttyS0
+      </div>
+      <div className="docs-term-line l2">
+        localhost login: <span className="docs-term-accent">root</span>
+      </div>
+      <div className="docs-term-line l3">
+        <span className="docs-term-accent">localhost:~#</span> ls
+      </div>
+      <div className="docs-term-line l4">bin   etc   home   root   usr</div>
+      <div className="docs-term-line l5">
+        <span className="docs-term-accent">localhost:~#</span> <i className="docs-term-caret" />
+      </div>
+    </div>
+  );
+}
+
 // ShareDropDemo scripts a file card flying from the host into a VM tile.
 export function ShareDropDemo({ playKey, dropLabel }: { playKey: number; dropLabel: string }) {
   return (

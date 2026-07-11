@@ -14,6 +14,7 @@ import {
   StorageDemo,
   StorageAddDemo,
   StorageRemoveDemo,
+  TerminalDemo,
   WizardDemo,
 } from './Demos';
 
@@ -21,6 +22,7 @@ type SectionId =
   | 'welcome'
   | 'quickStart'
   | 'operate'
+  | 'terminal'
   | 'hardware'
   | 'storage'
   | 'files'
@@ -34,6 +36,7 @@ const ORDER: SectionId[] = [
   'welcome',
   'quickStart',
   'operate',
+  'terminal',
   'hardware',
   'storage',
   'files',
@@ -161,6 +164,22 @@ export function DocsView() {
             <ConsoleBootDemo playKey={play('boot')} />
           </DemoStage>
           <p className="docs-tip">{d.operate.tip}</p>
+        </section>
+
+        {/* Terminal */}
+        <section id="terminal" ref={setRef('terminal')} className="docs-sec">
+          <h2>{d.sections.terminal}</h2>
+          <p className="docs-lead">{d.terminal.lead}</p>
+          <h4>{d.terminal.enable.title}</h4>
+          <p>{d.terminal.enable.body}</p>
+          <h4>{d.terminal.open.title}</h4>
+          <p>{d.terminal.open.body}</p>
+          <DemoStage caption="serial · Linux" replayLabel={t('Refresh')} onReplay={() => replay('term')}>
+            <TerminalDemo playKey={play('term')} />
+          </DemoStage>
+          <h4>{d.terminal.activate.title}</h4>
+          <p>{d.terminal.activate.body}</p>
+          <TipBox label={d.tipLabel}>{d.terminal.tip}</TipBox>
         </section>
 
         {/* Hardware */}
