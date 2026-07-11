@@ -66,6 +66,8 @@ type fakeVboxService struct {
 	serialEnableErr   error
 	serialDisableResp models.VmOperationResponse
 	serialDisableErr  error
+	serialGettyResp   models.SerialGettyResponse
+	serialGettyErr    error
 	setHardwareResp   models.VmOperationResponse
 	setHardwareErr    error
 	lastCPUs          int
@@ -281,6 +283,12 @@ func (f *fakeVboxService) DisableSerialConsole(ctx context.Context, id string) (
 	return f.serialDisableResp, f.serialDisableErr
 }
 
+func (f *fakeVboxService) EnableSerialGetty(ctx context.Context, id, username, password string) (models.SerialGettyResponse, error) {
+	f.lastAction = "enableSerialGetty"
+	f.lastID = id
+	return f.serialGettyResp, f.serialGettyErr
+}
+
 func (f *fakeVboxService) SetVmHardware(ctx context.Context, id string, cpus, memoryMB int) (models.VmOperationResponse, error) {
 	f.lastAction = "setVmHardware"
 	f.lastID = id
@@ -476,6 +484,27 @@ func TestEnableSerialConsoleEndpoint(t *testing.T) {
 	}
 	if fake.lastAction != "enableSerialConsole" || fake.lastID != id {
 		t.Fatalf("expected enableSerialConsole on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+}
+
+func TestEnableSerialGettyEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.serialGettyResp = models.SerialGettyResponse{Success: true, VMID: id, Message: "Serial login enabled. Open the terminal to connect."}
+
+	body := strings.NewReader(`{"username":"root","password":"secret"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable-getty", body)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "enableSerialGetty" || fake.lastID != id {
+		t.Fatalf("expected enableSerialGetty on %s, got %s on %s", id, fake.lastAction, fake.lastID)
 	}
 }
 

@@ -294,6 +294,22 @@ type VmSerialConsoleResponse struct {
 	Editable        bool   `json:"editable"`
 }
 
+// SerialGettyRequest is the body for POST /api/vms/{id}/serial-console/enable-getty.
+// The credentials are used once for a single guest-control call and never stored.
+type SerialGettyRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// SerialGettyResponse reports the result of enabling the guest's serial login.
+// Output carries the guest-side command output (stdout+stderr) for the UI.
+type SerialGettyResponse struct {
+	Success bool   `json:"success"`
+	VMID    string `json:"vmId"`
+	Message string `json:"message"`
+	Output  string `json:"output,omitempty"`
+}
+
 // VmHardwareRequest is the body for POST /api/vms/{id}/hardware.
 type VmHardwareRequest struct {
 	CPUs     int `json:"cpus"`

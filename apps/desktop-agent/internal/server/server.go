@@ -367,6 +367,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleEnableSerialConsole(w, r, id)
 		case "serial-console/disable":
 			s.handleDisableSerialConsole(w, r, id)
+		case "serial-console/enable-getty":
+			s.handleEnableSerialGetty(w, r, id)
 		case "shared-folders":
 			s.handleAddSharedFolder(w, r, id)
 		case "shared-folders/remove":
@@ -720,6 +722,31 @@ func (s *Server) handleDisableSerialConsole(w http.ResponseWriter, r *http.Reque
 	defer unlock()
 
 	resp, err := s.vbox.DisableSerialConsole(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleEnableSerialGetty(w http.ResponseWriter, r *http.Request, id string) {
+	var req models.SerialGettyRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.SerialGettyResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.EnableSerialGetty(r.Context(), id, req.Username, req.Password)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return
