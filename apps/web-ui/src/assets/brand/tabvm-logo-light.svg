@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 64" role="img" aria-label="TabVM">
+  <title>TabVM logo — light</title>
+  <!-- mark -->
+  <g>
+    <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+    <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+    <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+  </g>
+  <!-- wordmark -->
+  <text x="78" y="43" font-family="'Space Grotesk','Segoe UI',system-ui,-apple-system,sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#0E1116">Tab<tspan font-family="'JetBrains Mono','Space Mono',ui-monospace,Consolas,monospace" font-weight="500" letter-spacing="0" dx="1">VM</tspan></text>
+</svg>

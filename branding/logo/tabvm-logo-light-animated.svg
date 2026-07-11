@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 64" role="img" aria-label="TabVM">
+  <title>TabVM logo — light, animated</title>
+  <!-- Base state = complete logo. Animation only plays it in, so if the CSS
+       animation engine is unavailable (GitHub, <img>, plain SVG viewers) the
+       logo still renders whole instead of broken. -->
+  <style>
+    :root  { --e: cubic-bezier(.2,.7,.2,1); }
+    .panel { stroke-dasharray: 168; animation: tabvm-draw .7s var(--e) .05s both; }
+    .tab   { transform-box: fill-box; transform-origin: center bottom; animation: tabvm-drop .5s var(--e) both; }
+    .prompt{ animation: tabvm-fade .3s ease-out .55s both; }
+    .caret { animation: tabvm-blink 1.05s steps(1) infinite; }
+    .word  { animation: tabvm-slide .5s var(--e) .5s both; }
+    @keyframes tabvm-draw  { from { stroke-dashoffset: 168; } to { stroke-dashoffset: 0; } }
+    @keyframes tabvm-drop  { from { opacity: 0; transform: translateY(-9px) scale(.9); } to { opacity: 1; transform: none; } }
+    @keyframes tabvm-fade  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes tabvm-slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+    @keyframes tabvm-blink { 0%,48% { opacity: 1; } 49%,100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .panel,.tab,.prompt,.caret,.word { animation: none; }
+    }
+  </style>
+  <rect class="panel" x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+  <rect class="tab" x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+  <path class="prompt" d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect class="caret" x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+  <text class="word" x="78" y="43" font-family="'Space Grotesk','Segoe UI',system-ui,-apple-system,sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#0E1116">Tab<tspan font-family="'JetBrains Mono','Space Mono',ui-monospace,Consolas,monospace" font-weight="500" letter-spacing="0" dx="1">VM</tspan></text>
+</svg>

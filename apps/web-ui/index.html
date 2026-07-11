@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>TabVM — Local VirtualBox workspace</title>
+    <script>
+      // Apply the persisted theme before first paint so the splash and app open
+      // in the user's chosen theme with no flash. No stored value means the app
+      // follows the OS preference (prefers-color-scheme).
+      (function () {
+        try {
+          var t = localStorage.getItem('tabvm.theme');
+          if (t === 'light' || t === 'dark') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+          // Apply the persisted accent color before first paint, same as theme,
+          // so there is no flash of the default teal.
+          var a = localStorage.getItem('tabvm.accent');
+          if (a === 'pink' || a === 'orange' || a === 'yellow' || a === 'purple' || a === 'blue') {
+            document.documentElement.setAttribute('data-accent', a);
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

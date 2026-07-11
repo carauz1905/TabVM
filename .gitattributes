@@ -1,0 +1,25 @@
+# Normalize line endings: LF in the repository, auto-converted on checkout.
+* text=auto eol=lf
+
+# Windows-native scripts stay CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# POSIX scripts stay LF.
+*.sh text eol=lf
+
+# Binary assets — never diff or convert.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.exe binary
+*.dll binary
+*.db binary
+
+# Generated / vendored — collapse in diffs and exclude from language stats.
+package-lock.json linguist-generated=true
+skills-lock.json linguist-generated=true
+apps/desktop-agent/internal/webui/dist/** linguist-generated=true

@@ -1,0 +1,80 @@
+/* TabVM Design Tokens
+   Concept: the tab-panel — a running VM living inside a browser tab.
+   Drop this in and theme with [data-theme="light|dark"] or the OS preference. */
+
+:root {
+  /* Neutrals (cool gray) */
+  --tabvm-neutral-950: #0B0E13;
+  --tabvm-neutral-900: #0E1116;
+  --tabvm-neutral-800: #161B22;
+  --tabvm-neutral-700: #21262D;
+  --tabvm-neutral-600: #30363D;
+  --tabvm-neutral-500: #6E7681;
+  --tabvm-neutral-400: #8B949E;
+  --tabvm-neutral-300: #C9D1D9;
+  --tabvm-neutral-200: #DCE3EA;
+  --tabvm-neutral-100: #F0F3F6;
+  --tabvm-neutral-050: #F7F9FB;
+  --tabvm-neutral-000: #FFFFFF;
+
+  /* Signal accent (teal) */
+  --tabvm-signal-700: #0B7C6F;
+  --tabvm-signal-600: #0E9E8E;
+  --tabvm-signal-500: #14B8A6;
+  --tabvm-signal-400: #2FE3CE;
+  --tabvm-signal-300: #7DF0E0;
+
+  /* Typography */
+  --tabvm-font-display: 'Space Grotesk', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --tabvm-font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --tabvm-font-mono: 'JetBrains Mono', 'Space Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* Shape & motion */
+  --tabvm-radius-sm: 4px;
+  --tabvm-radius-md: 8px;
+  --tabvm-radius-lg: 12px;
+  --tabvm-radius-pill: 999px;
+  --tabvm-motion-easing: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Light theme (default) */
+:root,
+:root[data-theme="light"] {
+  --tabvm-bg: var(--tabvm-neutral-000);
+  --tabvm-surface: var(--tabvm-neutral-050);
+  --tabvm-surface-alt: var(--tabvm-neutral-100);
+  --tabvm-text: var(--tabvm-neutral-900);
+  --tabvm-muted: var(--tabvm-neutral-500);
+  --tabvm-border: var(--tabvm-neutral-200);
+  --tabvm-accent: var(--tabvm-signal-600);
+  --tabvm-mark: var(--tabvm-neutral-900);
+  --tabvm-on-accent: var(--tabvm-neutral-000);
+}
+
+/* Dark theme */
+:root[data-theme="dark"] {
+  --tabvm-bg: var(--tabvm-neutral-900);
+  --tabvm-surface: var(--tabvm-neutral-800);
+  --tabvm-surface-alt: var(--tabvm-neutral-700);
+  --tabvm-text: var(--tabvm-neutral-100);
+  --tabvm-muted: var(--tabvm-neutral-400);
+  --tabvm-border: var(--tabvm-neutral-700);
+  --tabvm-accent: var(--tabvm-signal-400);
+  --tabvm-mark: #E6EDF3;
+  --tabvm-on-accent: #07110F;
+}
+
+/* Follow the OS when no explicit theme is set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tabvm-bg: var(--tabvm-neutral-900);
+    --tabvm-surface: var(--tabvm-neutral-800);
+    --tabvm-surface-alt: var(--tabvm-neutral-700);
+    --tabvm-text: var(--tabvm-neutral-100);
+    --tabvm-muted: var(--tabvm-neutral-400);
+    --tabvm-border: var(--tabvm-neutral-700);
+    --tabvm-accent: var(--tabvm-signal-400);
+    --tabvm-mark: #E6EDF3;
+    --tabvm-on-accent: #07110F;
+  }
+}

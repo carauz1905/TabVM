@@ -1,0 +1,171 @@
+package server
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"net/http"
+	"time"
+
+	"github.com/tabvm/desktop-agent/internal/hostpick"
+	"github.com/tabvm/desktop-agent/internal/models"
+	"github.com/tabvm/desktop-agent/internal/vbox"
+)
+
+// createJobTimeout bounds a whole background import/create, matching the longest
+// VBoxManage step (appliance import) with headroom.
+const createJobTimeout = 35 * time.Minute
+
+// handlePickFile opens the native host file picker (for .ova/.iso selection) and
+// returns the chosen absolute path. Authenticated and serialized like the folder
+// picker so two dialogs can never race.
+func (s *Server) handlePickFile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.pickMu.Lock()
+	defer s.pickMu.Unlock()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+
+	path, err := hostpick.PickFile(ctx)
+	if err != nil {
+		s.logger.Error("host file picker failed", "error", err)
+		http.Error(w, "Could not open the file picker.", http.StatusInternalServerError)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, models.HostFilePickResponse{
+		Path:      path,
+		Cancelled: path == "",
+	})
+}
+
+// handleImportVm accepts an appliance import request and starts it as a
+// background job, returning the job id to poll.
+func (s *Server) handleImportVm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmImportRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	jobID := s.startCreateJob(body.Name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.ImportAppliance(ctx, body.OvaPath, body.Name)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
+// handleCreateVm accepts an unattended create request and starts it as a
+// background job, returning the job id to poll.
+func (s *Server) handleCreateVm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmCreateRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	jobID := s.startCreateJob(body.Name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.CreateVmUnattended(ctx, body)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
+// handleCreateStatus returns the current state of a background create/import job.
+func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	jobID := r.URL.Query().Get("job")
+	s.createMu.Lock()
+	job, ok := s.createJobs[jobID]
+	var snapshot createJob
+	if ok {
+		snapshot = *job
+	}
+	s.createMu.Unlock()
+	if !ok {
+		http.Error(w, "Unknown job.", http.StatusNotFound)
+		return
+	}
+	respondJSON(w, http.StatusOK, models.VmCreateStatusResponse{
+		State:   snapshot.State,
+		Message: snapshot.Message,
+		VMID:    snapshot.VMID,
+		Name:    snapshot.Name,
+	})
+}
+
+// startCreateJob registers a running job and runs work in the background with its
+// own timeout (the request context dies once the 202 response is written). It
+// returns the new job id. Errors are mapped to user-safe messages.
+func (s *Server) startCreateJob(name string, work func(ctx context.Context) (models.VmCreateResponse, error)) string {
+	jobID := newJobID()
+	s.createMu.Lock()
+	s.createJobs[jobID] = &createJob{State: "running", Name: name}
+	s.createMu.Unlock()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), createJobTimeout)
+		defer cancel()
+		resp, err := work(ctx)
+
+		s.createMu.Lock()
+		defer s.createMu.Unlock()
+		job := s.createJobs[jobID]
+		if job == nil {
+			return
+		}
+		if err != nil {
+			job.State = "error"
+			job.Message = s.jobErrorMessage(err)
+			return
+		}
+		job.State = "done"
+		job.Message = resp.Message
+		job.VMID = resp.VMID
+		if resp.Name != "" {
+			job.Name = resp.Name
+		}
+	}()
+
+	return jobID
+}
+
+// jobErrorMessage converts a service error into a user-safe message, mirroring
+// handleVboxError but for the async job channel.
+func (s *Server) jobErrorMessage(err error) string {
+	switch e := err.(type) {
+	case *vbox.ValidationError:
+		return e.Message
+	case *vbox.NotDiscoveredError:
+		return e.Message
+	case *vbox.ExecutionError:
+		s.logger.Error("vbox create/import failed", "message", e.Message, "exitCode", e.ExitCode, "stderr", e.StandardError)
+		return "VirtualBox operation failed."
+	default:
+		s.logger.Error("unexpected create/import error", "error", err)
+		return "Internal server error."
+	}
+}
+
+// newJobID returns a random hex identifier for a background job.
+func newJobID() string {
+	b := make([]byte, 12)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to a timestamp-derived id; collisions are extremely unlikely
+		// given single-user local use.
+		return "job-" + time.Now().Format("20060102150405.000000000")
+	}
+	return hex.EncodeToString(b)
+}

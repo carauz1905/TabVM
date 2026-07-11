@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TabVM — Brand Assets Preview</title>
+<link rel="icon" href="icon/favicon.svg">
+<style>
+  @font-face{font-family:'Space Grotesk';font-weight:600;src:url('fonts/space-grotesk-600.woff2') format('woff2');}
+  @font-face{font-family:'Space Grotesk';font-weight:500;src:url('fonts/space-grotesk-500.woff2') format('woff2');}
+  @font-face{font-family:'JetBrains Mono';font-weight:500;src:url('fonts/jetbrains-mono-500.woff2') format('woff2');}
+  :root{color-scheme:light dark;}
+  :root[data-theme="light"]{--bg:#fff;--surface:#F7F9FB;--text:#0E1116;--muted:#6E7681;--line:#DCE3EA;--accent:#0B7C6F;}
+  :root[data-theme="dark"]{--bg:#0E1116;--surface:#161B22;--text:#F0F3F6;--muted:#8B949E;--line:#21262D;--accent:#2FE3CE;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,'Segoe UI',sans-serif;transition:background .2s,color .2s;}
+  header{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 32px;background:var(--bg);border-bottom:1px solid var(--line);z-index:5;}
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;}
+  .brand .wm{font-family:'Space Grotesk',sans-serif;}
+  .brand .mono{font-family:'JetBrains Mono',monospace;font-weight:500;}
+  button{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.06em;cursor:pointer;
+    background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 16px;}
+  main{max-width:1080px;margin:0 auto;padding:40px 32px 80px;}
+  h2{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:44px 0 16px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+  .tile{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);}
+  .tile .art{min-height:150px;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);}
+  .tile .art.on-dark{background:#0E1116;}
+  .tile .cap{padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
+    border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+  .tile .cap a{color:var(--accent);text-decoration:none;}
+  .sizes{display:flex;align-items:flex-end;gap:16px;}
+  object.anim{width:220px;height:56px;pointer-events:none;}
+  object.anim-ico{width:96px;height:96px;pointer-events:none;}
+  .lead{color:var(--muted);font-size:14px;max-width:60ch;line-height:1.6;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="icon/favicon.svg" width="26" alt="">
+    <span class="wm">Tab<span class="mono">VM</span></span>
+  </div>
+  <button id="toggle">◐ toggle theme</button>
+</header>
+<main>
+  <p class="lead">Every asset below is theme-aware. Flip the toggle to check both cuts. The logos and icons swap files with the theme; the favicon adapts on its own.</p>
+
+  <h2>Full logo — static</h2>
+  <div class="grid">
+    <div class="tile"><div class="art"><img class="lightonly" src="logo/tabvm-logo-light.svg" width="220"><img class="darkonly" src="logo/tabvm-logo-dark.svg" width="220" hidden></div><div class="cap"><span>full · static</span><a href="logo/tabvm-logo-light.svg">open ↗</a></div></div>
+    <div class="tile"><div class="art on-dark"><img src="logo/tabvm-logo-dark.svg" width="220"></div><div class="cap"><span>full · on dark</span><a href="logo/tabvm-logo-dark.svg">open ↗</a></div></div>
+  </div>
+
+  <h2>Full logo — animated (reload to replay)</h2>
+  <div class="grid">
+    <div class="tile"><div class="art"><object class="lightonly anim" type="image/svg+xml" data="logo/tabvm-logo-light-animated.svg"></object><object class="darkonly anim" type="image/svg+xml" data="logo/tabvm-logo-dark-animated.svg" hidden></object></div><div class="cap"><span>full · animated</span><a href="logo/tabvm-logo-light-animated.svg">open ↗</a></div></div>
+    <div class="tile"><div class="art on-dark"><object class="anim" type="image/svg+xml" data="logo/tabvm-logo-dark-animated.svg"></object></div><div class="cap"><span>full · animated · dark</span><a href="logo/tabvm-logo-dark-animated.svg">open ↗</a></div></div>
+  </div>
+
+  <h2>Icon — static & animated</h2>
+  <div class="grid">
+    <div class="tile"><div class="art"><img class="lightonly" src="icon/tabvm-icon-light.svg" width="96"><img class="darkonly" src="icon/tabvm-icon-dark.svg" width="96" hidden></div><div class="cap"><span>icon · static</span><a href="icon/tabvm-icon-light.svg">open ↗</a></div></div>
+    <div class="tile"><div class="art"><object class="lightonly anim-ico" type="image/svg+xml" data="icon/tabvm-icon-light-animated.svg"></object><object class="darkonly anim-ico" type="image/svg+xml" data="icon/tabvm-icon-dark-animated.svg" hidden></object></div><div class="cap"><span>icon · animated</span><a href="icon/tabvm-icon-light-animated.svg">open ↗</a></div></div>
+    <div class="tile"><div class="art on-dark"><object class="anim-ico" type="image/svg+xml" data="icon/tabvm-icon-dark-animated.svg"></object></div><div class="cap"><span>icon · animated · dark</span><a href="icon/tabvm-icon-dark-animated.svg">open ↗</a></div></div>
+    <div class="tile"><div class="art"><img src="icon/favicon.svg" width="96"></div><div class="cap"><span>favicon · adaptive</span><a href="icon/favicon.svg">open ↗</a></div></div>
+  </div>
+
+  <h2>Favicon at real sizes</h2>
+  <div class="grid">
+    <div class="tile"><div class="art"><div class="sizes">
+      <img src="icon/favicon.svg" width="16"><img src="icon/favicon.svg" width="24"><img src="icon/favicon.svg" width="32"><img src="icon/favicon.svg" width="48"><img src="icon/favicon.svg" width="64">
+    </div></div><div class="cap"><span>16 · 24 · 32 · 48 · 64 px</span><a href="icon/favicon.svg">open ↗</a></div></div>
+  </div>
+</main>
+<script>
+  const root=document.documentElement, btn=document.getElementById('toggle');
+  function apply(){
+    const dark=root.dataset.theme==='dark';
+    document.querySelectorAll('.lightonly').forEach(e=>e.hidden=dark);
+    document.querySelectorAll('.darkonly').forEach(e=>e.hidden=!dark);
+  }
+  btn.onclick=()=>{root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';apply();};
+  apply();
+</script>
+</body>
+</html>

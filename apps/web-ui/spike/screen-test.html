@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TabVM — COM screen stream spike</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 1040px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1a1a1a;
+      }
+      h1 { font-size: 1.25rem; }
+      .note {
+        background: #e7f5ff;
+        border: 1px solid #4dabf7;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+      }
+      label { display: block; margin-top: 0.75rem; font-size: 0.85rem; font-weight: 600; }
+      input { width: 100%; padding: 0.4rem; font-family: monospace; box-sizing: border-box; }
+      button { margin-top: 1rem; margin-right: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; }
+      #stats { margin-top: 0.75rem; font-family: monospace; font-size: 0.85rem; color: #333; }
+      #screen-wrap {
+        margin-top: 1rem;
+        border: 1px solid #999;
+        background: #000;
+        display: inline-block;
+        line-height: 0;
+      }
+      canvas { max-width: 100%; height: auto; display: block; }
+      #log {
+        background: #111; color: #cfcfcf; padding: 1rem; margin-top: 1rem;
+        border-radius: 6px; white-space: pre-wrap; word-break: break-word;
+        max-height: 240px; overflow-y: auto; font-family: monospace; font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TabVM: VirtualBox COM screen stream</h1>
+
+    <div class="note">
+      Streams the VM screen captured through the VirtualBox COM API (no RDP / no
+      VRDE) as JPEG frames over a WebSocket. See
+      apps/desktop-agent/internal/vmscreen and internal/server/screenstream.go.
+    </div>
+
+    <label for="agentBaseUrl">Agent base URL</label>
+    <input id="agentBaseUrl" value="http://127.0.0.1:5230" />
+
+    <label for="vmId">VM id (UUID)</label>
+    <input id="vmId" value="0cfc87ef-cbd8-4b7b-8557-4bea928e764e" />
+
+    <label for="sessionToken">Session token (?token= for this WS route)</label>
+    <input id="sessionToken" value="" placeholder="agent session token" />
+
+    <div>
+      <button id="btnConnect">Connect &amp; stream</button>
+      <button id="btnDisconnect">Disconnect</button>
+    </div>
+
+    <div id="stats">idle</div>
+
+    <div id="screen-wrap">
+      <canvas id="screen" width="800" height="600"></canvas>
+    </div>
+
+    <pre id="log">(log output appears here)</pre>
+
+    <script type="module" src="/spike/screen-test.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a problem with TabVM
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug. Please do not include secrets or session tokens.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: tabvm-version
+    attributes:
+      label: TabVM version
+      description: Shown in the sidebar footer (e.g. TabVM v0.1.0).
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Host OS and VirtualBox version
+      placeholder: Windows 11, VirtualBox 7.x
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste agent logs or console output. Redact anything sensitive.
+      render: shell

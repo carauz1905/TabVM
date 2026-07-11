@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TabVM — Brand Book</title>
+<style>
+  @font-face{font-family:'Space Grotesk';font-weight:400;font-display:swap;src:url('fonts/space-grotesk-400.woff2') format('woff2');}
+  @font-face{font-family:'Space Grotesk';font-weight:500;font-display:swap;src:url('fonts/space-grotesk-500.woff2') format('woff2');}
+  @font-face{font-family:'Space Grotesk';font-weight:600;font-display:swap;src:url('fonts/space-grotesk-600.woff2') format('woff2');}
+  @font-face{font-family:'JetBrains Mono';font-weight:400;font-display:swap;src:url('fonts/jetbrains-mono-400.woff2') format('woff2');}
+  @font-face{font-family:'JetBrains Mono';font-weight:500;font-display:swap;src:url('fonts/jetbrains-mono-500.woff2') format('woff2');}
+
+  :root{
+    --n950:#0B0E13;--n900:#0E1116;--n800:#161B22;--n700:#21262D;--n600:#30363D;
+    --n500:#6E7681;--n400:#8B949E;--n300:#C9D1D9;--n200:#DCE3EA;--n100:#F0F3F6;--n050:#F7F9FB;--n000:#FFFFFF;
+    --s700:#0B7C6F;--s600:#0E9E8E;--s500:#14B8A6;--s400:#2FE3CE;--s300:#7DF0E0;
+    --display:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+    --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --ink:var(--n900);--muted:var(--n500);--line:var(--n200);--accent:var(--s700);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--n300);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;}
+
+  .page{
+    position:relative;width:210mm;min-height:297mm;margin:0 auto;background:var(--n000);
+    padding:22mm 20mm 20mm;overflow:hidden;
+  }
+  .page + .page{margin-top:8mm;}
+
+  /* running elements */
+  .kicker{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
+  .foot{position:absolute;left:20mm;right:20mm;bottom:12mm;display:flex;justify-content:space-between;
+        font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--n400);text-transform:uppercase;
+        border-top:1px solid var(--line);padding-top:6px;}
+  .foot .accent{color:var(--accent);}
+
+  h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.05;letter-spacing:-.02em;}
+  h1{font-size:52px;}
+  h2{font-size:30px;margin-bottom:6px;}
+  h3{font-size:16px;font-weight:500;}
+  p{line-height:1.6;font-size:12.5px;color:var(--n700);margin:0 0 12px;max-width:62ch;}
+  .lead{font-size:15px;color:var(--n700);line-height:1.6;max-width:60ch;}
+  .mono{font-family:var(--mono);}
+  strong{font-weight:600;color:var(--ink);}
+  .sec-num{font-family:var(--mono);color:var(--accent);font-size:13px;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  .rule{height:1px;background:var(--line);margin:18px 0;border:0;}
+
+  .card{border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .chip-dark{background:var(--n900);border-radius:12px;padding:26px;display:flex;align-items:center;justify-content:center;}
+  .chip-light{background:var(--n050);border:1px solid var(--line);border-radius:12px;padding:26px;display:flex;align-items:center;justify-content:center;}
+
+  .label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+
+  /* color swatches */
+  .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+  .sw{border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .sw .fill{height:56px;}
+  .sw .meta{padding:6px 8px;font-family:var(--mono);font-size:8.5px;line-height:1.5;}
+  .sw .meta b{display:block;font-size:9px;letter-spacing:.02em;}
+  .sw .meta span{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:400;}
+  td .hex{font-family:var(--mono);}
+
+  .dont{color:#B4232A;}.do{color:var(--s700);}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+         padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);}
+
+  .type-scale > div{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding:10px 0;}
+  .type-scale .tag{font-family:var(--mono);font-size:9px;color:var(--muted);width:120px;flex:none;letter-spacing:.06em;}
+
+  .caretbox{font-family:var(--mono);background:var(--n900);color:var(--n100);border-radius:10px;padding:16px 18px;font-size:13px;}
+  .blink{color:var(--s400);animation:bl 1.05s steps(1) infinite;}
+  @keyframes bl{0%,48%{opacity:1}49%,100%{opacity:0}}
+
+  .misuse{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .misuse .cell{border:1px solid var(--line);border-radius:10px;padding:14px;min-height:150px;display:flex;flex-direction:column;gap:10px;}
+  .misuse .art{flex:1;display:flex;align-items:center;justify-content:center;background:var(--n050);border-radius:8px;}
+  .misuse .cap{font-size:10px;color:var(--n600);}
+  .x{color:#B4232A;font-family:var(--mono);}
+
+  .toc li{list-style:none;display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:11px 0;font-size:13px;}
+  .toc .n{font-family:var(--mono);color:var(--accent);margin-right:14px;}
+  .toc ol{margin:0;padding:0;}
+
+  ul.clean{margin:0 0 12px;padding-left:18px;}
+  ul.clean li{font-size:12.5px;line-height:1.7;color:var(--n700);margin-bottom:2px;}
+
+  .app-tab{display:inline-flex;align-items:center;gap:8px;background:var(--n050);border:1px solid var(--line);
+           border-bottom:none;border-radius:8px 8px 0 0;padding:7px 12px;font-size:11px;font-family:var(--body);}
+  .browserbar{border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .browserbar .bar{background:var(--n050);border-bottom:1px solid var(--line);padding:8px 10px;display:flex;gap:6px;align-items:center;}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--n300);}
+  .browserbar .body{padding:22px;display:flex;align-items:center;gap:12px;}
+
+  @media print{
+    html,body{background:#fff;}
+    .page{margin:0;width:auto;min-height:auto;box-shadow:none;page-break-after:always;}
+    .page:last-child{page-break-after:auto;}
+    @page{size:A4;margin:0;}
+  }
+
+  /* inline mark helper */
+  svg.mk{display:block;}
+</style>
+</head>
+<body>
+
+<!-- ============ 1 · COVER ============ -->
+<section class="page" style="display:flex;flex-direction:column;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <span class="kicker">TabVM · Brand Book</span>
+    <span class="kicker">v1.0 · 2026</span>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+    <svg class="mk" width="128" height="128" viewBox="0 0 64 64" style="margin-bottom:26px;">
+      <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+      <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+      <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+    </svg>
+    <h1 style="font-size:64px;">Tab<span class="mono" style="font-weight:500;">VM</span></h1>
+    <p class="lead" style="margin-top:18px;font-size:17px;max-width:44ch;">
+      Your local VirtualBox machines, controlled from the browser like tabs.
+      One brand system for a precise, local, developer-first tool.
+    </p>
+  </div>
+
+  <div style="display:flex;gap:10px;">
+    <span class="badge">Open source</span>
+    <span class="badge">Windows-first</span>
+    <span class="badge">Local by default</span>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">01</span> · Cover</span></div>
+</section>
+
+<!-- ============ 2 · CONTENTS + ESSENCE ============ -->
+<section class="page">
+  <span class="kicker">Overview</span>
+  <h2 style="margin-top:10px;">Contents &amp; brand essence</h2>
+  <hr class="rule">
+  <div class="grid2" style="gap:32px;">
+    <div class="toc">
+      <ol>
+        <li><span><span class="n">01</span>Cover</span></li>
+        <li><span><span class="n">02</span>Contents &amp; essence</span></li>
+        <li><span><span class="n">03</span>The concept</span></li>
+        <li><span><span class="n">04</span>Logo anatomy</span></li>
+        <li><span><span class="n">05</span>Logo variants</span></li>
+        <li><span><span class="n">06</span>Clearspace &amp; sizing</span></li>
+        <li><span><span class="n">07</span>Misuse</span></li>
+        <li><span><span class="n">08</span>Color</span></li>
+        <li><span><span class="n">09</span>Color usage &amp; a11y</span></li>
+        <li><span><span class="n">10</span>Typography</span></li>
+        <li><span><span class="n">11</span>Motion</span></li>
+        <li><span><span class="n">12</span>Voice &amp; applications</span></li>
+      </ol>
+    </div>
+    <div>
+      <div class="label">Essence</div>
+      <p class="lead">TabVM makes a local virtual machine behave like a browser tab —
+      startable, inspectable, and closable without leaving your workspace.</p>
+      <div class="rule"></div>
+      <div class="label">Attributes</div>
+      <ul class="clean">
+        <li><strong>Precise</strong> — engineered, not decorative.</li>
+        <li><strong>Local</strong> — it runs on your machine, bound to localhost.</li>
+        <li><strong>Developer-first</strong> — terminal-literate, honest, auditable.</li>
+        <li><strong>Calm</strong> — one accent, lots of quiet, no theatrics.</li>
+      </ul>
+      <div class="rule"></div>
+      <div class="label">One-line positioning</div>
+      <p class="mono" style="font-size:12px;color:var(--n800);background:var(--n050);border:1px solid var(--line);border-radius:8px;padding:12px;">
+        Local VMs, managed like tabs — in your browser, on your machine.</p>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">02</span> · Contents &amp; essence</span></div>
+</section>
+
+<!-- ============ 3 · CONCEPT ============ -->
+<section class="page">
+  <span class="kicker">01 · Foundations</span>
+  <h2 style="margin-top:10px;">The concept</h2>
+  <p class="lead">The mark is not a metaphor bolted on afterward. It is the product drawn literally:
+  a running VM console, sitting inside a tab.</p>
+  <hr class="rule">
+  <div class="grid2" style="gap:28px;align-items:center;">
+    <div class="chip-light" style="padding:44px;">
+      <svg class="mk" width="180" height="180" viewBox="0 0 64 64">
+        <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+        <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+        <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+      </svg>
+    </div>
+    <div>
+      <div class="label">Three parts, one story</div>
+      <ul class="clean">
+        <li><strong>The panel</strong> — an outlined window. The VM console the student works in.</li>
+        <li><strong>The tab</strong> — the solid accent shape on top. The hero: this VM lives in a tab, not a separate OS window.</li>
+        <li><strong>The prompt <span class="mono">&rsaquo;_</span></strong> — a terminal cursor inside. Proof the machine is live and interactive, not a static picture.</li>
+      </ul>
+      <div class="rule"></div>
+      <p>Read together: <strong>a live VM session, running inside a tab.</strong> That is the entire product in one glyph — which is exactly why it does not look generic. It could not belong to any other tool.</p>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">03</span> · The concept</span></div>
+</section>
+
+<!-- ============ 4 · ANATOMY ============ -->
+<section class="page">
+  <span class="kicker">02 · Logo</span>
+  <h2 style="margin-top:10px;">Logo anatomy</h2>
+  <p class="lead">The logo is a mark plus a wordmark. The wordmark splits the name into a written part and a machine part.</p>
+  <hr class="rule">
+  <div class="chip-light" style="justify-content:flex-start;padding:40px;">
+    <svg class="mk" width="340" viewBox="0 0 250 64">
+      <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+      <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+      <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+      <text x="78" y="43" font-family="Space Grotesk, sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#0E1116">Tab<tspan font-family="JetBrains Mono, monospace" font-weight="500" dx="1">VM</tspan></text>
+    </svg>
+  </div>
+  <div class="grid3" style="margin-top:18px;">
+    <div class="card">
+      <div class="label">Mark</div>
+      <p style="margin:0;">Pure geometry — renders identically everywhere. Carries the single accent color.</p>
+    </div>
+    <div class="card">
+      <div class="label">“Tab” — display</div>
+      <p style="margin:0;">Set in <strong>Space Grotesk 600</strong>. The human-readable, spoken half of the name.</p>
+    </div>
+    <div class="card">
+      <div class="label">“VM” — mono</div>
+      <p style="margin:0;">Set in <strong>JetBrains Mono 500</strong>. The machine half — a deliberate typographic gear-shift.</p>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">04</span> · Logo anatomy</span></div>
+</section>
+
+<!-- ============ 5 · VARIANTS ============ -->
+<section class="page">
+  <span class="kicker">02 · Logo</span>
+  <h2 style="margin-top:10px;">Variants</h2>
+  <p class="lead">Every asset ships in a light and a dark cut. Never recolor by hand — use the matching file.</p>
+  <hr class="rule">
+  <div class="grid2">
+    <div>
+      <div class="label">Light theme — on light surfaces</div>
+      <div class="chip-light" style="height:120px;">
+        <svg class="mk" width="240" viewBox="0 0 250 64">
+          <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+          <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+          <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+          <text x="78" y="43" font-family="Space Grotesk, sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#0E1116">Tab<tspan font-family="JetBrains Mono, monospace" font-weight="500" dx="1">VM</tspan></text>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <div class="label">Dark theme — on dark surfaces</div>
+      <div class="chip-dark" style="height:120px;">
+        <svg class="mk" width="240" viewBox="0 0 250 64">
+          <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#E6EDF3" stroke-width="4"/>
+          <rect x="14" y="8" width="23" height="18" rx="5" fill="#2FE3CE"/>
+          <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#E6EDF3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#2FE3CE"/>
+          <text x="78" y="43" font-family="Space Grotesk, sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#F0F3F6">Tab<tspan font-family="JetBrains Mono, monospace" font-weight="500" dx="1">VM</tspan></text>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <div class="label">Icon — light</div>
+      <div class="chip-light" style="height:120px;">
+        <svg class="mk" width="80" viewBox="0 0 64 64">
+          <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+          <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+          <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <div class="label">Icon — dark</div>
+      <div class="chip-dark" style="height:120px;">
+        <svg class="mk" width="80" viewBox="0 0 64 64">
+          <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#E6EDF3" stroke-width="4"/>
+          <rect x="14" y="8" width="23" height="18" rx="5" fill="#2FE3CE"/>
+          <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#E6EDF3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#2FE3CE"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:16px;"><span class="badge">Also animated</span> &nbsp; Each of these has an animated <span class="mono">*-animated.svg</span> twin: the mark assembles once on load, then the caret blinks like a live cursor. Motion respects <span class="mono">prefers-reduced-motion</span>.</p>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">05</span> · Variants</span></div>
+</section>
+
+<!-- ============ 6 · CLEARSPACE ============ -->
+<section class="page">
+  <span class="kicker">02 · Logo</span>
+  <h2 style="margin-top:10px;">Clearspace &amp; sizing</h2>
+  <p class="lead">Give the logo room. Keep it legible. When in doubt, use more space and a larger size.</p>
+  <hr class="rule">
+  <div class="grid2" style="gap:24px;">
+    <div class="card">
+      <div class="label">Clearspace = height of the tab (x)</div>
+      <div style="background:var(--n050);border-radius:8px;padding:24px;position:relative;">
+        <div style="border:1px dashed var(--s500);border-radius:6px;padding:22px;display:flex;justify-content:center;">
+          <svg class="mk" width="200" viewBox="0 0 250 64">
+            <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/>
+            <rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/>
+            <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/>
+            <text x="78" y="43" font-family="Space Grotesk, sans-serif" font-size="34" font-weight="600" letter-spacing="-0.5" fill="#0E1116">Tab<tspan font-family="JetBrains Mono, monospace" font-weight="500" dx="1">VM</tspan></text>
+          </svg>
+        </div>
+      </div>
+      <p style="margin-top:12px;">Leave at least <strong>one tab-height (x)</strong> of empty space on every side. No text, no rules, no other logos inside it.</p>
+    </div>
+    <div class="card">
+      <div class="label">Minimum sizes</div>
+      <table>
+        <tr><th>Asset</th><th>Min size</th><th>Use</th></tr>
+        <tr><td>Icon</td><td class="hex">16&nbsp;px</td><td>favicon, tray, tab</td></tr>
+        <tr><td>Icon</td><td class="hex">20&nbsp;px</td><td>in-app UI chrome</td></tr>
+        <tr><td>Full logo</td><td class="hex">88&nbsp;px&nbsp;wide</td><td>screen</td></tr>
+        <tr><td>Full logo</td><td class="hex">24&nbsp;mm&nbsp;wide</td><td>print</td></tr>
+      </table>
+      <div class="rule"></div>
+      <div class="label">Below 20&nbsp;px, drop the wordmark</div>
+      <div style="display:flex;align-items:flex-end;gap:18px;padding:14px 0;">
+        <svg class="mk" width="16" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+        <svg class="mk" width="24" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+        <svg class="mk" width="32" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+        <svg class="mk" width="48" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">06</span> · Clearspace &amp; sizing</span></div>
+</section>
+
+<!-- ============ 7 · MISUSE ============ -->
+<section class="page">
+  <span class="kicker">02 · Logo</span>
+  <h2 style="margin-top:10px;">Misuse</h2>
+  <p class="lead">The mark stays disciplined. These are the ways it breaks — and they are the fastest path to looking generic.</p>
+  <hr class="rule">
+  <div class="misuse">
+    <div class="cell"><div class="art"><svg width="72" viewBox="0 0 64 64" style="filter:hue-rotate(240deg) saturate(2)"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#7a2ff2"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#7a2ff2"/></svg></div><div class="cap"><span class="x">✕</span> Don’t recolor. One accent only.</div></div>
+    <div class="cell"><div class="art"><svg width="120" height="52" viewBox="0 0 64 64" preserveAspectRatio="none"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg></div><div class="cap"><span class="x">✕</span> Don’t stretch or distort.</div></div>
+    <div class="cell"><div class="art" style="background:#0E9E8E;"><svg width="72" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg></div><div class="cap"><span class="x">✕</span> Don’t place on low-contrast color.</div></div>
+    <div class="cell"><div class="art"><svg width="72" viewBox="0 0 64 64" style="transform:rotate(-15deg)"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg></div><div class="cap"><span class="x">✕</span> Don’t rotate or tilt.</div></div>
+    <div class="cell"><div class="art"><svg width="72" viewBox="0 0 64 64" style="filter:drop-shadow(3px 5px 4px rgba(0,0,0,.5))"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg></div><div class="cap"><span class="x">✕</span> No shadows, bevels, or glows.</div></div>
+    <div class="cell"><div class="art"><span class="mono" style="font-size:22px;">Tab<span style="font-family:var(--display)">VM</span></span></div><div class="cap"><span class="x">✕</span> Don’t swap the type roles. “Tab” is display, “VM” is mono — never the reverse.</div></div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">07</span> · Misuse</span></div>
+</section>
+
+<!-- ============ 8 · COLOR ============ -->
+<section class="page">
+  <span class="kicker">03 · Color</span>
+  <h2 style="margin-top:10px;">Palette</h2>
+  <p class="lead">Cool neutrals do the work; one teal signal marks what is live and interactive. That restraint is the anti-slop rule.</p>
+  <hr class="rule">
+  <div class="label">Signal — the only accent</div>
+  <div class="swatches" style="margin-bottom:20px;">
+    <div class="sw"><div class="fill" style="background:#0B7C6F"></div><div class="meta"><b>Signal 700</b><span>#0B7C6F</span></div></div>
+    <div class="sw"><div class="fill" style="background:#0E9E8E"></div><div class="meta"><b>Signal 600</b><span>#0E9E8E</span></div></div>
+    <div class="sw"><div class="fill" style="background:#14B8A6"></div><div class="meta"><b>Signal 500</b><span>#14B8A6</span></div></div>
+    <div class="sw"><div class="fill" style="background:#2FE3CE"></div><div class="meta"><b>Signal 400</b><span>#2FE3CE</span></div></div>
+    <div class="sw"><div class="fill" style="background:#7DF0E0"></div><div class="meta"><b>Signal 300</b><span>#7DF0E0</span></div></div>
+    <div class="sw" style="display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;">Accent<br>only</div>
+  </div>
+  <div class="label">Neutrals — cool gray</div>
+  <div class="swatches">
+    <div class="sw"><div class="fill" style="background:#0E1116"></div><div class="meta"><b>N 900</b><span>#0E1116</span></div></div>
+    <div class="sw"><div class="fill" style="background:#161B22"></div><div class="meta"><b>N 800</b><span>#161B22</span></div></div>
+    <div class="sw"><div class="fill" style="background:#21262D"></div><div class="meta"><b>N 700</b><span>#21262D</span></div></div>
+    <div class="sw"><div class="fill" style="background:#6E7681"></div><div class="meta"><b>N 500</b><span>#6E7681</span></div></div>
+    <div class="sw"><div class="fill" style="background:#C9D1D9"></div><div class="meta"><b>N 300</b><span>#C9D1D9</span></div></div>
+    <div class="sw"><div class="fill" style="background:#F0F3F6"></div><div class="meta"><b>N 100</b><span>#F0F3F6</span></div></div>
+  </div>
+  <div class="grid2" style="margin-top:22px;gap:16px;">
+    <div class="card">
+      <div class="label">Light theme roles</div>
+      <table>
+        <tr><td>Background</td><td class="hex">#FFFFFF</td></tr>
+        <tr><td>Surface</td><td class="hex">#F7F9FB</td></tr>
+        <tr><td>Text</td><td class="hex">#0E1116</td></tr>
+        <tr><td>Border</td><td class="hex">#DCE3EA</td></tr>
+        <tr><td>Accent</td><td class="hex">#0E9E8E</td></tr>
+      </table>
+    </div>
+    <div class="card" style="background:#0E1116;border-color:#21262D;">
+      <div class="label" style="color:#8B949E;">Dark theme roles</div>
+      <table style="color:#F0F3F6;">
+        <tr><td style="border-color:#21262D">Background</td><td class="hex" style="border-color:#21262D">#0E1116</td></tr>
+        <tr><td style="border-color:#21262D">Surface</td><td class="hex" style="border-color:#21262D">#161B22</td></tr>
+        <tr><td style="border-color:#21262D">Text</td><td class="hex" style="border-color:#21262D">#F0F3F6</td></tr>
+        <tr><td style="border-color:#21262D">Border</td><td class="hex" style="border-color:#21262D">#21262D</td></tr>
+        <tr><td style="border-color:#21262D;border-bottom:none">Accent</td><td class="hex" style="border-color:#21262D;border-bottom:none;color:#2FE3CE">#2FE3CE</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">08</span> · Palette</span></div>
+</section>
+
+<!-- ============ 9 · COLOR USAGE / A11Y ============ -->
+<section class="page">
+  <span class="kicker">03 · Color</span>
+  <h2 style="margin-top:10px;">Usage &amp; accessibility</h2>
+  <p class="lead">The accent shifts by theme so contrast holds. Verified against WCAG 2.1.</p>
+  <hr class="rule">
+  <table style="margin-bottom:18px;">
+    <tr><th>Pairing</th><th>Ratio</th><th>Verdict</th><th>Use for</th></tr>
+    <tr><td class="mono">#0E1116 on #FFFFFF</td><td class="mono">~18:1</td><td class="do">AAA</td><td>Body text, light theme</td></tr>
+    <tr><td class="mono">#F0F3F6 on #0E1116</td><td class="mono">~16:1</td><td class="do">AAA</td><td>Body text, dark theme</td></tr>
+    <tr><td class="mono">#0B7C6F on #FFFFFF</td><td class="mono">~5.0:1</td><td class="do">AA</td><td>Small accent <em>text</em>, light</td></tr>
+    <tr><td class="mono">#0E9E8E on #FFFFFF</td><td class="mono">~3.3:1</td><td class="do">AA-large</td><td>Large text, icons, UI marks only</td></tr>
+    <tr><td class="mono">#2FE3CE on #0E1116</td><td class="mono">~11.5:1</td><td class="do">AAA</td><td>Accent text &amp; marks, dark</td></tr>
+  </table>
+  <div class="grid2" style="gap:16px;">
+    <div class="card">
+      <div class="label do">Do</div>
+      <ul class="clean">
+        <li>Use <strong>Signal 700</strong> (#0B7C6F) for small accent <em>text</em> on light — it clears AA.</li>
+        <li>Use <strong>Signal 600</strong> for the mark, links, and large text on light.</li>
+        <li>Use <strong>Signal 400</strong> for anything accent on dark.</li>
+        <li>Keep accent to roughly <strong>&lt;10%</strong> of any surface.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="label dont">Don’t</div>
+      <ul class="clean">
+        <li>Set small body text in Signal 600 on white — it fails AA (3.3:1).</li>
+        <li>Fill whole panels or backgrounds with the accent.</li>
+        <li>Introduce a second accent hue to “add energy”.</li>
+        <li>Rely on color alone to signal VM state — pair it with a label or icon.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">09</span> · Usage &amp; accessibility</span></div>
+</section>
+
+<!-- ============ 10 · TYPOGRAPHY ============ -->
+<section class="page">
+  <span class="kicker">04 · Typography</span>
+  <h2 style="margin-top:10px;">Typography</h2>
+  <p class="lead">Two open-source faces, chosen so the name reads as two halves: the human and the machine.</p>
+  <hr class="rule">
+  <div class="grid2" style="gap:20px;">
+    <div class="card">
+      <div class="label">Display · Space Grotesk</div>
+      <div style="font-family:var(--display);font-weight:600;font-size:46px;line-height:1;letter-spacing:-.02em;">Aa Tab</div>
+      <p style="margin-top:12px;">Weights 400 / 500 / 600. Used for headings, the “Tab” in the wordmark, and product UI titles. Geometric with just enough character to avoid the default-sans look.</p>
+    </div>
+    <div class="card">
+      <div class="label">Mono · JetBrains Mono</div>
+      <div style="font-family:var(--mono);font-weight:500;font-size:46px;line-height:1;">Aa VM</div>
+      <p style="margin-top:12px;">Weights 400 / 500. Used for the “VM”, labels, hex values, code, VM IDs, ports, and terminal output. It is the voice of the machine.</p>
+    </div>
+  </div>
+  <div class="rule"></div>
+  <div class="label">Type scale (screen)</div>
+  <div class="type-scale">
+    <div><span class="tag">Display / 52</span><span style="font-family:var(--display);font-weight:600;font-size:32px;">Manage local VMs</span></div>
+    <div><span class="tag">H2 / 30</span><span style="font-family:var(--display);font-weight:600;font-size:24px;">Start, inspect, close</span></div>
+    <div><span class="tag">H3 / 16</span><span style="font-family:var(--display);font-weight:500;font-size:16px;">Console readiness</span></div>
+    <div><span class="tag">Body / 12.5</span><span style="font-size:14px;">Open a VM console in the browser through RDP, VNC, or a terminal view.</span></div>
+    <div><span class="tag">Mono / 12</span><span style="font-family:var(--mono);font-size:13px;">VBoxManage startvm &lt;id&gt; --type headless</span></div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">10</span> · Typography</span></div>
+</section>
+
+<!-- ============ 11 · MOTION ============ -->
+<section class="page">
+  <span class="kicker">05 · Motion</span>
+  <h2 style="margin-top:10px;">Motion</h2>
+  <p class="lead">One motion idea owns the brand: the terminal caret. It signals a live machine — the same thing TabVM delivers.</p>
+  <hr class="rule">
+  <div class="grid2" style="gap:20px;align-items:center;">
+    <div class="chip-dark" style="height:150px;">
+      <svg class="mk" width="150" viewBox="0 0 64 64">
+        <style>.c{animation:bk 1.05s steps(1) infinite}@keyframes bk{0%,48%{opacity:1}49%,100%{opacity:0}}</style>
+        <rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#E6EDF3" stroke-width="4"/>
+        <rect x="14" y="8" width="23" height="18" rx="5" fill="#2FE3CE"/>
+        <path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#E6EDF3" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect class="c" x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#2FE3CE"/>
+      </svg>
+    </div>
+    <div>
+      <div class="label">Principles</div>
+      <ul class="clean">
+        <li><strong>Assemble once.</strong> On load: the tab drops in, the panel draws, the prompt appears — in ~0.6s, then it rests.</li>
+        <li><strong>Then the caret lives.</strong> A steady <span class="mono">1.05s</span> blink. Nothing else moves.</li>
+        <li><strong>Ease, don’t bounce.</strong> <span class="mono">cubic-bezier(.2,.7,.2,1)</span>. No overshoot, no spring.</li>
+        <li><strong>Respect the user.</strong> Under <span class="mono">prefers-reduced-motion</span>, everything renders static and complete.</li>
+      </ul>
+      <div class="caretbox" style="margin-top:6px;">tabvm@localhost:~$ <span class="blink">_</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book</span><span><span class="accent">11</span> · Motion</span></div>
+</section>
+
+<!-- ============ 12 · VOICE + APPLICATIONS ============ -->
+<section class="page">
+  <span class="kicker">06 · In the wild</span>
+  <h2 style="margin-top:10px;">Voice &amp; applications</h2>
+  <hr class="rule">
+  <div class="grid2" style="gap:20px;">
+    <div>
+      <div class="label">Voice &amp; tone</div>
+      <ul class="clean">
+        <li><strong>Precise over friendly.</strong> Say the exact action: “Start VM”, not “Let’s go!”.</li>
+        <li><strong>Honest about the machine.</strong> Surface ports, states, and errors plainly.</li>
+        <li><strong>Local &amp; safe.</strong> Reassure without alarm: “Bound to localhost.”</li>
+        <li><strong>Lowercase, technical.</strong> Command-like microcopy: <span class="mono">start · stop · reset · open console</span>.</li>
+      </ul>
+      <div class="rule"></div>
+      <div class="label">Applications</div>
+      <div class="app-tab">
+        <svg width="16" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+        ubuntu-lab · running
+      </div>
+      <div class="browserbar" style="border-top-left-radius:0;">
+        <div class="body" style="padding:16px;">
+          <svg width="22" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+          <span style="font-family:var(--display);font-weight:600;font-size:18px;">Tab<span class="mono" style="font-weight:500;">VM</span></span>
+          <span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);">127.0.0.1</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Favicon &amp; product chrome</div>
+      <div class="browserbar">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin-left:8px;font-size:10px;">
+            <svg width="12" viewBox="0 0 64 64"><rect x="8" y="20" width="48" height="36" rx="8" fill="none" stroke="#0E1116" stroke-width="4"/><rect x="14" y="8" width="23" height="18" rx="5" fill="#0E9E8E"/><path d="M19 38 l6.5 4.4 -6.5 4.4" fill="none" stroke="#0E1116" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="31" y="44.6" width="14" height="3.6" rx="1.8" fill="#0E9E8E"/></svg>
+            TabVM
+          </span>
+        </div>
+        <div class="body" style="background:#0E1116;color:#F0F3F6;font-family:var(--mono);font-size:11px;">
+          tabvm@localhost:~$ start ubuntu-lab <span class="blink">_</span>
+        </div>
+      </div>
+      <div class="rule"></div>
+      <div class="label">Asset index</div>
+      <table>
+        <tr><th>Folder</th><th>Contents</th></tr>
+        <tr><td class="mono">/logo</td><td>full lockups · light/dark · static + animated</td></tr>
+        <tr><td class="mono">/icon</td><td>icon · light/dark · static + animated · adaptive favicon</td></tr>
+        <tr><td class="mono">/tokens</td><td>tokens.css · tokens.json</td></tr>
+        <tr><td class="mono">/fonts</td><td>Space Grotesk · JetBrains Mono (woff2)</td></tr>
+        <tr><td class="mono">preview.html</td><td>live asset gallery, theme toggle</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="foot"><span>TabVM Brand Book · v1.0</span><span><span class="accent">12</span> · Voice &amp; applications</span></div>
+</section>
+
+</body>
+</html>

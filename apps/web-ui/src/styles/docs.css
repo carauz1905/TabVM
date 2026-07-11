@@ -1,0 +1,409 @@
+/* ===================== Docs / user manual ===================== */
+/* Uses the app's design tokens, so it inherits theme, accent and spacing. */
+.docs { display: grid; grid-template-columns: 210px 1fr; gap: 34px; align-items: start; max-width: 1080px; }
+.docs-nav { position: sticky; top: 8px; align-self: start; }
+.docs-nav-label {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--faint); padding: 0 10px 8px;
+}
+.docs-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.docs-nav-link {
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 6px 10px; border-radius: var(--r-sm); color: var(--muted); font-size: 12.5px;
+  border-left: 2px solid transparent; transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.docs-nav-link:hover { color: var(--text); }
+.docs-nav-link.on { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+.docs-main { min-width: 0; display: flex; flex-direction: column; gap: 46px; padding-bottom: 60px; }
+.docs-sec { scroll-margin-top: 14px; }
+.docs-sec h1 { font-family: var(--font-display); font-size: 30px; margin: 0 0 4px; letter-spacing: -0.02em; }
+.docs-sec h2 { font-family: var(--font-display); font-size: 21px; margin: 0 0 8px; letter-spacing: -0.01em; }
+.docs-sec h4 { font-size: 13.5px; margin: 22px 0 6px; color: var(--text); }
+.docs-sec p { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; line-height: 1.62; max-width: 62ch; }
+.docs-lead { color: var(--text) !important; font-size: 14.5px !important; }
+.docs-tag { font-family: var(--font-mono); font-size: 12px; color: var(--accent) !important; margin-bottom: 12px !important; }
+.docs-hint {
+  font-size: 12.5px !important; color: var(--muted) !important; border-left: 2px solid var(--accent);
+  padding: 8px 12px; background: var(--accent-soft); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.docs-tip { font-size: 12.5px !important; color: var(--faint) !important; }
+
+/* Hero */
+.docs-hero-mark { width: 40px; height: 40px; margin-bottom: 12px; }
+.docs-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+.docs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
+.docs-card {
+  border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 16px; background: var(--panel);
+  animation: docs-reveal 0.5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 90ms);
+}
+.docs-card-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-bottom: 10px; }
+.docs-card h4 { margin: 0 0 5px; font-size: 13px; }
+.docs-card p { margin: 0; font-size: 12.5px; }
+@keyframes docs-reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* Steps */
+.docs-steps { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.docs-steps li {
+  display: flex; gap: 14px; align-items: flex-start;
+  animation: docs-reveal 0.5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 100ms);
+}
+.docs-step-n {
+  flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent); font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+}
+.docs-steps h4 { margin: 3px 0 4px; }
+.docs-steps p { margin: 0; }
+
+/* Definition lists */
+.docs-defs { display: flex; flex-direction: column; gap: 12px; margin: 14px 0; }
+.docs-defs dt { font-size: 13px; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+.docs-defs dd { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+/* Code block (e.g. manual Guest Additions install) */
+.docs-code {
+  margin: 10px 0 12px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+  background: var(--raise); overflow-x: auto;
+}
+.docs-code code { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-mono); font-size: 12px; }
+.docs-code-line { display: flex; gap: 9px; align-items: baseline; color: var(--text); white-space: pre; }
+.docs-code-prompt { color: var(--accent); user-select: none; }
+
+/* FAQ */
+.docs-faq { display: flex; flex-direction: column; margin-top: 8px; }
+.docs-faq details { border-bottom: 1px solid var(--line); }
+.docs-faq summary {
+  cursor: pointer; padding: 13px 2px; font-size: 13.5px; color: var(--text); list-style: none;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.docs-faq summary::-webkit-details-marker { display: none; }
+.docs-faq summary::after { content: '+'; color: var(--accent); font-size: 17px; }
+.docs-faq details[open] summary::after { content: '\2212'; }
+.docs-faq details p { padding: 0 2px 14px; margin: 0; font-size: 13px; }
+
+/* Demo stage */
+.docs-stage { margin: 12px 0 4px; border: 1px solid var(--line-2); border-radius: var(--r-md); overflow: hidden; background: var(--raise); }
+.docs-stage-bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.docs-dots { display: flex; gap: 6px; }
+.docs-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+.docs-stage-cap { font-family: var(--font-mono); font-size: 10.5px; color: var(--faint); }
+.docs-replay {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px;
+  border: 1px solid var(--line-2); border-radius: var(--r-sm); background: transparent; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+}
+.docs-replay:hover { color: var(--accent); border-color: var(--accent-line); }
+.docs-replay svg { width: 12px; height: 12px; stroke: currentColor; }
+.docs-stage-body { padding: 18px; }
+
+/* Start/stop demo row */
+.docs-vm { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border-radius: var(--r-md); }
+.docs-vm .tv-vm-id { display: flex; align-items: center; gap: 10px; }
+.docs-vm .tv-vm-name { font-size: 13px; color: var(--text); }
+.tv-state-badge {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 5px; background: var(--line); color: var(--faint);
+}
+.tv-state-badge.running { background: var(--accent-soft); color: var(--accent); }
+.tv-state-badge.booting { background: var(--accent-soft); color: var(--accent); }
+
+/* Console boot demo */
+.docs-screen { position: relative; height: 150px; border-radius: var(--r-sm); background: #05080b; overflow: hidden; font-family: var(--font-mono); }
+.docs-screen-glow { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%); opacity: 0; animation: docs-glow 0.6s var(--ease-out) forwards; }
+.docs-boot { position: relative; padding: 14px 16px; color: #b9c6cf; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+.docs-boot-logo { color: var(--accent); font-size: 20px; opacity: 0; animation: docs-fade 0.4s 0.15s forwards; }
+.docs-boot-line { opacity: 0; }
+.docs-boot-line.l1 { animation: docs-type 0.35s 0.5s forwards; }
+.docs-boot-line.l2 { animation: docs-type 0.35s 1s forwards; color: var(--accent); }
+.docs-boot-line.l3 { animation: docs-type 0.35s 1.6s forwards; }
+.docs-caret { display: inline-block; width: 7px; height: 13px; background: var(--accent); vertical-align: middle; animation: docs-blink 1s step-end infinite; }
+@keyframes docs-glow { to { opacity: 1; } }
+@keyframes docs-fade { to { opacity: 1; } }
+@keyframes docs-type { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes docs-blink { 50% { opacity: 0; } }
+
+/* Drag & drop demo */
+.docs-drop { position: relative; height: 120px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.docs-drop-file {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line-2);
+  border-radius: var(--r-sm); background: var(--panel); font-size: 12px; color: var(--text);
+  animation: docs-fly 3.6s var(--ease-out) infinite;
+}
+.docs-drop-file svg { width: 16px; height: 16px; stroke: var(--accent); }
+.docs-drop-target {
+  width: 120px; height: 78px; border: 1.5px dashed var(--line-2); border-radius: var(--r-md);
+  display: grid; place-items: center; text-align: center; color: var(--faint); font-size: 10.5px; padding: 6px;
+  animation: docs-target 3.6s var(--ease-out) infinite;
+}
+/* One loop: the file fades in on the host side, glides across to the drop zone,
+   sinks into it, then a short invisible pause before it repeats. */
+@keyframes docs-fly {
+  0% { transform: translateX(0) scale(1); opacity: 0; }
+  7% { transform: translateX(0) scale(1); opacity: 1; }
+  20% { transform: translateX(0) scale(1); opacity: 1; }
+  62% { transform: translateX(150px) scale(0.92); opacity: 1; }
+  74% { transform: translateX(180px) scale(0.4); opacity: 0; }
+  100% { transform: translateX(180px) scale(0.4); opacity: 0; }
+}
+@keyframes docs-target {
+  0%, 56% { border-color: var(--line-2); background: transparent; }
+  68% { border-color: var(--accent); background: var(--accent-soft); }
+  82%, 100% { border-color: var(--line-2); background: transparent; }
+}
+
+/* Snapshot demo */
+.docs-snap { display: flex; align-items: center; gap: 0; position: relative; padding: 8px 0; }
+.docs-snap-node { padding: 7px 12px; border-radius: var(--r-sm); font-size: 11.5px; font-family: var(--font-mono); border: 1px solid var(--line-2); }
+.docs-snap-node.base { color: var(--muted); }
+.docs-snap-node.snap { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); opacity: 0; animation: docs-snap-appear 4s var(--ease-out) infinite; }
+.docs-snap-link { width: 34px; height: 2px; background: var(--line-2); margin: 0 4px; }
+.docs-snap-restore { margin-left: 14px; font-size: 10.5px; font-family: var(--font-mono); color: var(--faint); position: relative; animation: docs-snap-glow 4s ease-in-out infinite; }
+.docs-snap-restore::before { content: '\21BA'; color: var(--accent); margin-right: 5px; display: inline-block; animation: docs-spin 4s var(--ease-out) infinite; }
+/* One loop: the snapshot node appears (take), the restore icon spins and its
+   label lights up (restore), then a pause before it repeats. */
+@keyframes docs-snap-appear {
+  0%, 8% { opacity: 0; transform: translateX(-6px); }
+  18%, 68% { opacity: 1; transform: none; }
+  84%, 100% { opacity: 0; transform: translateX(-6px); }
+}
+@keyframes docs-spin {
+  0%, 42% { transform: rotate(0); }
+  60% { transform: rotate(-360deg); }
+  100% { transform: rotate(-360deg); }
+}
+@keyframes docs-snap-glow {
+  0%, 42% { color: var(--faint); }
+  56% { color: var(--accent); }
+  76%, 100% { color: var(--faint); }
+}
+
+/* Segmented control demo */
+.docs-seg { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--panel); }
+.docs-seg-btn { padding: 6px 14px; border: none; border-radius: var(--r-sm); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.docs-seg-btn.on { background: var(--accent); color: var(--on-accent); font-weight: 500; }
+
+/* Wizard demo */
+.docs-wiz { display: flex; flex-direction: column; gap: 12px; }
+.docs-wiz-tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 3px; }
+.docs-wiz-tab { flex: 1; text-align: center; padding: 6px; border-radius: var(--r-sm); font-size: 11.5px; color: var(--faint); }
+.docs-wiz-tab.on { background: var(--raise); color: var(--text); }
+.docs-wiz-bar { height: 8px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.docs-wiz-fill { height: 100%; width: 0; background: var(--accent); border-radius: 5px; animation: docs-fill 4s var(--ease-out) infinite; }
+.docs-wiz-status { position: relative; height: 16px; font-size: 11.5px; font-family: var(--font-mono); }
+.docs-wiz-working { position: absolute; color: var(--muted); animation: docs-wiz-working 4s infinite; }
+.docs-wiz-done { position: absolute; color: var(--accent); opacity: 0; animation: docs-wiz-done 4s infinite; }
+/* One loop: the bar fills (creating), the status flips working -> done, then the
+   bar empties and it repeats. */
+@keyframes docs-fill {
+  0% { width: 0; opacity: 1; }
+  55% { width: 100%; opacity: 1; }
+  80% { width: 100%; opacity: 1; }
+  88% { width: 100%; opacity: 0; }
+  89% { width: 0; opacity: 0; }
+  100% { width: 0; opacity: 1; }
+}
+@keyframes docs-wiz-working { 0%, 48% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes docs-wiz-done { 0%, 54% { opacity: 0; } 64%, 82% { opacity: 1; } 90%, 100% { opacity: 0; } }
+
+/* Hardware demo — the vCPU and memory readouts step from the old value to the
+   new one, then an "applied" badge flashes, on a repeating loop. */
+.docs-hw { display: flex; flex-direction: column; gap: 12px; }
+.docs-hw-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 13px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--panel); }
+.docs-hw-label { font-size: 12px; color: var(--muted); }
+.docs-hw-value { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 13px; }
+.docs-hw-from { color: var(--faint); }
+.docs-hw-arrow { color: var(--line-2); }
+.docs-hw-to { color: var(--accent); font-weight: 500; opacity: 0; animation: docs-hw-to 4s var(--ease-out) infinite; }
+.docs-hw-apply { position: relative; height: 30px; }
+.docs-hw-btn {
+  position: absolute; display: inline-flex; align-items: center;
+  padding: 6px 16px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent);
+  font-size: 11.5px; font-weight: 500; animation: docs-hw-btn 4s infinite;
+}
+.docs-hw-done {
+  position: absolute; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-family: var(--font-mono); color: var(--accent); opacity: 0; animation: docs-hw-done 4s infinite;
+}
+.docs-hw-done::before { content: '\2713'; font-weight: 700; }
+/* The "to" value fades in, the button flashes as if pressed, then a done badge
+   confirms — then it resets and repeats. The button and the done badge share the
+   same spot, so their visible windows must never overlap: the button stays hidden
+   the whole time the badge is showing, and only returns once it is fully gone. */
+@keyframes docs-hw-to { 0%, 25% { opacity: 0; } 40%, 100% { opacity: 1; } }
+@keyframes docs-hw-btn {
+  0%, 44% { opacity: 1; transform: none; }
+  50% { opacity: 1; transform: scale(0.94); }
+  54% { opacity: 0; transform: scale(0.94); }
+  92% { opacity: 0; transform: none; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes docs-hw-done { 0%, 56% { opacity: 0; } 66%, 86% { opacity: 1; } 92%, 100% { opacity: 0; } }
+
+/* Storage demo — a capacity bar grows from the old size to a larger one, the
+   "to" value fades in, then a done badge confirms, on a repeating loop. The
+   Resize button and the done badge share a spot, so their visible windows must
+   never overlap (same rule as the hardware demo). */
+.docs-store { display: flex; flex-direction: column; gap: 12px; }
+.docs-store-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.docs-store-name { font-size: 12px; font-family: var(--font-mono); color: var(--muted); }
+.docs-store-size { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 13px; }
+.docs-store-from { color: var(--faint); }
+.docs-store-arrow { color: var(--line-2); }
+.docs-store-to { color: var(--accent); font-weight: 500; opacity: 0; animation: docs-hw-to 4s var(--ease-out) infinite; }
+.docs-store-bar { height: 8px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.docs-store-fill { height: 100%; width: 50%; background: var(--accent); border-radius: 5px; animation: docs-store-fill 4s var(--ease-out) infinite; }
+.docs-store-apply { position: relative; height: 30px; }
+.docs-store-btn {
+  position: absolute; display: inline-flex; align-items: center;
+  padding: 6px 16px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent);
+  font-size: 11.5px; font-weight: 500; animation: docs-hw-btn 4s infinite;
+}
+.docs-store-done {
+  position: absolute; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-family: var(--font-mono); color: var(--accent); opacity: 0; animation: docs-hw-done 4s infinite;
+}
+.docs-store-done::before { content: '\2713'; font-weight: 700; }
+/* The bar starts half full (10 of 20 GB) and grows to full as the disk resizes. */
+@keyframes docs-store-fill { 0%, 25% { width: 50%; } 55%, 100% { width: 100%; } }
+
+/* Add-disk demo — a SATA port strip. Two ports sit filled; the third is dashed
+   and empty, then fills with the accent as the new disk lands. The caption swaps
+   "free port" for "new disk attached" on the same loop. */
+.docs-addport { display: flex; flex-direction: column; gap: 12px; }
+.docs-addport-strip { display: flex; gap: 8px; }
+.docs-addport-slot {
+  flex: 1; text-align: center; padding: 9px 6px; border-radius: var(--r-sm);
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.03em;
+  border: 1px solid var(--line-2); color: var(--muted); background: var(--panel);
+}
+.docs-addport-slot.on { border-color: var(--line-2); color: var(--faint); }
+.docs-addport-slot.new {
+  border-style: dashed; color: var(--faint);
+  animation: docs-addport-fill 4s var(--ease-out) infinite;
+}
+.docs-addport-caption { position: relative; height: 15px; font-size: 11.5px; font-family: var(--font-mono); }
+.docs-addport-free { position: absolute; color: var(--faint); animation: docs-addport-freecap 4s infinite; }
+.docs-addport-attached { position: absolute; color: var(--accent); opacity: 0; animation: docs-addport-attcap 4s infinite; }
+@keyframes docs-addport-fill {
+  0%, 30% { border-style: dashed; border-color: var(--line-2); background: var(--panel); color: var(--faint); }
+  50%, 100% { border-style: solid; border-color: var(--accent-line, var(--accent)); background: var(--accent-soft, var(--panel)); color: var(--accent); }
+}
+/* The two captions share one spot, so their visible windows must not overlap:
+   "free" is fully gone before "attached" begins to appear. */
+@keyframes docs-addport-freecap { 0%, 34% { opacity: 1; } 42%, 100% { opacity: 0; } }
+@keyframes docs-addport-attcap { 0%, 44% { opacity: 0; } 52%, 100% { opacity: 1; } }
+
+/* Detach vs delete demo — two quiet cards. Detach: the disk drifts away but the
+   file line stays. Delete: the file line fades to a dashed ghost. The delete card
+   carries the app's danger red, thinly, so the irreversible path reads at a glance. */
+.docs-rm { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.docs-rm-card { padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--panel); display: flex; flex-direction: column; gap: 10px; }
+.docs-rm-card.danger { border-left: 2px solid rgba(229, 72, 77, 0.5); }
+.docs-rm-label { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.docs-rm-card.danger .docs-rm-label { color: #e5484d; }
+.docs-rm-flow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11.5px; }
+.docs-rm-disk { padding: 4px 9px; border: 1px solid var(--line-2); border-radius: var(--r-sm); color: var(--muted); background: var(--raise, var(--panel)); }
+.docs-rm-disk.leaving { animation: docs-rm-leave 4s var(--ease-out) infinite; }
+.docs-rm-file { color: var(--faint); }
+.docs-rm-file.erasing { color: #e5484d; animation: docs-rm-erase 4s infinite; }
+/* The disk chip slides out and dims, then returns as the loop repeats. */
+@keyframes docs-rm-leave {
+  0%, 20% { transform: none; opacity: 1; }
+  55% { transform: translateX(10px); opacity: 0.35; }
+  80% { transform: translateX(10px); opacity: 0.35; }
+  100% { transform: none; opacity: 1; }
+}
+/* The file label on the delete side fades to a struck-through ghost. */
+@keyframes docs-rm-erase {
+  0%, 30% { opacity: 1; text-decoration: none; }
+  60%, 90% { opacity: 0.4; text-decoration: line-through; }
+  100% { opacity: 1; text-decoration: none; }
+}
+
+/* Personalize demo (live controls) */
+.docs-personalize { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.docs-accent-row { display: inline-flex; gap: 7px; }
+.docs-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset; transition: transform 0.12s; }
+.docs-swatch:hover { transform: scale(1.12); }
+.docs-swatch.on { border-color: var(--text); }
+
+/* Tip callout */
+.docs-tipbox {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--accent-line, var(--line-2));
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--accent-soft, var(--panel));
+}
+.docs-tipbox-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+.docs-tipbox p { margin: 0; color: var(--text); font-size: 13.5px; line-height: 1.6; }
+
+/* Author signature — the manual signs off the way the app boots: the brand
+   mark assembles, then the prompt types the author line. No card, no noise. */
+.docs-sign {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 56px;
+  padding: 26px 2px 10px;
+  border-top: 1px solid var(--line-2);
+  min-height: 66px;
+}
+.docs-sign-mark { width: 30px; height: 30px; flex: none; }
+.docs-sign-type {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  white-space: pre;
+}
+.docs-sign-prompt { color: var(--accent); font-weight: 600; margin-right: 6px; }
+.docs-sign-name { color: var(--text); font-weight: 500; }
+.docs-sign-caret {
+  align-self: center;
+  width: 7px;
+  height: 1.05em;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: tv-caret 1.05s steps(1) infinite;
+}
+
+@media (max-width: 720px) {
+  .docs { grid-template-columns: 1fr; }
+  .docs-nav { position: static; }
+  .docs-cards, .docs-two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-card, .docs-steps li, .docs-boot-logo, .docs-boot-line, .docs-screen-glow,
+  .docs-drop-file, .docs-drop-target, .docs-snap-node.snap, .docs-snap-restore, .docs-snap-restore::before,
+  .docs-wiz-fill, .docs-wiz-working, .docs-wiz-done,
+  .docs-hw-to, .docs-hw-btn, .docs-hw-done,
+  .docs-store-to, .docs-store-fill, .docs-store-btn, .docs-store-done,
+  .docs-addport-slot.new, .docs-addport-free, .docs-addport-attached,
+  .docs-rm-disk.leaving, .docs-rm-file.erasing { animation: none !important; opacity: 1 !important; }
+  .docs-wiz-fill { width: 100%; }
+  .docs-store-fill { width: 100%; }
+  .docs-hw-done, .docs-store-done, .docs-addport-free { opacity: 0 !important; }
+  .docs-sign-caret { animation: none; }
+}

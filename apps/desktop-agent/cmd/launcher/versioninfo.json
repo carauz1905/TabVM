@@ -1,0 +1,19 @@
+{
+  "FixedFileInfo": {
+    "FileVersion":    { "Major": 0, "Minor": 1, "Patch": 0, "Build": 0 },
+    "ProductVersion": { "Major": 0, "Minor": 1, "Patch": 0, "Build": 0 }
+  },
+  "StringFileInfo": {
+    "CompanyName": "TabVM",
+    "ProductName": "TabVM",
+    "FileDescription": "TabVM",
+    "FileVersion": "0.1.0.0",
+    "ProductVersion": "0.1.0.0",
+    "LegalCopyright": "TabVM",
+    "OriginalFilename": "TabVM.exe",
+    "InternalName": "TabVM"
+  },
+  "VarFileInfo": {
+    "Translation": { "LangID": "0409", "CharsetID": "04B0" }
+  }
+}

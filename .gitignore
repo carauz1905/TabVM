@@ -1,0 +1,57 @@
+# ---- Build outputs ----
+bin/
+obj/
+out/
+dist/
+apps/web-ui/dist/
+
+# The agent's embedded web UI is GENERATED from apps/web-ui by `npm run build`.
+# It is required at compile time by //go:embed but must never be committed —
+# regenerate it on a fresh clone with `npm ci && npm run build`.
+apps/desktop-agent/internal/webui/dist/
+
+# ---- Compiled binaries ----
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# ---- Dependencies ----
+node_modules/
+
+# ---- Installed skills (reproducible from skills-lock.json) ----
+.agents/skills/
+.claude/skills/
+.claude/settings.local.json
+
+# ---- Agent / tooling local state ----
+.playwright-mcp/
+
+# ---- IDE ----
+.vs/
+.vscode/
+*.user
+*.suo
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Environment / secrets ----
+.env
+.env.local
+*.pem
+*.key
+
+# ---- SQLite ----
+*.db
+*.db-journal
+
+# ---- Local verification screenshots (root-level dev artifacts) ----
+/*.png
