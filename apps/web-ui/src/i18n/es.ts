@@ -339,6 +339,13 @@ export const es: Record<string, string> = {
   'Activity is unavailable. The agent may not expose the log yet.':
     'La actividad no está disponible. Puede que el agente aún no exponga el registro.',
   'No recorded operations yet.': 'Aún no hay operaciones registradas.',
+  'No additional detail was recorded.': 'No se registró ningún detalle adicional.',
+  Succeeded: 'Correcto',
+  Failed: 'Falló',
+  'filter…': 'filtrar…',
+  'Filter activity': 'Filtrar actividad',
+  'Clear filter': 'Limpiar filtro',
+  'No matches.': 'Sin resultados.',
 };
 
 // Exact-match localization for backend-produced errors and notifications.
