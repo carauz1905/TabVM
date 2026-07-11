@@ -1041,63 +1041,26 @@ body {
 @keyframes gdz-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .gdz-toast .spin { animation: none; } }
 
-/* Serial terminal — full-screen ?terminal= tab (TerminalTab) */
+/* Serial terminal — full-screen ?terminal= tab (TerminalTab). A dark full-screen
+   surface (like a real terminal, matching the console's full-screen dark stage)
+   with a floating toolbar revealed on hover — no persistent header bar. */
 .tv-termtab {
-  display: flex;
-  flex-direction: column;
   height: 100vh;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: #0b1015;
+  color: #e6edf3;
 }
-.tv-termtab-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-}
-.tv-termtab-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-}
-.tv-termtab-sub {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 400;
-}
-.tv-termtab-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-}
-.tv-termtab-dot[data-state='open'] {
-  background: #3fb950;
-}
-.tv-termtab-dot[data-state='connecting'] {
-  background: #d29922;
-}
-.tv-termtab-dot[data-state='closed'],
-.tv-termtab-dot[data-state='error'] {
-  background: #e5484d;
-}
-.tv-termtab-headactions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.tv-termtab-body {
-  flex: 1 1 auto;
-  min-height: 0;
+.tv-termtab-stage {
   position: relative;
+  width: 100%;
+  height: 100%;
 }
-.tv-termtab-note {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 13px;
+/* The live terminal fills the whole tab, edge to edge — no box, no border. */
+.tv-termtab-screen {
+  position: absolute;
+  inset: 0;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  background: #0b1015;
 }
 /* Setup/empty states center in the otherwise-empty terminal area. */
 .tv-termtab-center {
@@ -1114,25 +1077,29 @@ body {
   gap: 12px;
   max-width: 380px;
 }
-/* The live terminal fills the whole tab, edge to edge — no box, no border. */
-.tv-termtab-screen {
-  position: absolute;
-  inset: 0;
-  padding: 6px 8px;
-  box-sizing: border-box;
-  background: var(--bg-primary);
+.tv-termtab-note {
+  color: #8b979d;
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
-/* Login-getty floats over the terminal instead of pushing it down. */
+/* Reveal the floating toolbar (reused console-* classes) on hover, like the
+   console tab. */
+.tv-termtab-stage:hover .console-toolbar,
+.console-toolbar:focus-within {
+  opacity: 1;
+  transform: none;
+}
+/* Activation (silent port) floats over the terminal instead of pushing it. */
 .tv-termtab-popover {
   position: absolute;
-  top: 50px;
+  top: 54px;
   right: 12px;
-  z-index: 5;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  z-index: 6;
+  background: #10161b;
+  border: 1px solid #232d33;
   border-radius: 10px;
   padding: 14px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
 }
 .tv-termtab-getty {
   display: flex;

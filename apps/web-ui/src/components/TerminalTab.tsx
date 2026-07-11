@@ -123,18 +123,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
     <div className="tv-termtab">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
 
-      <header className="tv-termtab-bar">
-        <span className="tv-termtab-title">
-          <span className="tv-termtab-dot" data-state={conn} />
-          {vmName}
-          <span className="tv-termtab-sub">{t('serial terminal')}</span>
-        </span>
-        <button type="button" className="tv-abtn" onClick={handleClose}>
-          {t('close')}
-        </button>
-      </header>
-
-      <div className="tv-termtab-body">
+      <div className="tv-termtab-stage">
         {!loaded ? (
           <div className="tv-termtab-center">
             <p className="tv-termtab-note">{t('Loading…')}</p>
@@ -168,6 +157,25 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
             </div>
           </div>
         )}
+
+        <div className="console-toolbar">
+          {conn !== 'open' && (
+            <span className="console-pill">
+              <span className="muted">{conn === 'connecting' ? t('connecting…') : t('disconnected')}</span>
+            </span>
+          )}
+          <button
+            type="button"
+            className="console-tbtn danger"
+            onClick={handleClose}
+            title={t('close')}
+            aria-label={t('close')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {connected && silent && (

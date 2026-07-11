@@ -31,14 +31,17 @@ export function SerialTerminal({
     const cssVar = (name: string, fallback: string) =>
       styles.getPropertyValue(name).trim() || fallback;
 
+    // The terminal is a dark surface regardless of the app theme — like a real
+    // terminal, and matching the console's full-screen dark stage. Only the
+    // cursor picks up the brand accent.
     const term = new Terminal({
       cursorBlink: true,
       fontFamily: cssVar('--font-mono', 'monospace'),
       fontSize: 13,
       theme: {
-        background: cssVar('--bg-primary', '#0b0f14'),
-        foreground: cssVar('--text-primary', '#d8dee9'),
-        cursor: cssVar('--accent', '#7cc9c2'),
+        background: '#0b1015',
+        foreground: '#e6edf3',
+        cursor: cssVar('--accent', '#2fd4a7'),
       },
     });
     const fit = new FitAddon();
