@@ -116,6 +116,11 @@ export const es: Record<string, string> = {
   'Open {vm} terminal in a new tab': 'Abrir la terminal de {vm} en una pestaña nueva',
   'The serial terminal is only available for Linux guests.':
     'La terminal serial solo está disponible para guests Linux.',
+  'The terminal is connected but the guest is not responding.':
+    'La terminal está conectada pero el guest no responde.',
+  'Activate it with a guest account (root or sudo). It is used once.':
+    'Actívala con una cuenta del guest (root o con sudo). Se usa una sola vez.',
+  'Activate terminal': 'Activar terminal',
   'Loading…': 'Cargando…',
   cancel: 'cancelar',
   close: 'cerrar',

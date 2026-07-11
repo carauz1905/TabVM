@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useT } from '../i18n/i18n';
 import { SerialTerminal, type SerialStatus } from './SerialTerminal';
@@ -10,11 +10,14 @@ interface TerminalTabProps {
   vmName: string;
 }
 
+// How long after connecting we wait for any byte from the guest before deciding
+// the port is silent (no login listener) and offering one-tap activation.
+const SILENCE_TIMEOUT_MS = 2800;
+
 // TerminalTab is the whole page when the app is opened at ?terminal=<id>: a
-// full-bleed serial terminal that fills the tab, with only a thin top bar. Setup
-// steps (enable serial, start hint) center in the empty area; the login-getty
-// action lives in the bar and opens a small floating panel so it never pushes
-// the terminal into a box.
+// full-bleed serial terminal that fills the tab. It self-diagnoses: if the guest
+// stays silent after connecting (no login prompt), it surfaces a small, plain-
+// language activation card instead of exposing a permanent "getty" control.
 export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
   const { t } = useT();
   const [status, setStatus] = useState<VmSerialConsoleResponse | null>(null);
@@ -22,11 +25,15 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conn, setConn] = useState<SerialStatus>('connecting');
-  const [gettyOpen, setGettyOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+
+  // Silence self-diagnosis + one-tap activation.
+  const [silent, setSilent] = useState(false);
+  const [termKey, setTermKey] = useState(0);
+  const receivedRef = useRef(false);
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
-  const [gettyMsg, setGettyMsg] = useState<string | null>(null);
-  const [showSplash, setShowSplash] = useState(true);
+  const [actMsg, setActMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const previous = document.title;
@@ -50,6 +57,22 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
     void load();
   }, [load]);
 
+  const handleData = useCallback(() => {
+    receivedRef.current = true;
+    setSilent(false);
+  }, []);
+
+  // After each (re)connect, wait a beat; if the guest never spoke, it is silent.
+  useEffect(() => {
+    if (conn !== 'open') return;
+    receivedRef.current = false;
+    setSilent(false);
+    const id = window.setTimeout(() => {
+      if (!receivedRef.current) setSilent(true);
+    }, SILENCE_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [conn, termKey]);
+
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
@@ -64,17 +87,21 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
     }
   };
 
-  const enableGetty = async () => {
+  // Activate the login on a silent port, then reconnect so the fresh prompt shows.
+  const activate = async () => {
     setBusy(true);
-    setGettyMsg(null);
+    setActMsg(null);
     try {
       const result = await api.enableSerialGetty(vmId, user, pass);
-      setGettyMsg(result.message);
+      setActMsg(result.message);
       if (result.success) {
         setPass('');
+        receivedRef.current = false;
+        setSilent(false);
+        setTermKey((k) => k + 1);
       }
     } catch (err) {
-      setGettyMsg(err instanceof Error ? err.message : String(err));
+      setActMsg(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -102,16 +129,9 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
           {vmName}
           <span className="tv-termtab-sub">{t('serial terminal')}</span>
         </span>
-        <div className="tv-termtab-headactions">
-          {connected && (
-            <button type="button" className="tv-abtn" onClick={() => setGettyOpen((v) => !v)}>
-              {t('Enable login (getty)')}
-            </button>
-          )}
-          <button type="button" className="tv-abtn" onClick={handleClose}>
-            {t('close')}
-          </button>
-        </div>
+        <button type="button" className="tv-abtn" onClick={handleClose}>
+          {t('close')}
+        </button>
       </header>
 
       <div className="tv-termtab-body">
@@ -125,7 +145,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
           </div>
         ) : connected ? (
           <div className="tv-termtab-screen">
-            <SerialTerminal vmId={vmId} onStatus={setConn} />
+            <SerialTerminal key={termKey} vmId={vmId} onStatus={setConn} onData={handleData} />
           </div>
         ) : (
           <div className="tv-termtab-center">
@@ -150,22 +170,23 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
         )}
       </div>
 
-      {connected && gettyOpen && (
+      {connected && silent && (
         <div className="tv-termtab-popover">
           <form
             className="tv-termtab-getty"
             onSubmit={(e) => {
               e.preventDefault();
-              void enableGetty();
+              void activate();
             }}
           >
-            <p className="tv-termtab-note">{t('Turns on a login prompt on the serial port. Needs a root or sudo account.')}</p>
+            <p className="tv-termtab-note">{t('The terminal is connected but the guest is not responding.')}</p>
+            <p className="tv-termtab-note">{t('Activate it with a guest account (root or sudo). It is used once.')}</p>
             <input className="net-select" type="text" placeholder={t('Guest username')} value={user} autoComplete="off" onChange={(e) => setUser(e.target.value)} />
             <input className="net-select" type="password" placeholder={t('Guest password')} value={pass} autoComplete="off" onChange={(e) => setPass(e.target.value)} />
             <button type="submit" className="net-apply" disabled={busy || !user || !pass}>
-              {t('Enable login')}
+              {t('Activate terminal')}
             </button>
-            {gettyMsg && <p className="tv-termtab-note">{gettyMsg}</p>}
+            {actMsg && <p className="tv-termtab-note">{actMsg}</p>}
           </form>
         </div>
       )}

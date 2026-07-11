@@ -13,9 +13,13 @@ export type SerialStatus = 'connecting' | 'open' | 'closed' | 'error';
 export function SerialTerminal({
   vmId,
   onStatus,
+  onData,
 }: {
   vmId: string;
   onStatus?: (status: SerialStatus) => void;
+  // Fired when any bytes arrive from the guest, so the parent can tell a live
+  // session (a login prompt or shell replies) from a silent one (no getty).
+  onData?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +57,7 @@ export function SerialTerminal({
       socket.send(new Uint8Array([0x0d]));
     };
     socket.onmessage = (event) => {
+      onData?.();
       if (typeof event.data === 'string') {
         term.write(event.data);
       } else {
@@ -90,7 +95,7 @@ export function SerialTerminal({
       socket.close();
       term.dispose();
     };
-  }, [vmId, onStatus]);
+  }, [vmId, onStatus, onData]);
 
   return <div ref={containerRef} className="tv-serial-term" />;
 }
