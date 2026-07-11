@@ -49,6 +49,7 @@ type Service interface {
 	ImportAppliance(ctx context.Context, ovaPath, name string) (models.VmCreateResponse, error)
 	CreateVmUnattended(ctx context.Context, req models.VmCreateRequest) (models.VmCreateResponse, error)
 	ForcePowerOff(ctx context.Context, id string) error
+	CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error)
 }
 
 // NotDiscoveredError indicates that VirtualBox/VBoxManage could not be located.

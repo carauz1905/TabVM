@@ -38,6 +38,14 @@ var supportedOsTypes = map[string]bool{
 	"Windows2022_64": true,
 }
 
+// manualOsTypes is the allow-list of guest OS types offered for manual installs.
+// These are generic VirtualBox ostypes that work without an unattended template;
+// the user installs the OS interactively from the attached ISO.
+var manualOsTypes = map[string]bool{
+	"Linux_64": true,
+	"Other_64": true,
+}
+
 // createTimeout bounds a single quick VBoxManage step (createvm, modifyvm, …).
 const createStepTimeout = 2 * time.Minute
 
@@ -47,6 +55,10 @@ const createMediumTimeout = 5 * time.Minute
 // importTimeout bounds a full appliance import, which decompresses and writes a
 // whole disk image and can take many minutes.
 const importTimeout = 30 * time.Minute
+
+// cleanupStepTimeout bounds each best-effort cleanup command after a failed
+// create, so cleanup can never hang a background job indefinitely.
+const cleanupStepTimeout = 2 * time.Minute
 
 // ImportAppliance imports a prebuilt .ova/.ovf appliance (which already ships
 // Guest Additions) under the given VM name. It is long-running; callers run it
@@ -141,6 +153,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	for _, step := range steps {
 		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
 			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
+			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
 		}
 	}
@@ -149,6 +162,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	// it never appears in the process argument list.
 	pwFile, err := os.CreateTemp("", "tabvm-unatt-*.txt")
 	if err != nil {
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, fmt.Errorf("creating credential file: %w", err)
 	}
 	pwPath := pwFile.Name()
@@ -156,12 +170,14 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	_ = pwFile.Chmod(0o600)
 	if _, err := pwFile.WriteString(req.Password + "\n"); err != nil {
 		pwFile.Close()
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, fmt.Errorf("writing credential file: %w", err)
 	}
 	pwFile.Close()
 
 	if err := s.runControlCommandTimeout(ctx, path, unattendedInstallArgs(uuid, req, pwPath), "configuring unattended install", createStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage unattended install failed.")
+		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, err
 	}
 
@@ -172,6 +188,110 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 		Name:    req.Name,
 		Message: fmt.Sprintf("%q created. Start it to run the automated install with Guest Additions.", req.Name),
 	}, nil
+}
+
+// CreateVmManual creates a new VM with the installer ISO attached as a DVD and
+// no unattended install configured, for OSes without an unattended template
+// (e.g. Alpine). It is long-running; callers run it on a background job. The
+// user starts the VM and installs the OS interactively via the TabVM console.
+func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error) {
+	if err := validateVmName(req.Name); err != nil {
+		return models.VmCreateResponse{}, err
+	}
+	if !manualOsTypes[req.OsType] {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Unsupported OS type for manual install."}
+	}
+	if err := validateIsoPath(req.IsoPath); err != nil {
+		return models.VmCreateResponse{}, err
+	}
+	if req.MemoryMB < 512 || req.MemoryMB > 65536 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Memory must be between 512 MB and 65536 MB."}
+	}
+	if req.Cpus < 1 || req.Cpus > 16 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "CPU count must be between 1 and 16."}
+	}
+	if req.DiskGB < 8 || req.DiskGB > 512 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Disk size must be between 8 GB and 512 GB."}
+	}
+
+	path, err := s.resolveVBoxManage(ctx)
+	if err != nil {
+		return models.VmCreateResponse{}, err
+	}
+
+	// 1. Register the VM and learn its UUID + settings folder in one call.
+	createOut, err := s.runCapture(ctx, path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
+	if err != nil {
+		s.logOperation(ctx, "", "vm.create", false, "VBoxManage createvm failed.")
+		return models.VmCreateResponse{}, err
+	}
+	uuid, settingsFile := parseCreateVmOutput(createOut)
+	if uuid == "" {
+		return models.VmCreateResponse{}, &ExecutionError{ExitCode: -1, Message: "Could not determine the new VM identifier."}
+	}
+	diskPath := filepath.Join(filepath.Dir(settingsFile), req.Name+".vdi")
+
+	// 2. Hardware, disk, controller, and the installer ISO as a DVD. The disk
+	// sits on port 0 and the ISO on port 1, so the VM boots the installer first
+	// and falls back to the disk once the install is done and the ISO ejected.
+	steps := []struct {
+		args    []string
+		desc    string
+		timeout time.Duration
+	}{
+		{modifyVmArgs(uuid, req.OsType, req.MemoryMB, req.Cpus), "configuring VM", createStepTimeout},
+		{createDiskArgs(diskPath, req.DiskGB), "creating disk", createMediumTimeout},
+		{storageCtlArgs(uuid), "adding storage controller", createStepTimeout},
+		{storageAttachDiskArgs(uuid, diskPath), "attaching disk", createStepTimeout},
+		{storageAttachDvdArgs(uuid, req.IsoPath), "attaching installer ISO", createStepTimeout},
+	}
+	for _, step := range steps {
+		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
+			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
+			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
+			return models.VmCreateResponse{}, err
+		}
+	}
+
+	s.logOperation(ctx, uuid, "vm.create", true, "")
+	return models.VmCreateResponse{
+		Success: true,
+		VMID:    uuid,
+		Name:    req.Name,
+		Message: fmt.Sprintf("%q created. Start it and install the OS from the attached ISO.", req.Name),
+	}, nil
+}
+
+// cleanupFailedCreate best-effort undoes a create that failed after
+// `createvm --register` succeeded. It unregisters the VM (deleting any
+// attached media), then reclaims a disk image that was created but never
+// attached: first via `closemedium --delete`, then by removing the file
+// directly if it still exists. Failures are logged and never returned, so the
+// caller's original error is always preserved.
+func (s *service) cleanupFailedCreate(ctx context.Context, path, uuid, diskPath string) {
+	// The create may have failed because ctx was cancelled or timed out;
+	// cleanup still has to run, bounded by its own per-step timeouts.
+	ctx = context.WithoutCancel(ctx)
+
+	if err := s.runControlCommandTimeout(ctx, path, unregisterVmArgs(uuid), "cleaning up a failed create (unregister)", cleanupStepTimeout); err != nil {
+		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage unregistervm cleanup failed.")
+	}
+	if diskPath == "" {
+		return
+	}
+	if _, err := statPath(diskPath); err != nil {
+		return // No orphaned disk image left behind.
+	}
+	// The disk file survived the unregister, so it was never attached. Release
+	// it from the media registry and delete it.
+	if err := s.runControlCommandTimeout(ctx, path, closeMediumDeleteArgs(diskPath), "cleaning up a failed create (disk)", cleanupStepTimeout); err != nil {
+		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage closemedium cleanup failed.")
+	}
+	if _, err := statPath(diskPath); err == nil {
+		if err := os.Remove(diskPath); err != nil {
+			s.logOperation(ctx, uuid, "vm.create.cleanup", false, "Removing the orphaned disk image failed.")
+		}
+	}
 }
 
 // resolveVmUUID looks up a VM's UUID by name after a create/import. Best-effort;
@@ -287,6 +407,19 @@ func storageAttachDiskArgs(uuid, diskPath string) []string {
 		"--device", "0",
 		"--type", "hdd",
 		"--medium", diskPath,
+	}
+}
+
+// storageAttachDvdArgs attaches the installer ISO as a DVD on the second SATA
+// port (the controller is created with --portcount 2).
+func storageAttachDvdArgs(uuid, isoPath string) []string {
+	return []string{
+		"storageattach", uuid,
+		"--storagectl", "SATA",
+		"--port", "1",
+		"--device", "0",
+		"--type", "dvddrive",
+		"--medium", isoPath,
 	}
 }
 

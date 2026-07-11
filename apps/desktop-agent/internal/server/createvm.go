@@ -80,6 +80,25 @@ func (s *Server) handleCreateVm(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
 }
 
+// handleCreateVmManual accepts a manual-install create request (VM + disk +
+// installer ISO attached as a DVD, no unattended setup) and starts it as a
+// background job, returning the job id to poll.
+func (s *Server) handleCreateVmManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmCreateManualRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	jobID := s.startCreateJob(body.Name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.CreateVmManual(ctx, body)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
 // handleCreateStatus returns the current state of a background create/import job.
 func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -116,6 +135,20 @@ func (s *Server) startCreateJob(name string, work func(ctx context.Context) (mod
 	s.createMu.Unlock()
 
 	go func() {
+		// A panic anywhere in the create call chain must not kill the whole
+		// agent: mark the job failed with a generic message and keep serving.
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("background create/import job panicked", "jobId", jobID, "panic", r)
+				s.createMu.Lock()
+				defer s.createMu.Unlock()
+				if job := s.createJobs[jobID]; job != nil {
+					job.State = "error"
+					job.Message = "Internal server error."
+				}
+			}
+		}()
+
 		ctx, cancel := context.WithTimeout(context.Background(), createJobTimeout)
 		defer cancel()
 		resp, err := work(ctx)

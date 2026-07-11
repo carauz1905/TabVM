@@ -261,13 +261,14 @@ export function NetworkModeDemo({ modes }: { modes: { id: string; label: string 
   );
 }
 
-// WizardDemo scripts the create flow: two tabs and a filling progress bar.
-export function WizardDemo({ playKey, importLabel, installLabel, workingLabel, doneLabel }: { playKey: number; importLabel: string; installLabel: string; workingLabel: string; doneLabel: string }) {
+// WizardDemo scripts the create flow: the mode tabs and a filling progress bar.
+export function WizardDemo({ playKey, importLabel, installLabel, manualLabel, workingLabel, doneLabel }: { playKey: number; importLabel: string; installLabel: string; manualLabel?: string; workingLabel: string; doneLabel: string }) {
   return (
     <div className="docs-wiz" key={playKey}>
       <div className="docs-wiz-tabs">
         <span className="docs-wiz-tab on">{importLabel}</span>
         <span className="docs-wiz-tab">{installLabel}</span>
+        {manualLabel ? <span className="docs-wiz-tab">{manualLabel}</span> : null}
       </div>
       <div className="docs-wiz-bar">
         <div className="docs-wiz-fill" />

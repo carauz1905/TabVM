@@ -266,10 +266,13 @@ export const es: Record<string, string> = {
   'New virtual machine': 'Nueva máquina virtual',
   'Import image (.ova)': 'Importar imagen (.ova)',
   'Install from ISO': 'Instalar desde ISO',
+  'Other OS (manual install)': 'Otro SO (instalación manual)',
   'Import a prebuilt appliance that already has Guest Additions. Best for Kali. One click, no install.':
     'Importa un appliance prehorneado que ya tiene Guest Additions. Ideal para Kali. Un clic, sin instalación.',
   'Create a VM and run an automated Ubuntu, Debian or Windows install with Guest Additions included. Kali is not supported here.':
     'Crea una VM y ejecuta una instalación automatizada de Ubuntu, Debian o Windows con Guest Additions incluido. Kali no está soportado aquí.',
+  'Create a VM with any bootable ISO attached. You install the OS yourself in the console; Guest Additions are not installed automatically.':
+    'Crea una VM con cualquier ISO arrancable adjunta. Usted instala el sistema operativo en la consola; Guest Additions no se instala automáticamente.',
   'VM name': 'Nombre de la VM',
   'Choose .ova/.ovf…': 'Elegir .ova/.ovf…',
   'No file chosen': 'Ningún archivo elegido',
@@ -286,10 +289,18 @@ export const es: Record<string, string> = {
     'Importando el appliance… esto puede tardar varios minutos.',
   'Creating the VM and preparing the automated install…':
     'Creando la VM y preparando la instalación automatizada…',
+  'Creating the VM and attaching the installer ISO…':
+    'Creando la VM y adjuntando la ISO de instalación…',
   'The VM is ready. Start it from the list.':
     'La VM está lista. Iníciela desde la lista.',
   'Start the VM to run the install; watch it in the console.':
     'Inicie la VM para ejecutar la instalación; obsérvela en la consola.',
+  'Start the VM and install the OS yourself in the console.':
+    'Inicie la VM e instale el sistema operativo usted mismo en la consola.',
+  'The creation job is no longer available. The agent may have restarted; check the machine list before retrying.':
+    'El trabajo de creación ya no está disponible. Es posible que el agente se haya reiniciado; revise la lista de máquinas antes de reintentar.',
+  'Lost contact with the agent while creating the VM. Check the machine list before retrying.':
+    'Se perdió el contacto con el agente durante la creación de la VM. Revise la lista de máquinas antes de reintentar.',
 
   // ----- ActivityView -----
   'Recorded machine operations, newest first.':
@@ -368,6 +379,8 @@ export const esServerExact: Record<string, string> = {
     'El nombre de la VM debe tener entre 1 y 64 caracteres con letras, dígitos, espacio, punto, guion o guion bajo.',
   'Unsupported OS type for unattended install.':
     'Tipo de SO no soportado para instalación automatizada.',
+  'Unsupported OS type for manual install.':
+    'Tipo de SO no soportado para instalación manual.',
   'The installer must be a .iso file.': 'El instalador debe ser un archivo .iso.',
   'The appliance must be a .ova or .ovf file.': 'El appliance debe ser un archivo .ova o .ovf.',
   'A host file path is required.': 'Se requiere la ruta de un archivo del anfitrión.',
@@ -407,6 +420,10 @@ export const esServerPatterns: Array<[RegExp, string]> = [
   [
     /^"(.+)" created\. Start it to run the automated install with Guest Additions\.$/,
     '"$1" creada. Iníciela para ejecutar la instalación automatizada con Guest Additions.',
+  ],
+  [
+    /^"(.+)" created\. Start it and install the OS from the attached ISO\.$/,
+    '"$1" creada. Iníciela e instale el sistema operativo desde la ISO adjunta.',
   ],
   [
     /^Disk resized to (\d+) MB\. Expand the partition inside the guest to use the new space\.$/,

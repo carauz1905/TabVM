@@ -81,6 +81,7 @@ export interface DocsStrings {
     lead: string;
     importCard: Step;
     installCard: Step;
+    manualCard: Step;
     note: string;
   };
   personalize: {
@@ -218,7 +219,7 @@ const en: DocsStrings = {
     tip: 'Use Host-only when you are testing malware or an untrusted image — the guest can talk to your computer but never reaches the internet.',
   },
   create: {
-    lead: 'The New VM wizard has two paths, both leaving you with Guest Additions already working.',
+    lead: 'The New VM wizard has three paths. The first two leave you with Guest Additions already working; the third gives you full control for any other OS.',
     importCard: {
       title: 'Import an image',
       body: 'Point it at a prebuilt .ova appliance (for example a Kali lab image). One click imports it, ready to start — Guest Additions already inside.',
@@ -226,6 +227,10 @@ const en: DocsStrings = {
     installCard: {
       title: 'Install from ISO',
       body: 'Choose an Ubuntu, Debian or Windows ISO, set the size and account, and TabVM runs the whole install automatically with Guest Additions included.',
+    },
+    manualCard: {
+      title: 'Other OS (manual install)',
+      body: 'Pick any bootable ISO and TabVM creates the machine with the installer attached — you install the OS yourself in the console. Guest Additions are not installed automatically; use the "Install Guest Additions" button afterwards.',
     },
     note: 'Kali is offered through import only — VirtualBox has no automated-install template for it.',
   },
@@ -376,7 +381,7 @@ const es: DocsStrings = {
     tip: 'Usa Solo anfitrión cuando pruebas malware o una imagen que no es de confianza: el guest habla con tu computadora pero nunca llega a internet.',
   },
   create: {
-    lead: 'El asistente Nueva VM tiene dos caminos, y ambos te dejan con Guest Additions ya funcionando.',
+    lead: 'El asistente Nueva VM tiene tres caminos. Los dos primeros te dejan con Guest Additions ya funcionando; el tercero te da control total para cualquier otro sistema operativo.',
     importCard: {
       title: 'Importar una imagen',
       body: 'Apúntalo a un appliance .ova prehorneado (por ejemplo una imagen de laboratorio Kali). Un clic la importa, lista para iniciar, con Guest Additions ya dentro.',
@@ -384,6 +389,10 @@ const es: DocsStrings = {
     installCard: {
       title: 'Instalar desde ISO',
       body: 'Elige una ISO de Ubuntu, Debian o Windows, define el tamaño y la cuenta, y TabVM ejecuta toda la instalación automáticamente con Guest Additions incluido.',
+    },
+    manualCard: {
+      title: 'Otro SO (instalación manual)',
+      body: 'Elige cualquier ISO arrancable y TabVM crea la máquina con el instalador adjunto: tú instalas el sistema operativo en la consola. Guest Additions no se instala automáticamente; usa después el botón "Instalar Guest Additions".',
     },
     note: 'Kali se ofrece solo por importación: VirtualBox no tiene plantilla de instalación automatizada para él.',
   },

@@ -389,6 +389,19 @@ type VmCreateRequest struct {
 	Hostname string `json:"hostname"`
 }
 
+// VmCreateManualRequest is the body for POST /api/vms/create-manual — creating
+// a VM with the installer ISO attached as a DVD, for OSes without an unattended
+// template. The user installs interactively via the console; no guest
+// credentials are involved.
+type VmCreateManualRequest struct {
+	Name     string `json:"name"`
+	OsType   string `json:"osType"`
+	IsoPath  string `json:"isoPath"`
+	MemoryMB int    `json:"memoryMb"`
+	Cpus     int    `json:"cpus"`
+	DiskGB   int    `json:"diskGb"`
+}
+
 // VmCreateResponse is what the service returns once a create/import completes.
 type VmCreateResponse struct {
 	Success bool   `json:"success"`

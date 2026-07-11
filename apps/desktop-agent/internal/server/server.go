@@ -83,6 +83,7 @@ func (s *Server) Handler() http.Handler {
 	// subtree so they are not swallowed by the per-ID handler.
 	apiMux.HandleFunc("/vms/import", s.handleImportVm)
 	apiMux.HandleFunc("/vms/create", s.handleCreateVm)
+	apiMux.HandleFunc("/vms/create-manual", s.handleCreateVmManual)
 	apiMux.HandleFunc("/vms/create/status", s.handleCreateStatus)
 	apiMux.HandleFunc("/vms/", s.handleVmByID)
 

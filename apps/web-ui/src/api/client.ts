@@ -12,6 +12,7 @@ import type {
   VmCreateJobResponse,
   VmCreateStatusResponse,
   VmCreateRequest,
+  VmCreateManualRequest,
   LocalStateStatusResponse,
   NetworkInterface,
   SharedFolder,
@@ -556,6 +557,13 @@ export const api = {
   // Additions baked in; poll getCreateStatus.
   createVm: (req: VmCreateRequest) =>
     request<VmCreateJobResponse>('/api/vms/create', isVmCreateJobResponse, {
+      method: 'POST',
+      body: req as unknown as Record<string, unknown>,
+    }),
+  // createVmManual starts a background manual-install create (VM + disk + ISO
+  // attached as a DVD, no unattended setup); poll getCreateStatus.
+  createVmManual: (req: VmCreateManualRequest) =>
+    request<VmCreateJobResponse>('/api/vms/create-manual', isVmCreateJobResponse, {
       method: 'POST',
       body: req as unknown as Record<string, unknown>,
     }),

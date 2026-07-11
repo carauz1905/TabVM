@@ -283,12 +283,17 @@ export function DocsView() {
               <h4>{d.create.installCard.title}</h4>
               <p>{d.create.installCard.body}</p>
             </div>
+            <div className="docs-card">
+              <h4>{d.create.manualCard.title}</h4>
+              <p>{d.create.manualCard.body}</p>
+            </div>
           </div>
           <DemoStage caption={t('New virtual machine')}>
             <WizardDemo
               playKey={play('wiz')}
               importLabel={t('Import image (.ova)')}
               installLabel={t('Install from ISO')}
+              manualLabel={t('Other OS (manual install)')}
               workingLabel={t('Creating the VM and preparing the automated install…')}
               doneLabel={t('The VM is ready. Start it from the list.')}
             />
