@@ -38,6 +38,14 @@ var supportedOsTypes = map[string]bool{
 	"Windows2022_64": true,
 }
 
+// manualOsTypes is the allow-list of guest OS types offered for manual installs.
+// These are generic VirtualBox ostypes that work without an unattended template;
+// the user installs the OS interactively from the attached ISO.
+var manualOsTypes = map[string]bool{
+	"Linux_64": true,
+	"Other_64": true,
+}
+
 // createTimeout bounds a single quick VBoxManage step (createvm, modifyvm, …).
 const createStepTimeout = 2 * time.Minute
 
@@ -174,6 +182,77 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	}, nil
 }
 
+// CreateVmManual creates a new VM with the installer ISO attached as a DVD and
+// no unattended install configured, for OSes without an unattended template
+// (e.g. Alpine). It is long-running; callers run it on a background job. The
+// user starts the VM and installs the OS interactively via the TabVM console.
+func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error) {
+	if err := validateVmName(req.Name); err != nil {
+		return models.VmCreateResponse{}, err
+	}
+	if !manualOsTypes[req.OsType] {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Unsupported OS type for manual install."}
+	}
+	if err := validateIsoPath(req.IsoPath); err != nil {
+		return models.VmCreateResponse{}, err
+	}
+	if req.MemoryMB < 512 || req.MemoryMB > 65536 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Memory must be between 512 MB and 65536 MB."}
+	}
+	if req.Cpus < 1 || req.Cpus > 16 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "CPU count must be between 1 and 16."}
+	}
+	if req.DiskGB < 8 || req.DiskGB > 512 {
+		return models.VmCreateResponse{}, &ValidationError{Message: "Disk size must be between 8 GB and 512 GB."}
+	}
+
+	path, err := s.resolveVBoxManage(ctx)
+	if err != nil {
+		return models.VmCreateResponse{}, err
+	}
+
+	// 1. Register the VM and learn its UUID + settings folder in one call.
+	createOut, err := s.runCapture(ctx, path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
+	if err != nil {
+		s.logOperation(ctx, "", "vm.create", false, "VBoxManage createvm failed.")
+		return models.VmCreateResponse{}, err
+	}
+	uuid, settingsFile := parseCreateVmOutput(createOut)
+	if uuid == "" {
+		return models.VmCreateResponse{}, &ExecutionError{ExitCode: -1, Message: "Could not determine the new VM identifier."}
+	}
+	diskPath := filepath.Join(filepath.Dir(settingsFile), req.Name+".vdi")
+
+	// 2. Hardware, disk, controller, and the installer ISO as a DVD. The disk
+	// sits on port 0 and the ISO on port 1, so the VM boots the installer first
+	// and falls back to the disk once the install is done and the ISO ejected.
+	steps := []struct {
+		args    []string
+		desc    string
+		timeout time.Duration
+	}{
+		{modifyVmArgs(uuid, req.OsType, req.MemoryMB, req.Cpus), "configuring VM", createStepTimeout},
+		{createDiskArgs(diskPath, req.DiskGB), "creating disk", createMediumTimeout},
+		{storageCtlArgs(uuid), "adding storage controller", createStepTimeout},
+		{storageAttachDiskArgs(uuid, diskPath), "attaching disk", createStepTimeout},
+		{storageAttachDvdArgs(uuid, req.IsoPath), "attaching installer ISO", createStepTimeout},
+	}
+	for _, step := range steps {
+		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
+			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
+			return models.VmCreateResponse{}, err
+		}
+	}
+
+	s.logOperation(ctx, uuid, "vm.create", true, "")
+	return models.VmCreateResponse{
+		Success: true,
+		VMID:    uuid,
+		Name:    req.Name,
+		Message: fmt.Sprintf("%q created. Start it and install the OS from the attached ISO.", req.Name),
+	}, nil
+}
+
 // resolveVmUUID looks up a VM's UUID by name after a create/import. Best-effort;
 // returns "" if it cannot be read.
 func (s *service) resolveVmUUID(ctx context.Context, path, name string) string {
@@ -287,6 +366,19 @@ func storageAttachDiskArgs(uuid, diskPath string) []string {
 		"--device", "0",
 		"--type", "hdd",
 		"--medium", diskPath,
+	}
+}
+
+// storageAttachDvdArgs attaches the installer ISO as a DVD on the second SATA
+// port (the controller is created with --portcount 2).
+func storageAttachDvdArgs(uuid, isoPath string) []string {
+	return []string{
+		"storageattach", uuid,
+		"--storagectl", "SATA",
+		"--port", "1",
+		"--device", "0",
+		"--type", "dvddrive",
+		"--medium", isoPath,
 	}
 }
 

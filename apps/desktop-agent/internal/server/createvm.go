@@ -80,6 +80,25 @@ func (s *Server) handleCreateVm(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
 }
 
+// handleCreateVmManual accepts a manual-install create request (VM + disk +
+// installer ISO attached as a DVD, no unattended setup) and starts it as a
+// background job, returning the job id to poll.
+func (s *Server) handleCreateVmManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmCreateManualRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	jobID := s.startCreateJob(body.Name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.CreateVmManual(ctx, body)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
 // handleCreateStatus returns the current state of a background create/import job.
 func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

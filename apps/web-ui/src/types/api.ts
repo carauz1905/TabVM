@@ -115,6 +115,17 @@ export interface VmCreateRequest {
   hostname: string;
 }
 
+// Body for a manual-install create request: the VM is created with the ISO
+// attached as a DVD and the user installs the OS interactively via the console.
+export interface VmCreateManualRequest {
+  name: string;
+  osType: string;
+  isoPath: string;
+  memoryMb: number;
+  cpus: number;
+  diskGb: number;
+}
+
 // One enabled virtual NIC and how it is attached.
 export interface NetworkAdapter {
   slot: number;

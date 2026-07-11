@@ -48,6 +48,7 @@ type Service interface {
 	DeleteSnapshot(ctx context.Context, id, snapshotID string) (models.SnapshotOperationResponse, error)
 	ImportAppliance(ctx context.Context, ovaPath, name string) (models.VmCreateResponse, error)
 	CreateVmUnattended(ctx context.Context, req models.VmCreateRequest) (models.VmCreateResponse, error)
+	CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error)
 }
 
 // NotDiscoveredError indicates that VirtualBox/VBoxManage could not be located.

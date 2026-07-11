@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/tabvm/desktop-agent/internal/config"
 	"github.com/tabvm/desktop-agent/internal/models"
@@ -74,6 +76,7 @@ type fakeVboxService struct {
 	lastMode          string
 	lastAction        string
 	lastID            string
+	lastManualReq     models.VmCreateManualRequest
 	startBlocker      chan struct{}
 	startEntered      chan struct{}
 	startEnteredOnce  sync.Once
@@ -293,6 +296,12 @@ func (f *fakeVboxService) ImportAppliance(ctx context.Context, ovaPath, name str
 
 func (f *fakeVboxService) CreateVmUnattended(ctx context.Context, req models.VmCreateRequest) (models.VmCreateResponse, error) {
 	f.lastAction = "createVmUnattended"
+	return f.createResp, f.createErr
+}
+
+func (f *fakeVboxService) CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error) {
+	f.lastAction = "createVmManual"
+	f.lastManualReq = req
 	return f.createResp, f.createErr
 }
 
@@ -599,6 +608,72 @@ func TestDetachDiskEndpointDetachesAndDeletes(t *testing.T) {
 	}
 	if fake.lastAction != "detachDisk" || fake.lastUUID != "ca9ba73f-d0d3-4184-86f1-7206a952bc10" || !fake.lastDeleteFile {
 		t.Fatalf("unexpected call: action=%s uuid=%s delete=%v", fake.lastAction, fake.lastUUID, fake.lastDeleteFile)
+	}
+}
+
+func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	fake.createResp = models.VmCreateResponse{
+		Success: true,
+		VMID:    "11111111-1111-1111-1111-111111111111",
+		Name:    "alpine",
+		Message: `"alpine" created. Start it and install the OS from the attached ISO.`,
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/create-manual",
+		strings.NewReader(`{"name":"alpine","osType":"Linux_64","isoPath":"C:\\iso\\alpine.iso","memoryMb":2048,"cpus":2,"diskGb":20}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusAccepted, rr.Code, rr.Body.String())
+	}
+	var job models.VmCreateJobResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil || job.JobID == "" {
+		t.Fatalf("expected a job id, got %q (err %v)", rr.Body.String(), err)
+	}
+
+	// The work runs on a background goroutine; poll the status endpoint until
+	// the job resolves.
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		sreq := httptest.NewRequest(http.MethodGet, "/api/vms/create/status?job="+job.JobID, nil)
+		sreq.Header.Set("X-TabVM-Session-Token", "secret")
+		srr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(srr, sreq)
+		if srr.Code != http.StatusOK {
+			t.Fatalf("status poll failed: %d (body %q)", srr.Code, srr.Body.String())
+		}
+		var status models.VmCreateStatusResponse
+		if err := json.Unmarshal(srr.Body.Bytes(), &status); err != nil {
+			t.Fatalf("bad status body %q: %v", srr.Body.String(), err)
+		}
+		if status.State == "done" {
+			if !strings.Contains(status.Message, "install the OS from the attached ISO") {
+				t.Fatalf("unexpected job message: %q", status.Message)
+			}
+			break
+		}
+		if status.State == "error" {
+			t.Fatalf("job failed: %q", status.Message)
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for the manual create job")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if fake.lastAction != "createVmManual" {
+		t.Fatalf("expected createVmManual dispatch, got %q", fake.lastAction)
+	}
+	want := models.VmCreateManualRequest{
+		Name: "alpine", OsType: "Linux_64", IsoPath: `C:\iso\alpine.iso`, MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+	}
+	if fake.lastManualReq != want {
+		t.Fatalf("unexpected request: %+v", fake.lastManualReq)
 	}
 }
 

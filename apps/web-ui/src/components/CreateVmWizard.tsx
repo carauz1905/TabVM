@@ -8,7 +8,7 @@ interface CreateVmWizardProps {
   onCreated: () => void;
 }
 
-type Mode = 'import' | 'install';
+type Mode = 'import' | 'install' | 'manual';
 type Phase = 'form' | 'working' | 'done' | 'error';
 
 // OS types offered for unattended install — must match the backend allow-list.
@@ -24,10 +24,19 @@ const OS_TYPES: { id: string; label: string }[] = [
   { id: 'Windows2019_64', label: 'Windows Server 2019' },
 ];
 
-// CreateVmWizard is the "New VM" modal. It has two paths: import a prebuilt .ova
-// appliance (works for Kali, Guest Additions already inside) or run an unattended
-// install from an Ubuntu/Debian ISO with Guest Additions baked in during setup.
-// Both run as background jobs on the agent and are polled to completion.
+// OS types offered for manual install — must match the backend allow-list.
+// Generic types only: the user installs the OS themselves from the ISO.
+const MANUAL_OS_TYPES: { id: string; label: string }[] = [
+  { id: 'Linux_64', label: 'Linux (64-bit)' },
+  { id: 'Other_64', label: 'Other (64-bit)' },
+];
+
+// CreateVmWizard is the "New VM" modal. It has three paths: import a prebuilt
+// .ova appliance (works for Kali, Guest Additions already inside), run an
+// unattended install from an Ubuntu/Debian/Windows ISO with Guest Additions
+// baked in during setup, or a manual install from any bootable ISO (the VM is
+// created with the ISO attached and the user installs via the console). All
+// run as background jobs on the agent and are polled to completion.
 export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
   const { t, ts } = useT();
   const [mode, setMode] = useState<Mode>('import');
@@ -38,9 +47,10 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
   const [name, setName] = useState('');
   const [ovaPath, setOvaPath] = useState('');
 
-  // Install fields.
+  // Install fields (shared by unattended and manual modes).
   const [isoPath, setIsoPath] = useState('');
   const [osType, setOsType] = useState('Ubuntu_64');
+  const [manualOsType, setManualOsType] = useState('Linux_64');
   const [memoryMb, setMemoryMb] = useState(2048);
   const [cpus, setCpus] = useState(2);
   const [diskGb, setDiskGb] = useState(25);
@@ -94,17 +104,26 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
       const job =
         mode === 'import'
           ? await api.importVm(ovaPath, name.trim())
-          : await api.createVm({
-              name: name.trim(),
-              osType,
-              isoPath,
-              memoryMb,
-              cpus,
-              diskGb,
-              username: username.trim(),
-              password,
-              hostname: '',
-            });
+          : mode === 'manual'
+            ? await api.createVmManual({
+                name: name.trim(),
+                osType: manualOsType,
+                isoPath,
+                memoryMb,
+                cpus,
+                diskGb,
+              })
+            : await api.createVm({
+                name: name.trim(),
+                osType,
+                isoPath,
+                memoryMb,
+                cpus,
+                diskGb,
+                username: username.trim(),
+                password,
+                hostname: '',
+              });
       setPassword(''); // drop the secret from state once submitted
       poll(job.jobId);
     } catch (err) {
@@ -117,14 +136,16 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
       setMessage(msg);
       setPhase('error');
     }
-  }, [mode, ovaPath, name, osType, isoPath, memoryMb, cpus, diskGb, username, password, poll]);
+  }, [mode, ovaPath, name, osType, manualOsType, isoPath, memoryMb, cpus, diskGb, username, password, poll]);
 
   const canSubmit =
     phase === 'form' &&
     name.trim() !== '' &&
     (mode === 'import'
       ? ovaPath.trim() !== ''
-      : isoPath.trim() !== '' && username.trim() !== '' && password !== '');
+      : mode === 'manual'
+        ? isoPath.trim() !== ''
+        : isoPath.trim() !== '' && username.trim() !== '' && password !== '');
 
   return (
     <div className="ga-overlay" role="dialog" aria-label={t('Create a virtual machine')}>
@@ -157,12 +178,23 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
               >
                 {t('Install from ISO')}
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'manual'}
+                className={`tv-wiz-tab ${mode === 'manual' ? 'on' : ''}`}
+                onClick={() => setMode('manual')}
+              >
+                {t('Other OS (manual install)')}
+              </button>
             </div>
 
             <p className="tv-wiz-note">
               {mode === 'import'
                 ? t('Import a prebuilt appliance that already has Guest Additions. Best for Kali. One click, no install.')
-                : t('Create a VM and run an automated Ubuntu, Debian or Windows install with Guest Additions included. Kali is not supported here.')}
+                : mode === 'manual'
+                  ? t('Create a VM with any bootable ISO attached. You install the OS yourself in the console; Guest Additions are not installed automatically.')
+                  : t('Create a VM and run an automated Ubuntu, Debian or Windows install with Guest Additions included. Kali is not supported here.')}
             </p>
 
             <label className="ga-field">
@@ -189,16 +221,29 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
                     {isoPath || t('No file chosen')}
                   </span>
                 </div>
-                <label className="ga-field">
-                  <span>{t('Operating system')}</span>
-                  <select value={osType} onChange={(e) => setOsType(e.target.value)}>
-                    {OS_TYPES.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {mode === 'manual' ? (
+                  <label className="ga-field">
+                    <span>{t('Operating system')}</span>
+                    <select value={manualOsType} onChange={(e) => setManualOsType(e.target.value)}>
+                      {MANUAL_OS_TYPES.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className="ga-field">
+                    <span>{t('Operating system')}</span>
+                    <select value={osType} onChange={(e) => setOsType(e.target.value)}>
+                      {OS_TYPES.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <div className="tv-wiz-grid3">
                   <label className="ga-field">
                     <span>{t('Memory (MB)')}</span>
@@ -213,16 +258,18 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
                     <input type="number" min={8} max={512} value={diskGb} onChange={(e) => setDiskGb(Number(e.target.value))} />
                   </label>
                 </div>
-                <div className="tv-wiz-grid2">
-                  <label className="ga-field">
-                    <span>{t('Guest username')}</span>
-                    <input type="text" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
-                  </label>
-                  <label className="ga-field">
-                    <span>{t('Guest password')}</span>
-                    <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </label>
-                </div>
+                {mode === 'install' && (
+                  <div className="tv-wiz-grid2">
+                    <label className="ga-field">
+                      <span>{t('Guest username')}</span>
+                      <input type="text" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
+                    </label>
+                    <label className="ga-field">
+                      <span>{t('Guest password')}</span>
+                      <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    </label>
+                  </div>
+                )}
               </>
             )}
 
@@ -243,7 +290,9 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
             <p>
               {mode === 'import'
                 ? t('Importing the appliance… this can take several minutes.')
-                : t('Creating the VM and preparing the automated install…')}
+                : mode === 'manual'
+                  ? t('Creating the VM and attaching the installer ISO…')
+                  : t('Creating the VM and preparing the automated install…')}
             </p>
           </div>
         )}
@@ -254,7 +303,9 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
             <p className="tv-wiz-sub">
               {mode === 'import'
                 ? t('The VM is ready. Start it from the list.')
-                : t('Start the VM to run the install; watch it in the console.')}
+                : mode === 'manual'
+                  ? t('Start the VM and install the OS yourself in the console.')
+                  : t('Start the VM to run the install; watch it in the console.')}
             </p>
             <div className="ga-modal-actions">
               <button type="button" className="tv-abtn go" onClick={onClose}>
