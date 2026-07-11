@@ -111,6 +111,12 @@ export const es: Record<string, string> = {
   'Turns on a login prompt on the serial port. Needs a root or sudo account.':
     'Activa un inicio de sesión en el puerto serial. Requiere una cuenta root o con sudo.',
   'Enable login': 'Habilitar inicio de sesión',
+  terminal: 'terminal',
+  'serial terminal': 'terminal serial',
+  'Open {vm} terminal in a new tab': 'Abrir la terminal de {vm} en una pestaña nueva',
+  'The serial terminal is only available for Linux guests.':
+    'La terminal serial solo está disponible para guests Linux.',
+  'Loading…': 'Cargando…',
   cancel: 'cancelar',
   close: 'cerrar',
   'updating…': 'actualizando…',

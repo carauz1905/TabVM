@@ -53,6 +53,7 @@ vi.mock('../api/client', () => {
       deleteVm: vi.fn(),
       getGuestAdditionsStatus: vi.fn(),
       installGuestAdditions: vi.fn(),
+      getVmGuestOS: vi.fn(),
     },
   };
 });
@@ -82,6 +83,12 @@ describe('MachinesView', () => {
     window.confirm = vi.fn(() => true);
     vi.mocked(useVmStatus).mockReturnValue(runningVm());
     vi.mocked(api.getLocalStateStatus).mockResolvedValue({ configured: true, available: true, schema: 1 });
+    vi.mocked(api.getVmGuestOS).mockResolvedValue({
+      id: RUNNING_ID,
+      osType: 'Ubuntu_64',
+      family: 'linux',
+      terminalCapable: true,
+    });
     vi.mocked(api.getVmTelemetry).mockResolvedValue({
       id: RUNNING_ID,
       cpuCount: 2,
