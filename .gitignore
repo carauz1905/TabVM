@@ -28,6 +28,7 @@ node_modules/
 
 # ---- Agent / tooling local state ----
 .playwright-mcp/
+.atl/
 
 # ---- IDE ----
 .vs/
