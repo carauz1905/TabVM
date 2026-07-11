@@ -58,6 +58,8 @@ type fakeVboxService struct {
 	deleteErr         error
 	hardware          models.VmHardwareResponse
 	hardwareErr       error
+	guestOS           models.VmGuestOSResponse
+	guestOSErr        error
 	setHardwareResp   models.VmOperationResponse
 	setHardwareErr    error
 	lastCPUs          int
@@ -249,6 +251,12 @@ func (f *fakeVboxService) VmHardware(ctx context.Context, id string) (models.VmH
 	return f.hardware, f.hardwareErr
 }
 
+func (f *fakeVboxService) VmGuestOS(ctx context.Context, id string) (models.VmGuestOSResponse, error) {
+	f.lastAction = "vmGuestOS"
+	f.lastID = id
+	return f.guestOS, f.guestOSErr
+}
+
 func (f *fakeVboxService) SetVmHardware(ctx context.Context, id string, cpus, memoryMB int) (models.VmOperationResponse, error) {
 	f.lastAction = "setVmHardware"
 	f.lastID = id
@@ -380,6 +388,29 @@ func TestApiEndpointRejectsInvalidToken(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
+func TestVmGuestOSEndpoint(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.guestOS = models.VmGuestOSResponse{ID: id, OSType: "Ubuntu_64", Family: "linux", TerminalCapable: true}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/guest-os", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "vmGuestOS" || fake.lastID != id {
+		t.Fatalf("expected vmGuestOS on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, `"terminalCapable":true`) || !strings.Contains(body, `"family":"linux"`) {
+		t.Fatalf("expected guest OS fields in body, got %q", body)
 	}
 }
 

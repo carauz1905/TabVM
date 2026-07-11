@@ -272,6 +272,16 @@ type VmHardwareResponse struct {
 	Editable     bool   `json:"editable"`
 }
 
+// VmGuestOSResponse reports a VM's declared guest OS type and a coarse family
+// classification ("linux", "windows", "other", or ""), plus whether the
+// serial-console terminal can be offered for it.
+type VmGuestOSResponse struct {
+	ID              string `json:"id"`
+	OSType          string `json:"osType"`
+	Family          string `json:"family"`
+	TerminalCapable bool   `json:"terminalCapable"`
+}
+
 // VmHardwareRequest is the body for POST /api/vms/{id}/hardware.
 type VmHardwareRequest struct {
 	CPUs     int `json:"cpus"`

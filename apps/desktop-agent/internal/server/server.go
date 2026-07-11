@@ -330,6 +330,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleNetworkOptions(w, r, id)
 		case "hardware":
 			s.handleVmHardware(w, r, id)
+		case "guest-os":
+			s.handleVmGuestOS(w, r, id)
 		case "storage":
 			s.handleVmStorage(w, r, id)
 		case "clipboard":
@@ -650,6 +652,15 @@ func (s *Server) handleDeleteSnapshot(w http.ResponseWriter, r *http.Request, id
 
 func (s *Server) handleVmHardware(w http.ResponseWriter, r *http.Request, id string) {
 	resp, err := s.vbox.VmHardware(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleVmGuestOS(w http.ResponseWriter, r *http.Request, id string) {
+	resp, err := s.vbox.VmGuestOS(r.Context(), id)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return
