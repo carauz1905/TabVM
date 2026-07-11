@@ -496,6 +496,14 @@ export const api = {
       isVmOperationResponse,
       { method: 'POST' },
     ),
+  // forcePowerOffVm hard-stops a VM (like pulling the power plug). Fallback for
+  // guests that never answer the ACPI stop signal; unsaved guest data is lost.
+  forcePowerOffVm: (id: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/poweroff`,
+      isVmOperationResponse,
+      { method: 'POST' },
+    ),
   // deleteVm unregisters the VM and removes its disks and configuration files.
   // Irreversible; the agent refuses to delete a running VM.
   deleteVm: (id: string) =>

@@ -283,6 +283,13 @@ func (s *service) ResetVM(ctx context.Context, id string) error {
 	return s.runLoggedControlCommand(ctx, id, "vm.reset", resetVmArgs, "resetting VM")
 }
 
+// ForcePowerOff hard-stops a VM ("controlvm poweroff"). It is the fallback for
+// guests that never answer the ACPI power button (no OS installed, stuck in an
+// installer) and is equivalent to pulling the power plug.
+func (s *service) ForcePowerOff(ctx context.Context, id string) error {
+	return s.runLoggedControlCommand(ctx, id, "vm.poweroff", powerOffVmArgs, "forcing VM power off")
+}
+
 // runLoggedControlCommand validates the VM ID, resolves VBoxManage, runs the
 // control command, and records the outcome in the operation log when a store
 // is configured.
