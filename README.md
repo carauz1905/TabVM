@@ -97,5 +97,4 @@ installer/            Inno Setup script
 
 - [Architecture](docs/architecture.md)
 - [Running locally](docs/running-locally.md)
-- [MVP definition](docs/mvp.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)

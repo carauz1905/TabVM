@@ -63,11 +63,13 @@ Proxmox/KVM lab (a different product).
 
 ## Console access
 
-The console uses VirtualBox VRDE/RDP on `127.0.0.1` with a deterministic port
-derived from the VM ID. This keeps the console independent of the guest
-operating system (useful for installation and recovery). A browser-based bridge
-(e.g. Apache Guacamole) can consume the same prepared RDP target; VNC and SSH
-are recognized as future protocol paths.
+The agent enables VirtualBox VRDE/RDP on `127.0.0.1` with a deterministic port
+derived from the VM ID, connects to that RDP server, and streams the guest
+framebuffer to the browser over a WebSocket. The web UI paints it on a
+`<canvas>` (`ScreenConsole`), with a periodic `InvalidateAndUpdate` keepalive
+and letterboxed scaling so large guest resolutions fit without cropping. The
+console works independently of the guest operating system, which is useful for
+installation and recovery.
 
 > [!NOTE]
 > VRDE/RDP may require the VirtualBox Extension Pack and a licensing review in
