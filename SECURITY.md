@@ -10,7 +10,7 @@ Please **do not** open a public issue for security problems.
 
 - Preferred: use GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
   (the **Report a vulnerability** button under the repository's *Security* tab).
-- Alternatively, email **arauz.carlos0587@gmail.com** with details and, if
+- Alternatively, email **contact@tabvm.com** with details and, if
   possible, a proof of concept.
 
 You can expect an acknowledgement within a few days. Please allow reasonable

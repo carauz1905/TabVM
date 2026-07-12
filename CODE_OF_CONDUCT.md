@@ -46,7 +46,7 @@ an individual is officially representing the community in public spaces.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-**arauz.carlos0587@gmail.com**. All complaints will be reviewed and investigated
+**contact@tabvm.com**. All complaints will be reviewed and investigated
 promptly and fairly.
 
 ## Attribution
