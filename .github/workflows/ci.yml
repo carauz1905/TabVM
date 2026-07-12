@@ -44,4 +44,7 @@ jobs:
 
       - name: Go vet
         working-directory: apps/desktop-agent
-        run: go vet ./...
+        # -unsafeptr=false: the Windows COM/syscall interop (vmscreen, hostpick)
+        # legitimately converts unsafe.Pointer for vtable and syscall calls; the
+        # unsafeptr analyzer over-flags it. All other vet checks stay enabled.
+        run: go vet -unsafeptr=false ./...
