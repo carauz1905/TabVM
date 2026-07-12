@@ -7,6 +7,13 @@
 
 <p align="center"><strong>Every VM. One tab.</strong></p>
 
+<p align="center">
+  <a href="https://github.com/carauz1905/TabVM/releases"><img alt="Release" src="https://img.shields.io/github/v/release/carauz1905/TabVM?label=release&color=2ea043"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue"></a>
+  <img alt="Go 1.25+" src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white">
+  <img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white">
+</p>
+
 TabVM turns your local VirtualBox machines into browser tabs. Install nothing but
 VirtualBox — everything else runs on your own computer, from one window on
 `127.0.0.1`. It is built for students and lab users who want to operate a VM
