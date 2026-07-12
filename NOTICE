@@ -1,0 +1,29 @@
+TabVM
+Copyright © 2026 Beacon Solutions
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program (see the LICENSE file). If not, see
+<https://www.gnu.org/licenses/>.
+
+---
+
+TabVM is available under a dual-licensing model:
+
+  - Open source: GNU Affero General Public License v3.0 (see LICENSE).
+  - Commercial: separate proprietary licenses are available for organizations
+    that cannot comply with the AGPL-3.0. Contact legal@tabvm.com.
+
+"VirtualBox" and "Oracle" are trademarks of Oracle Corporation. TabVM is an
+independent project and is not affiliated with, endorsed by, or sponsored by
+Oracle. TabVM controls a VirtualBox installation that the user provides; it does
+not bundle or redistribute VirtualBox, its Guest Additions, or the Extension
+Pack.

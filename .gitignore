@@ -12,6 +12,8 @@ apps/desktop-agent/internal/webui/dist/
 
 # ---- Compiled binaries ----
 *.exe
+*~
+*.bak
 *.dll
 *.so
 *.dylib

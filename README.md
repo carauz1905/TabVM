@@ -98,3 +98,21 @@ installer/            Inno Setup script
 - [Architecture](docs/architecture.md)
 - [Running locally](docs/running-locally.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
+
+## License
+
+TabVM is © 2026 Beacon Solutions and is dual-licensed:
+
+- **Open source** — [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+  You may use, modify, and redistribute TabVM under its terms. If you run a
+  modified version and make it available over a network, the AGPL requires you to
+  publish your modified source.
+- **Commercial** — organizations that cannot comply with the AGPL-3.0 can obtain
+  a separate proprietary license. Contact `legal@tabvm.com`.
+
+Contributions are accepted under the [Contributor License Agreement](CLA.md),
+which lets Beacon Solutions offer TabVM under both licenses above.
+
+> "VirtualBox" and "Oracle" are trademarks of Oracle Corporation. TabVM is an
+> independent project, not affiliated with or endorsed by Oracle, and does not
+> bundle or redistribute VirtualBox.

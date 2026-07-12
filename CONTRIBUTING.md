@@ -3,6 +3,19 @@
 Thanks for your interest in improving TabVM. This guide covers the local setup,
 the build and test workflow, and the conventions we follow.
 
+## Contributor License Agreement
+
+Before your first contribution can be merged, you must accept the
+[Contributor License Agreement (CLA)](CLA.md). TabVM is © Beacon Solutions and is
+[dual-licensed](README.md#license) under the AGPL-3.0 and separate commercial
+licenses; the CLA grants Beacon Solutions the rights needed to offer TabVM under
+both.
+
+You do not need to sign anything by hand: when you open a pull request, the
+automated CLA check asks you to confirm acceptance, and your GitHub identity is
+recorded as your signature. Corporate contributors should email
+`legal@tabvm.com` to arrange a corporate CLA first.
+
 ## Prerequisites
 
 - **Oracle VirtualBox** installed (with `VBoxManage` on the host).
