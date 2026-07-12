@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # TabVM's agent uses Windows-only APIs (COM screen capture, Windows syscalls),
+    # so the Go build/test must run on Windows — its target platform. Building on
+    # Linux fails with "undefined: syscall.NewLazyDLL" and similar.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
