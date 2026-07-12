@@ -59,10 +59,12 @@ describe('StoragePanel', () => {
   afterEach(() => cleanup());
 
   it('lists a disk with its format and current capacity', async () => {
-    const { getByText } = render(<StoragePanel vmId={VM_ID} />);
+    const { findByText } = render(<StoragePanel vmId={VM_ID} />);
     await waitFor(() => expect(api.getVmStorage).toHaveBeenCalledWith(VM_ID));
-    expect(getByText('disk1.vdi')).toBeTruthy();
-    expect(getByText(/VDI · 10 GB/)).toBeTruthy();
+    // findByText waits for the render that commits after getVmStorage resolves;
+    // getByText would race the promise flush and flake on slower CI machines.
+    expect(await findByText('disk1.vdi')).toBeTruthy();
+    expect(await findByText(/VDI · 10 GB/)).toBeTruthy();
   });
 
   it('grows a disk and notifies the parent', async () => {
