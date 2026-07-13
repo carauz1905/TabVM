@@ -4,7 +4,7 @@
 ; launcher and creates Desktop + Start Menu shortcuts to TabVM.exe.
 
 #define AppName "TabVM"
-#define AppVersion "0.1.0"
+#define AppVersion "0.1.1"
 #define AppPublisher "TabVM"
 
 [Setup]

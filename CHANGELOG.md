@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-13
+
 ### Added
 
 - Repository foundation: `.gitignore`/`.gitattributes` hardening, cross-platform
@@ -40,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/carauz1905/TabVM/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/carauz1905/TabVM/releases/tag/v0.1.0
