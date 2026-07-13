@@ -24,6 +24,10 @@ SolidCompression=yes
 WizardStyle=modern
 SetupIconFile=..\branding\icon\tabvm.ico
 UninstallDisplayIcon={app}\tabvm.ico
+; Ask Restart Manager to close apps using files we replace, but never restart
+; them: the [Run] entry (or the user) relaunches the new version instead.
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -45,3 +49,22 @@ Name: "{autodesktop}\TabVM";     Filename: "{app}\TabVM.exe"; IconFilename: "{ap
 
 [Run]
 Filename: "{app}\TabVM.exe"; Description: "Launch TabVM"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// Force-kills a process by image name, ignoring failures (it may simply not be
+// running). Restart Manager can miss the headless agent, so this guarantees an
+// upgrade never replaces files under a live agent that would keep serving the
+// old embedded web UI.
+procedure KillProcess(const ExeName: String);
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /IM ' + ExeName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  KillProcess('tabvm-agent.exe');
+  KillProcess('TabVM.exe');
+  Result := '';
+end;
