@@ -5,6 +5,12 @@
     "license": "AGPL-3.0-or-later",
     "url": "https://github.com/carauz1905/TabVM/releases/download/v0.1.0/TabVM-portable.zip",
     "hash": "146dee35ad2545d9affb29ac47b6c29a27d177e80f2944653207a62ec5d279d6",
+    "pre_install": [
+        "Stop-Process -Name 'tabvm-agent' -Force -ErrorAction SilentlyContinue"
+    ],
+    "pre_uninstall": [
+        "Stop-Process -Name 'tabvm-agent' -Force -ErrorAction SilentlyContinue"
+    ],
     "bin": [
         [
             "TabVM.exe",
@@ -19,7 +25,8 @@
     ],
     "notes": [
         "TabVM controls your LOCAL VirtualBox install. Requires Oracle VirtualBox with VBoxManage available on the host.",
-        "Launch TabVM from the Start menu or run 'tabvm'; your browser opens the dashboard at 127.0.0.1."
+        "Launch TabVM from the Start menu or run 'tabvm'; your browser opens the dashboard at 127.0.0.1.",
+        "To uninstall, run 'scoop uninstall tabvm'."
     ],
     "checkver": {
         "github": "https://github.com/carauz1905/TabVM"
