@@ -158,11 +158,15 @@ func waitForAgentGone(timeout time.Duration) bool {
 	return false
 }
 
-// waitForAgent reports whether the agent answered healthy within the deadline.
+// waitForAgent reports whether an agent of the launcher's own version answered
+// healthy within the deadline. Requiring the version match (the same actionOpen
+// predicate used for the initial probe) keeps a stale agent that wins a port
+// race from being mistaken for the one just started.
 func waitForAgent(timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if probe, err := probeAgent(); err == nil && probe.ok {
+		probe, err := probeAgent()
+		if launchAction(err, probe.ok, probe.version, version.Version) == actionOpen {
 			return true
 		}
 		time.Sleep(300 * time.Millisecond)
