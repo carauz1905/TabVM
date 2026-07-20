@@ -12,13 +12,14 @@ import (
 func TestCloneVmArgs_FullVsLinked(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 
-	full := cloneVmArgs(id, "lab-clone", false)
+	full := cloneVmArgs(id, "lab-clone", false, "")
 	if strings.Join(full, " ") != "clonevm "+id+" --name lab-clone --register" {
 		t.Fatalf("unexpected full clone args: %v", full)
 	}
 
-	linked := cloneVmArgs(id, "lab-clone", true)
-	if strings.Join(linked, " ") != "clonevm "+id+" --name lab-clone --register --options link" {
+	snap := "33333333-3333-3333-3333-333333333333"
+	linked := cloneVmArgs(id, "lab-clone", true, snap)
+	if strings.Join(linked, " ") != "clonevm "+id+" --name lab-clone --register --options link --snapshot "+snap {
 		t.Fatalf("unexpected linked clone args: %v", linked)
 	}
 }
@@ -140,8 +141,8 @@ func TestCloneVM_LinkedHappyPath(t *testing.T) {
 			path + " snapshot " + id + " list --machinereadable": {ExitCode: 0, StandardOutput: `SnapshotName="Base"
 SnapshotUUID="` + snapUUID + `"
 CurrentSnapshotUUID="` + snapUUID + `"`},
-			path + " clonevm " + id + " --name lab-clone --register --options link": {ExitCode: 0},
-			path + " showvminfo lab-clone --machinereadable":                        {ExitCode: 0, StandardOutput: `UUID="` + newUUID + `"`},
+			path + " clonevm " + id + " --name lab-clone --register --options link --snapshot " + snapUUID: {ExitCode: 0},
+			path + " showvminfo lab-clone --machinereadable":                                               {ExitCode: 0, StandardOutput: `UUID="` + newUUID + `"`},
 		},
 	}
 
@@ -154,8 +155,8 @@ CurrentSnapshotUUID="` + snapUUID + `"`},
 		t.Fatalf("unexpected response: %+v", resp)
 	}
 	joined := strings.Join(run.calls, "\n")
-	if !strings.Contains(joined, "clonevm "+id+" --name lab-clone --register --options link") {
-		t.Fatalf("expected a linked clonevm command; calls:\n%s", joined)
+	if !strings.Contains(joined, "clonevm "+id+" --name lab-clone --register --options link --snapshot "+snapUUID) {
+		t.Fatalf("expected a linked clonevm command with --snapshot; calls:\n%s", joined)
 	}
 }
 

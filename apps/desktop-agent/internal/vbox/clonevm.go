@@ -29,7 +29,8 @@ func (s *service) ValidateClone(ctx context.Context, sourceID, name string, link
 	if err != nil {
 		return err
 	}
-	return s.checkCloneSource(ctx, path, sourceID, linked)
+	_, err = s.checkCloneSource(ctx, path, sourceID, linked)
+	return err
 }
 
 // CloneVM clones a stopped source VM into a new registered VM, either a full copy
@@ -52,11 +53,12 @@ func (s *service) CloneVM(ctx context.Context, sourceID, name string, linked boo
 		return models.VmCreateResponse{}, err
 	}
 
-	if err := s.checkCloneSource(ctx, path, sourceID, linked); err != nil {
+	snapshot, err := s.checkCloneSource(ctx, path, sourceID, linked)
+	if err != nil {
 		return models.VmCreateResponse{}, err
 	}
 
-	if err := s.runControlCommandTimeout(ctx, path, cloneVmArgs(sourceID, name, linked), "cloning VM", cloneTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, path, cloneVmArgs(sourceID, name, linked, snapshot), "cloning VM", cloneTimeout); err != nil {
 		s.logOperation(ctx, sourceID, "vm.clone", false, "VBoxManage clonevm failed.")
 		return models.VmCreateResponse{}, err
 	}
@@ -79,34 +81,37 @@ func (s *service) CloneVM(ctx context.Context, sourceID, name string, linked boo
 // checkCloneSource verifies the source VM is in a state that can be cloned: it
 // must be powered off (a running or otherwise-live VM is refused, mirroring the
 // delete guard), and a linked clone additionally requires an existing snapshot.
-func (s *service) checkCloneSource(ctx context.Context, path, sourceID string, linked bool) error {
+func (s *service) checkCloneSource(ctx context.Context, path, sourceID string, linked bool) (string, error) {
 	info, err := s.readShowVmInfo(ctx, path, sourceID, "reading VM state before clone")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if vmStateIsLive(parseVmState(info)) {
-		return &ValidationError{Message: "The VM is running. Power it off before cloning it."}
+		return "", &ValidationError{Message: "The VM is running. Power it off before cloning it."}
+	}
+	if !linked {
+		return "", nil
 	}
 
-	if linked {
-		hasSnapshot, err := s.sourceHasSnapshot(ctx, path, sourceID)
-		if err != nil {
-			return err
-		}
-		if !hasSnapshot {
-			return &ValidationError{Message: "A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it."}
-		}
+	snapshot, exists, err := s.cloneSourceSnapshot(ctx, path, sourceID)
+	if err != nil {
+		return "", err
 	}
-	return nil
+	if !exists {
+		return "", &ValidationError{Message: "A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it."}
+	}
+	return snapshot, nil
 }
 
-// sourceHasSnapshot reports whether the VM has at least one snapshot. A VM with
-// no snapshots makes `snapshot list` print "does not have any snapshots" and
-// exit non-zero — that is an empty list, not an error (mirrors ListSnapshots).
-func (s *service) sourceHasSnapshot(ctx context.Context, path, id string) (bool, error) {
+// cloneSourceSnapshot returns the snapshot identifier a linked clone must be
+// based on (the source's current snapshot, or the last-listed one as a
+// fallback) and whether any snapshot exists. A VM with no snapshots makes
+// `snapshot list` print "does not have any snapshots" and exit non-zero — that
+// is an empty list, not an error (mirrors ListSnapshots).
+func (s *service) cloneSourceSnapshot(ctx context.Context, path, id string) (string, bool, error) {
 	result, runErr := s.runner.RunContext(ctx, path, snapshotListArgs(id), 15*time.Second)
 	if runErr != nil {
-		return false, &ExecutionError{
+		return "", false, &ExecutionError{
 			ExitCode:      result.ExitCode,
 			StandardError: result.StandardError,
 			Message:       fmt.Sprintf("VBoxManage failed while listing snapshots: %v", runErr),
@@ -114,26 +119,44 @@ func (s *service) sourceHasSnapshot(ctx context.Context, path, id string) (bool,
 	}
 	if strings.Contains(result.StandardOutput, "does not have any snapshots") ||
 		strings.Contains(result.StandardError, "does not have any snapshots") {
-		return false, nil
+		return "", false, nil
 	}
 	if result.ExitCode != 0 {
-		return false, &ExecutionError{
+		return "", false, &ExecutionError{
 			ExitCode:      result.ExitCode,
 			StandardError: result.StandardError,
 			Message:       fmt.Sprintf("VBoxManage exited with code %d while listing snapshots", result.ExitCode),
 		}
 	}
-	snaps, _ := parseSnapshots(result.StandardOutput)
-	return len(snaps) > 0, nil
+	snaps, currentUUID := parseSnapshots(result.StandardOutput)
+	if len(snaps) == 0 {
+		return "", false, nil
+	}
+	snapshot := currentUUID
+	if snapshot == "" {
+		last := snaps[len(snaps)-1]
+		if last.UUID != "" {
+			snapshot = last.UUID
+		} else {
+			snapshot = last.Name
+		}
+	}
+	return snapshot, snapshot != "", nil
 }
 
 // cloneVmArgs builds the VBoxManage clonevm command. A full clone copies the
 // disks; a linked clone adds `--options link` so it is created against the
 // source's current snapshot.
-func cloneVmArgs(sourceID, name string, linked bool) []string {
+func cloneVmArgs(sourceID, name string, linked bool, snapshot string) []string {
 	args := []string{"clonevm", sourceID, "--name", name, "--register"}
 	if linked {
+		// A linked clone must be based on a snapshot; `--options link` alone
+		// fails at runtime. checkCloneSource guarantees one exists for linked
+		// clones, so snapshot is non-empty here.
 		args = append(args, "--options", "link")
+		if snapshot != "" {
+			args = append(args, "--snapshot", snapshot)
+		}
 	}
 	return args
 }
