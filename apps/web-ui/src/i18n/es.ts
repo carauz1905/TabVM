@@ -358,6 +358,12 @@ export const esServerExact: Record<string, string> = {
   'Invalid file name.': 'Nombre de archivo inválido.',
   'Invalid request body.': 'Cuerpo de la solicitud inválido.',
   'VirtualBox operation failed.': 'La operación de VirtualBox falló.',
+  'The VM is busy or locked by another session. Wait a moment and try again.':
+    'La VM está ocupada o bloqueada por otra sesión. Espere un momento e intente de nuevo.',
+  'Hardware virtualization is unavailable. Check that Hyper-V or Windows memory integrity is not blocking VirtualBox.':
+    'La virtualización por hardware no está disponible. Verifique que Hyper-V o la integridad de memoria de Windows no esté bloqueando VirtualBox.',
+  'Not enough host memory to start the VM.':
+    'No hay suficiente memoria en el anfitrión para iniciar la VM.',
   'Internal server error.': 'Error interno del servidor.',
   'Snapshot deleted.': 'Instantánea eliminada.',
   'Snapshot restored. The VM was rolled back and is powered off — start it to boot the restored state.':
@@ -441,6 +447,10 @@ export const esServerExact: Record<string, string> = {
 // Pattern localization for backend messages carrying names or paths. $1, $2… map
 // to capture groups. More specific patterns must come first.
 export const esServerPatterns: Array<[RegExp, string]> = [
+  [
+    /^VirtualBox operation failed \(exit code (\d+)\)\.$/,
+    'La operación de VirtualBox falló (código de salida $1).',
+  ],
   [/^Snapshot "(.+)" created\.$/, 'Instantánea "$1" creada.'],
   [/^Adapter (\d+) switched to (.+?) \((.+)\)\.$/, 'Adaptador $1 cambiado a $2 ($3).'],
   [/^Adapter (\d+) switched to (.+)\.$/, 'Adaptador $1 cambiado a $2.'],

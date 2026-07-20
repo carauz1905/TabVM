@@ -271,8 +271,97 @@ func (s *service) VmTelemetry(ctx context.Context, id string) (models.VmTelemetr
 	}, nil
 }
 
+// StartVM brings a VM up, inspecting its current state first so it neither
+// double-starts a running VM nor destroys a saved session. A running or starting
+// VM is treated as an idempotent success, a paused VM is resumed, and everything
+// else takes the normal startvm path. It never auto-powers-off (which would lose
+// a saved state). Transient "already locked" contention is retried a few times.
 func (s *service) StartVM(ctx context.Context, id string) error {
-	return s.runLoggedControlCommand(ctx, id, "vm.start", startVmArgs, "starting VM")
+	if !IsValidVmID(id) {
+		return &ExecutionError{
+			ExitCode: -1,
+			Message:  "Invalid VM identifier.",
+		}
+	}
+
+	path, err := s.resolveVBoxManage(ctx)
+	if err != nil {
+		s.logOperation(ctx, id, "vm.start", false, "VirtualBox/VBoxManage not discovered.")
+		return err
+	}
+
+	// The state read is best-effort: if it fails we fall through to the normal
+	// startvm path rather than block a start on a diagnostic call.
+	state := ""
+	if info, infoErr := s.readShowVmInfo(ctx, path, id, "reading VM state before start"); infoErr == nil {
+		state = strings.ToLower(strings.TrimSpace(parseVmState(info)))
+	}
+
+	switch state {
+	case "running", "starting":
+		// Already up (or on its way); a second startvm would error. No-op success.
+		s.logOperation(ctx, id, "vm.start", true, "VM already running.")
+		return nil
+	case "paused":
+		// A paused VM must be resumed, not started.
+		if err := s.runControlCommand(ctx, path, resumeVmArgs(id), "resuming VM"); err != nil {
+			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("resuming VM", err))
+			return err
+		}
+		s.logOperation(ctx, id, "vm.start", true, "")
+		return nil
+	default:
+		// saved, poweroff, aborted, or unknown: normal start (never poweroff first).
+		if err := s.startWithRetry(ctx, path, id); err != nil {
+			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("starting VM", err))
+			return err
+		}
+		s.logOperation(ctx, id, "vm.start", true, "")
+		return nil
+	}
+}
+
+// startWithRetry issues startvm and retries a bounded number of times when it
+// fails because the VM is momentarily locked by another VirtualBox session, a
+// transient condition behind intermittent start failures. It is context-aware
+// and returns the last *ExecutionError when contention persists.
+func (s *service) startWithRetry(ctx context.Context, path, id string) error {
+	const maxAttempts = 3
+	const backoff = 400 * time.Millisecond
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err := s.runControlCommand(ctx, path, startVmArgs(id), "starting VM")
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if !isLockContention(err) {
+			return err
+		}
+		if attempt == maxAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+	return lastErr
+}
+
+// isLockContention reports whether an execution error indicates the VM was
+// momentarily locked by another VirtualBox session, which is typically
+// transient and worth retrying.
+func isLockContention(err error) bool {
+	execErr, ok := err.(*ExecutionError)
+	if !ok {
+		return false
+	}
+	stderr := strings.ToLower(execErr.StandardError)
+	return strings.Contains(stderr, "already locked") ||
+		strings.Contains(stderr, strings.ToLower("VBOX_E_INVALID_OBJECT_STATE"))
 }
 
 func (s *service) StopVM(ctx context.Context, id string) error {
@@ -315,11 +404,23 @@ func (s *service) runLoggedControlCommand(
 
 	err = s.runControlCommand(ctx, path, argsFn(id), description)
 	if err != nil {
-		s.logOperation(ctx, id, action, false, "VirtualBox control command failed.")
+		s.logOperation(ctx, id, action, false, controlFailureMessage(description, err))
 		return err
 	}
 	s.logOperation(ctx, id, action, true, "")
 	return nil
+}
+
+// controlFailureMessage builds an operation-log message that preserves the exit
+// code and the raw stderr, giving an actionable reason instead of a generic
+// failure. The store sanitizes host paths and secret-like tokens before
+// persisting, so echoing stderr here is safe. This is the operation-log sink
+// only; the UI-facing message is mapped separately in the server.
+func controlFailureMessage(description string, err error) string {
+	if execErr, ok := err.(*ExecutionError); ok {
+		return fmt.Sprintf("%s failed (exit code %d): %s", description, execErr.ExitCode, execErr.StandardError)
+	}
+	return "VirtualBox control command failed."
 }
 
 func (s *service) VmConsoleStatus(ctx context.Context, id string) (models.VmConsoleStatusResponse, error) {
@@ -732,6 +833,10 @@ func startVmArgs(id string) []string {
 
 func stopVmArgs(id string) []string {
 	return []string{"controlvm", id, "acpipowerbutton"}
+}
+
+func resumeVmArgs(id string) []string {
+	return []string{"controlvm", id, "resume"}
 }
 
 func resetVmArgs(id string) []string {

@@ -39,13 +39,17 @@ func joinArgs(args []string) string {
 
 // queuedRunner returns results in order for each command key. It is useful
 // when a single command is invoked multiple times and must return different
-// outputs, such as showvminfo before and after a modifyvm call.
+// outputs, such as showvminfo before and after a modifyvm call. It also records
+// every command key it was asked to run so tests can assert which VBoxManage
+// subcommand was (or was not) issued.
 type queuedRunner struct {
 	queues map[string][]runner.Result
+	calls  []string
 }
 
 func (q *queuedRunner) RunContext(ctx context.Context, name string, args []string, timeout time.Duration) (runner.Result, error) {
 	key := name + " " + joinArgs(args)
+	q.calls = append(q.calls, key)
 	queue := q.queues[key]
 	if len(queue) == 0 {
 		return runner.Result{ExitCode: 1, StandardError: "unexpected command: " + key}, nil
@@ -53,6 +57,16 @@ func (q *queuedRunner) RunContext(ctx context.Context, name string, args []strin
 	result := queue[0]
 	q.queues[key] = queue[1:]
 	return result, nil
+}
+
+// issued reports whether any recorded command key contains substr.
+func (q *queuedRunner) issued(substr string) bool {
+	for _, c := range q.calls {
+		if strings.Contains(c, substr) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListVMs_ParsesVms(t *testing.T) {
@@ -1143,6 +1157,186 @@ func TestPowerOffVmArgs(t *testing.T) {
 		if args[i] != expected[i] {
 			t.Fatalf("arg %d mismatch: expected %q, got %q", i, expected[i], args[i])
 		}
+	}
+}
+
+// TestControlCommandFailure_LogsExitCodeAndStderr covers Part B1: a failed
+// control command must persist an operation-log message that preserves the exit
+// code and the raw stderr (the store redacts paths/tokens, so this is safe).
+func TestControlCommandFailure_LogsExitCodeAndStderr(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	ctx := context.Background()
+	db, err := store.OpenInMemory(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error opening store: %v", err)
+	}
+	defer db.Close()
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	stderr := "VBoxManage: error: The virtual machine is not running"
+	run := &fakeRunner{
+		results: map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " controlvm " + id + " acpipowerbutton": {ExitCode: 5, StandardError: stderr},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}, Store: db})
+	if err := svc.StopVM(ctx, id); err == nil {
+		t.Fatal("expected StopVM to fail")
+	}
+
+	ops, err := db.ListOperations(ctx, 10)
+	if err != nil {
+		t.Fatalf("unexpected error reading operations: %v", err)
+	}
+	if len(ops) == 0 {
+		t.Fatal("expected an operation log entry")
+	}
+	msg := ops[0].Message
+	if !strings.Contains(msg, "exit code 5") {
+		t.Fatalf("expected exit code in logged message, got %q", msg)
+	}
+	if !strings.Contains(msg, "The virtual machine is not running") {
+		t.Fatalf("expected raw stderr text in logged message, got %q", msg)
+	}
+}
+
+// TestStartVM_PausedResumesInsteadOfStart covers Part C: a paused VM must be
+// resumed, never re-started.
+func TestStartVM_PausedResumesInsteadOfStart(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"paused\""}},
+			path + " controlvm " + id + " resume":             {{ExitCode: 0}},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !run.issued("controlvm " + id + " resume") {
+		t.Fatal("expected StartVM to resume the paused VM")
+	}
+	if run.issued("startvm " + id) {
+		t.Fatal("StartVM must not issue startvm for a paused VM")
+	}
+}
+
+// TestStartVM_AlreadyRunningIsIdempotent covers Part C: starting a running VM is
+// a no-op success, never a second startvm.
+func TestStartVM_AlreadyRunningIsIdempotent(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"running\""}},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("expected idempotent success, got %v", err)
+	}
+	if run.issued("startvm " + id) {
+		t.Fatal("StartVM must not issue startvm for an already running VM")
+	}
+}
+
+// TestStartVM_PoweredOffIssuesStartvm covers Part C: a powered-off VM takes the
+// normal startvm path.
+func TestStartVM_PoweredOffIssuesStartvm(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"poweroff\""}},
+			path + " startvm " + id + " --type headless":       {{ExitCode: 0}},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !run.issued("startvm " + id + " --type headless") {
+		t.Fatal("expected StartVM to issue startvm for a powered-off VM")
+	}
+}
+
+// TestStartVM_RetriesOnLockContention covers Part C: a transient lock on the
+// first startvm is retried and then succeeds.
+func TestStartVM_RetriesOnLockContention(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"poweroff\""}},
+			path + " startvm " + id + " --type headless": {
+				{ExitCode: 1, StandardError: "VBoxManage: error: The machine 'demo' is already locked by a session"},
+				{ExitCode: 0},
+			},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("expected retry to succeed, got %v", err)
+	}
+}
+
+// TestStartVM_LockContentionExhaustsRetries covers Part C: persistent lock
+// contention surfaces as an *ExecutionError after the retries are exhausted.
+func TestStartVM_LockContentionExhaustsRetries(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	locked := runner.Result{ExitCode: 1, StandardError: "VBoxManage: error: The machine 'demo' is already locked by a session"}
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"poweroff\""}},
+			path + " startvm " + id + " --type headless":       {locked, locked, locked},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	err := svc.StartVM(context.Background(), id)
+	if err == nil {
+		t.Fatal("expected StartVM to fail after exhausting retries")
+	}
+	if _, ok := err.(*ExecutionError); !ok {
+		t.Fatalf("expected *ExecutionError, got %T", err)
 	}
 }
 
