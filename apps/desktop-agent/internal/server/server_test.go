@@ -98,6 +98,8 @@ type fakeVboxService struct {
 	lastCloneSourceID string
 	lastCloneName     string
 	lastCloneLinked   bool
+	exportValidateErr error
+	lastExportDir     string
 	startBlocker      chan struct{}
 	startEntered      chan struct{}
 	startEnteredOnce  sync.Once
@@ -380,6 +382,16 @@ func (f *fakeVboxService) CloneVM(ctx context.Context, sourceID, name string, li
 	f.lastCloneSourceID = sourceID
 	f.lastCloneName = name
 	f.lastCloneLinked = linked
+	return f.createResp, f.createErr
+}
+
+func (f *fakeVboxService) ValidateExport(ctx context.Context, sourceID, directory string) error {
+	return f.exportValidateErr
+}
+
+func (f *fakeVboxService) ExportVM(ctx context.Context, sourceID, directory string) (models.VmCreateResponse, error) {
+	f.lastAction = "exportVm"
+	f.lastExportDir = directory
 	return f.createResp, f.createErr
 }
 

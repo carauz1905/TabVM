@@ -129,6 +129,36 @@ func (s *Server) handleCloneVm(w http.ResponseWriter, r *http.Request, id string
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
 }
 
+// handleExportVm exports a stopped VM to an .ova appliance as a background job.
+// It validates the request synchronously (source powered off, a valid
+// destination directory, and no existing file to clobber) so the user gets an
+// immediate 4xx on a bad request, then starts the export on the shared
+// create-job store and returns the job id to poll via the create status
+// endpoint.
+func (s *Server) handleExportVm(w http.ResponseWriter, r *http.Request, id string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmExportRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	// Validate synchronously so a running source, an invalid directory, or a
+	// clobbering target is rejected now rather than surfacing as a failed job.
+	if err := s.vbox.ValidateExport(r.Context(), id, body.Directory); err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+
+	directory := body.Directory
+	jobID := s.startCreateJob("", func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.ExportVM(ctx, id, directory)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
 // handleCreateStatus returns the current state of a background create/import job.
 func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

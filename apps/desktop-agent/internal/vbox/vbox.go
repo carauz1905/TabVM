@@ -59,6 +59,8 @@ type Service interface {
 	CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error)
 	ValidateClone(ctx context.Context, sourceID, name string, linked bool) error
 	CloneVM(ctx context.Context, sourceID, name string, linked bool) (models.VmCreateResponse, error)
+	ValidateExport(ctx context.Context, sourceID, directory string) error
+	ExportVM(ctx context.Context, sourceID, directory string) (models.VmCreateResponse, error)
 }
 
 // NotDiscoveredError indicates that VirtualBox/VBoxManage could not be located.
