@@ -789,6 +789,7 @@
   transition: color 0.16s, border-color 0.16s;
 }
 .net-fwd-del:hover:not(:disabled) { color: var(--text); border-color: var(--line); }
+.net-fwd-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--text); }
 .net-fwd-del:disabled { opacity: 0.45; cursor: default; }
 .net-fwd-form { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .net-fwd-input {

@@ -212,6 +212,37 @@ macaddress2="0800271133BB"`},
 	}
 }
 
+func TestAddPortForwarding_RejectsHostPortCollisionAcrossVMs(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	id := "11111111-1111-1111-1111-111111111111"
+	other := "22222222-2222-2222-2222-222222222222"
+	path := createTempExecutable(t)
+	run := &fakeRunner{results: map[string]runner.Result{
+		path + " --version": {ExitCode: 0, StandardOutput: "7.2.12r174389\n"},
+		path + " showvminfo " + id + " --machinereadable": {ExitCode: 0, StandardOutput: `VMState="poweroff"
+nic1="nat"
+macaddress1="0800271122AA"`},
+		// This VM has no rules of its own...
+		path + " showvminfo " + id: {ExitCode: 0, StandardOutput: ""},
+		// ...but another registered VM already forwards host port 3333/tcp.
+		path + " list vms": {ExitCode: 0, StandardOutput: `"Current" {` + id + `}` + "\r\n" + `"Other" {` + other + `}`},
+		path + " showvminfo " + other: {ExitCode: 0, StandardOutput: `NIC 1 Rule(0):  name = ssh, protocol = tcp, host ip = 127.0.0.1, host port = 3333, guest ip = , guest port = 22`},
+	}}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	_, err := svc.AddPortForwarding(context.Background(), id, models.PortForwardingRequest{
+		Slot: 1, Name: "dup", Protocol: "tcp", HostPort: 3333, GuestPort: 22,
+	})
+	// The only possible rejection cause in this setup is the cross-VM host-port
+	// collision, so a ValidationError proves the cross-VM guard fired.
+	if _, ok := err.(*ValidationError); !ok {
+		t.Fatalf("expected ValidationError for host port collision across VMs, got %T: %v", err, err)
+	}
+}
+
 func TestAddPortForwarding_DefaultsHostIPToLoopback(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("VirtualBox discovery is Windows-only in this test")

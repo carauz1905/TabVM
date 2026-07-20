@@ -59,6 +59,18 @@ describe('NetworkPanel port forwarding', () => {
     expect(map?.textContent).toContain('22/tcp');
   });
 
+  it('shows * for a rule with no host IP instead of faking loopback', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(
+      natOptions([{ name: 'open', protocol: 'tcp', hostIp: '', hostPort: 8080, guestPort: 80 }]),
+    );
+
+    const { container, findByText } = render(<NetworkPanel vmId={VM_ID} />);
+    await findByText('open');
+    const map = container.querySelector('.net-fwd-map');
+    expect(map?.textContent).toContain('*:8080');
+    expect(map?.textContent).not.toContain('127.0.0.1');
+  });
+
   it('submits the right payload when adding a rule', async () => {
     vi.mocked(api.addPortForwarding).mockResolvedValue({ success: true, vmId: VM_ID, message: 'added' });
     const onChanged = vi.fn();

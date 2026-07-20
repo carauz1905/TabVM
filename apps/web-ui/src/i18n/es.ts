@@ -171,6 +171,7 @@ export const es: Record<string, string> = {
   'Host IP (optional)': 'IP del anfitrión (opcional)',
   'Add rule': 'Agregar regla',
   'Remove rule': 'Quitar regla',
+  '* = bound to all host interfaces': '* = enlazado a todas las interfaces del anfitrión',
   name: 'nombre',
   'host port': 'puerto del anfitrión',
   'guest port': 'puerto del guest',

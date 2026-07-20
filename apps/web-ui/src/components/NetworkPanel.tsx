@@ -282,8 +282,11 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
                       <ul className="net-fwd-list">
                         {rules.map((rule) => (
                           <li className="net-fwd-rule" key={rule.name}>
-                            <span className="net-fwd-map">
-                              {(rule.hostIp || '127.0.0.1')}:{rule.hostPort} → {rule.guestPort}/{rule.protocol}
+                            <span
+                              className="net-fwd-map"
+                              title={rule.hostIp ? undefined : t('* = bound to all host interfaces')}
+                            >
+                              {(rule.hostIp || '*')}:{rule.hostPort} → {rule.guestPort}/{rule.protocol}
                             </span>
                             <span className="net-fwd-name">{rule.name}</span>
                             <button

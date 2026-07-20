@@ -150,6 +150,10 @@ func (s *service) AddPortForwarding(ctx context.Context, id string, req models.P
 	existing := map[int][]models.PortForwardingRule{}
 	if human, herr := s.readShowVmInfoHuman(ctx, path, id, "reading existing port forwarding rules"); herr == nil {
 		existing = parseForwardingRules(human)
+	} else {
+		// The read is best-effort, but silently skipping the uniqueness guards
+		// would hide the bypass, so record that we are relying on VBoxManage alone.
+		s.logOperation(ctx, id, "network.forwarding.add", false, "Could not read current rules; local uniqueness checks skipped (relying on VBoxManage).")
 	}
 	for _, r := range existing[req.Slot] {
 		if strings.EqualFold(r.Name, name) {
@@ -164,6 +168,13 @@ func (s *service) AddPortForwarding(ctx context.Context, id string, req models.P
 				return models.NetworkOperationResponse{}, &ValidationError{Message: fmt.Sprintf("Host port %d/%s is already forwarded on this VM.", req.HostPort, proto)}
 			}
 		}
+	}
+	// Host ports are global to the whole host, not just this VM: if another
+	// registered VM already forwards this host port+protocol, one of the two NAT
+	// listeners would fail to bind at runtime. Best-effort — VMs whose info
+	// cannot be read are skipped.
+	if other := s.hostPortForwardedByOtherVM(ctx, path, id, proto, req.HostPort); other != "" {
+		return models.NetworkOperationResponse{}, &ValidationError{Message: fmt.Sprintf("Host port %d/%s is already forwarded by VM %q.", req.HostPort, proto, other)}
 	}
 
 	rule := models.PortForwardingRule{
@@ -249,6 +260,36 @@ func (s *service) readShowVmInfoHuman(ctx context.Context, path, id, description
 
 func showVmInfoHumanArgs(id string) []string {
 	return []string{"showvminfo", id}
+}
+
+// hostPortForwardedByOtherVM returns the name of another registered VM that
+// already forwards hostPort/proto, or "" if none does. Host ports are global to
+// the host, so a cross-VM collision makes one NAT listener fail to bind at
+// runtime. It is best-effort: it enumerates VMs and skips any whose info cannot
+// be read, and excludes excludeID (the VM being modified, already checked
+// locally).
+func (s *service) hostPortForwardedByOtherVM(ctx context.Context, path, excludeID, proto string, hostPort int) string {
+	result, err := s.runner.RunContext(ctx, path, listVmsArgs(), 10*time.Second)
+	if err != nil || result.ExitCode != 0 {
+		return ""
+	}
+	for _, vm := range parseListVmsOutput(result.StandardOutput) {
+		if vm.ID == "" || strings.EqualFold(vm.ID, excludeID) {
+			continue
+		}
+		human, herr := s.readShowVmInfoHuman(ctx, path, vm.ID, "reading port forwarding rules of another VM")
+		if herr != nil {
+			continue
+		}
+		for _, rules := range parseForwardingRules(human) {
+			for _, r := range rules {
+				if r.HostPort == hostPort && strings.EqualFold(strings.TrimSpace(r.Protocol), proto) {
+					return vm.Name
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // forwardingRuleSpec renders a rule as the VBoxManage natpf field string:
