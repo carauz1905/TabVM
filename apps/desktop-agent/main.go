@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -26,19 +25,6 @@ func main() {
 	if err != nil {
 		logger.Error("failed to load configuration", "error", err)
 		os.Exit(1)
-	}
-
-	// Under the windowsgui launcher there is no console, so slog output written
-	// only to stdout is discarded and diagnostics become unrecoverable. Also
-	// write to a discoverable log file. If the file cannot be opened we keep
-	// serving with stdout only rather than crash the agent over logging.
-	if writer, closeLog, logErr := openLogWriter(cfg.DataDir); logErr != nil {
-		logger.Warn("could not open agent log file; continuing with stdout only", "error", logErr)
-	} else {
-		defer func() { _ = closeLog() }()
-		logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		}))
 	}
 
 	// In a packaged (non-development) install no session token is provided via
@@ -121,35 +107,4 @@ func ensureSessionToken(dataDir string) (string, error) {
 		return "", err
 	}
 	return token, nil
-}
-
-// openLogWriter opens (creating as needed) <dataDir>/logs/agent.log for
-// appending and returns a writer that fans out to both stdout and that file,
-// plus a close function for the file. dataDir mirrors the session-token
-// directory: it is used when set, otherwise the per-user config directory
-// (%APPDATA%\TabVM) is used. The logs directory is owner-only.
-//
-// rotation is a follow-up.
-func openLogWriter(dataDir string) (io.Writer, func() error, error) {
-	dir := strings.TrimSpace(dataDir)
-	if dir == "" {
-		base, err := os.UserConfigDir()
-		if err != nil {
-			return nil, nil, err
-		}
-		dir = filepath.Join(base, "TabVM")
-	}
-
-	logsDir := filepath.Join(dir, "logs")
-	if err := os.MkdirAll(logsDir, 0o700); err != nil {
-		return nil, nil, err
-	}
-
-	logPath := filepath.Join(logsDir, "agent.log")
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return io.MultiWriter(os.Stdout, file), file.Close, nil
 }
