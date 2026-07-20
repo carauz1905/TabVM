@@ -435,6 +435,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleDeleteSnapshot(w, r, id)
 		case "network":
 			s.handleChangeNetworkMode(w, r, id)
+		case "network/forwarding":
+			s.handleAddPortForwarding(w, r, id)
+		case "network/forwarding/delete":
+			s.handleDeletePortForwarding(w, r, id)
 		case "hardware":
 			s.handleSetVmHardware(w, r, id)
 		case "storage/resize":
@@ -672,6 +676,56 @@ func (s *Server) handleChangeNetworkMode(w http.ResponseWriter, r *http.Request,
 	defer unlock()
 
 	resp, err := s.vbox.ChangeNetworkMode(r.Context(), id, body.Slot, body.Mode, body.Adapter)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleAddPortForwarding(w http.ResponseWriter, r *http.Request, id string) {
+	var body models.PortForwardingRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.NetworkOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.AddPortForwarding(r.Context(), id, body)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleDeletePortForwarding(w http.ResponseWriter, r *http.Request, id string) {
+	var body models.PortForwardingDeleteRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.NetworkOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.DeletePortForwarding(r.Context(), id, body.Slot, body.Name)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return
