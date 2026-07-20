@@ -487,6 +487,15 @@ type VmCreateManualRequest struct {
 	DiskGB   int    `json:"diskGb"`
 }
 
+// VmCloneRequest is the body for POST /api/vms/{id}/clone — cloning a stopped
+// source VM. Linked selects a linked clone (which requires the source to have at
+// least one snapshot); otherwise a full clone (independent copy of the disks) is
+// made. The clone runs as a background job and is polled like a create.
+type VmCloneRequest struct {
+	Name   string `json:"name"`
+	Linked bool   `json:"linked"`
+}
+
 // VmCreateResponse is what the service returns once a create/import completes.
 type VmCreateResponse struct {
 	Success bool   `json:"success"`

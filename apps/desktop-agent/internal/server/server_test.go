@@ -94,6 +94,10 @@ type fakeVboxService struct {
 	lastAction        string
 	lastID            string
 	lastManualReq     models.VmCreateManualRequest
+	cloneValidateErr  error
+	lastCloneSourceID string
+	lastCloneName     string
+	lastCloneLinked   bool
 	startBlocker      chan struct{}
 	startEntered      chan struct{}
 	startEnteredOnce  sync.Once
@@ -364,6 +368,18 @@ func (f *fakeVboxService) CreateVmUnattended(ctx context.Context, req models.VmC
 func (f *fakeVboxService) CreateVmManual(ctx context.Context, req models.VmCreateManualRequest) (models.VmCreateResponse, error) {
 	f.lastAction = "createVmManual"
 	f.lastManualReq = req
+	return f.createResp, f.createErr
+}
+
+func (f *fakeVboxService) ValidateClone(ctx context.Context, sourceID, name string, linked bool) error {
+	return f.cloneValidateErr
+}
+
+func (f *fakeVboxService) CloneVM(ctx context.Context, sourceID, name string, linked bool) (models.VmCreateResponse, error) {
+	f.lastAction = "cloneVm"
+	f.lastCloneSourceID = sourceID
+	f.lastCloneName = name
+	f.lastCloneLinked = linked
 	return f.createResp, f.createErr
 }
 
