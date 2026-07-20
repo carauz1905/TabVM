@@ -205,6 +205,13 @@ func normalizeVersion(v string) string {
 // leading "v". A pre-release (a version containing "-") is deprioritized: it is
 // never considered newer than a release. Malformed input compares as false.
 func isNewer(latest, current string) bool {
+	// A pre-release "latest" is never offered (GitHub's releases/latest only
+	// returns full releases; this is defensive). A pre-release *current*, though,
+	// must still compare on its core version so beta users are offered newer
+	// stable releases.
+	if isPreRelease(latest) {
+		return false
+	}
 	l, ok := parseVersion(latest)
 	if !ok {
 		return false
@@ -221,13 +228,25 @@ func isNewer(latest, current string) bool {
 	return false
 }
 
-// parseVersion parses "v1.2.3" / "1.2.3" into [major, minor, patch]. It returns
-// ok=false for anything malformed or carrying a pre-release/build suffix (so
-// pre-releases are ignored by isNewer).
+// isPreRelease reports whether v carries a pre-release suffix (e.g. 0.2.0-rc1).
+func isPreRelease(v string) bool {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	return strings.Contains(v, "-")
+}
+
+// parseVersion parses "v1.2.3" (optionally with a pre-release/build suffix such
+// as "1.2.3-rc1") into [major, minor, patch], ignoring the suffix. It returns
+// ok=false only for malformed input. Whether a pre-release "latest" should be
+// offered is decided separately in isNewer.
 func parseVersion(v string) ([3]int, bool) {
 	v = strings.TrimSpace(v)
 	v = strings.TrimPrefix(v, "v")
-	if v == "" || strings.Contains(v, "-") {
+	// Drop any pre-release / build metadata so a running pre-release (e.g.
+	// 0.2.0-rc1) still compares on its core version.
+	if i := strings.IndexAny(v, "-+"); i >= 0 {
+		v = v[:i]
+	}
+	if v == "" {
 		return [3]int{}, false
 	}
 	parts := strings.Split(v, ".")

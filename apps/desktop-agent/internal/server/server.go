@@ -181,7 +181,11 @@ func (s *Server) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := s.updateChecker.Status(r.Context())
+	// Use a background context, not the request's: the checker caches its result
+	// (including safe "no update" outcomes on failure) for hours, so a client
+	// disconnecting mid-fetch must not cancel the call and poison the shared
+	// cache. The checker bounds the fetch with its own timeout.
+	status := s.updateChecker.Status(context.Background())
 	respondJSON(w, http.StatusOK, status)
 }
 
