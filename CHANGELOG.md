@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-20
+
+### Added
+
+- In-app update notification: the UI shows a dismissible banner when a newer
+  release exists on GitHub, linking to the download. The check is best-effort,
+  cached, local-first (fails silently offline), and can be disabled. (#24)
+- Multi-NIC NAT port forwarding: add and remove per-NIC host→guest forwarding
+  rules from the Network panel, with a loopback-safe default host IP and
+  cross-VM host-port collision guards. (#25)
+- Clone a VM: duplicate a stopped VM as a full or linked clone (linked clones
+  are based on the source's current snapshot), run as an async job. (#26)
+- Export a VM to OVA: export a stopped VM to a portable `.ova` appliance as an
+  async job, with strict destination-path validation. (#27)
+
 ## [0.1.2] - 2026-07-20
 
 ### Fixed
@@ -54,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/carauz1905/TabVM/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/carauz1905/TabVM/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/carauz1905/TabVM/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/carauz1905/TabVM/releases/tag/v0.1.0
