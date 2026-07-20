@@ -13,6 +13,7 @@ import (
 	"github.com/tabvm/desktop-agent/internal/config"
 	"github.com/tabvm/desktop-agent/internal/models"
 	"github.com/tabvm/desktop-agent/internal/store"
+	"github.com/tabvm/desktop-agent/internal/updatecheck"
 	"github.com/tabvm/desktop-agent/internal/vbox"
 )
 
@@ -417,6 +418,37 @@ func TestApiEndpointAcceptsValidToken(t *testing.T) {
 	body := rr.Body.String()
 	if !strings.Contains(body, `"vms"`) {
 		t.Fatalf("expected VMs in body, got %q", body)
+	}
+}
+
+func TestUpdateStatusEndpointReturnsStatus(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+	// Seed the checker's cache so the endpoint never touches the network.
+	srv.updateChecker = updatecheck.New("0.1.2", updatecheck.WithSeededStatus(models.UpdateStatus{
+		Current:         "0.1.2",
+		Latest:          "0.1.3",
+		UpdateAvailable: true,
+		ReleaseURL:      "https://github.com/carauz1905/TabVM/releases/tag/v0.1.3",
+	}, time.Now()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/update-status", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, `"updateAvailable":true`) {
+		t.Fatalf("expected updateAvailable=true in body, got %q", body)
+	}
+	if !strings.Contains(body, `"latest":"0.1.3"`) {
+		t.Fatalf("expected latest version in body, got %q", body)
+	}
+	if !strings.Contains(body, `"releaseUrl":"https://github.com/carauz1905/TabVM/releases/tag/v0.1.3"`) {
+		t.Fatalf("expected release URL in body, got %q", body)
 	}
 }
 
@@ -874,6 +906,7 @@ func TestAllApiRoutesRequireAuth(t *testing.T) {
 		"/api/vms",
 		"/api/vbox/discovery",
 		"/api/console/protocols",
+		"/api/update-status",
 		"/api/vms/11111111-1111-1111-1111-111111111111/status",
 	}
 	for _, route := range routes {

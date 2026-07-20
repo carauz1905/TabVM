@@ -15,6 +15,19 @@ type HealthStatus struct {
 	Version       string    `json:"version,omitempty"`
 }
 
+// UpdateStatus is the response shape for GET /api/update-status. It reports
+// whether a newer TabVM release exists on GitHub. The check is best-effort: on
+// any failure (offline, rate-limited, malformed) the agent returns a safe
+// payload with UpdateAvailable=false and an empty Latest, never an error, so the
+// local-first UI is never blocked. Latest is the normalized version (no leading
+// "v"); ReleaseURL links to the GitHub release download page.
+type UpdateStatus struct {
+	Current         string `json:"current"`
+	Latest          string `json:"latest,omitempty"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	ReleaseURL      string `json:"releaseUrl,omitempty"`
+}
+
 // VirtualBoxDiscovery is the response shape for GET /api/vbox/discovery.
 // It intentionally omits the resolved VBoxManage path; host-side path details
 // should only be exposed through a future authenticated diagnostics endpoint,

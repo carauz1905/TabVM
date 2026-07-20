@@ -8,6 +8,7 @@ import { ConsoleTab } from './components/ConsoleTab';
 import { TerminalTab } from './components/TerminalTab';
 import { SplashScreen } from './components/SplashScreen';
 import { useHealth } from './hooks/useHealth';
+import { useUpdateStatus } from './hooks/useUpdateStatus';
 
 const crumbs: Record<ShellView, string> = {
   machines: 'virtual machines',
@@ -36,6 +37,7 @@ function shouldShowSplash(): boolean {
 function Workspace() {
   const health = useHealth();
   const agentOnline = health.state === 'success' && health.data?.status === 'healthy';
+  const update = useUpdateStatus();
   const [view, setView] = useState<ShellView>('machines');
   const [showSplash, setShowSplash] = useState(shouldShowSplash);
 
@@ -51,7 +53,7 @@ function Workspace() {
   return (
     <>
       {showSplash && <SplashScreen onDone={dismissSplash} />}
-      <AppShell active={view} onNavigate={setView} crumb={crumbs[view]} agentOnline={agentOnline} version={health.data?.version}>
+      <AppShell active={view} onNavigate={setView} crumb={crumbs[view]} agentOnline={agentOnline} version={health.data?.version} update={update}>
         {view === 'machines' && <MachinesView />}
         {view === 'activity' && <ActivityView />}
         {view === 'agent' && <AgentView />}
