@@ -303,8 +303,9 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 		s.logOperation(ctx, id, "vm.start", true, "VM already running.")
 		return nil
 	case "paused":
-		// A paused VM must be resumed, not started.
-		if err := s.runControlCommand(ctx, path, resumeVmArgs(id), "resuming VM"); err != nil {
+		// A paused VM must be resumed, not started. Resume shares the same
+		// lock-contention retry as start.
+		if err := s.runControlWithLockRetry(ctx, path, resumeVmArgs(id), "resuming VM"); err != nil {
 			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("resuming VM", err))
 			return err
 		}
@@ -312,7 +313,7 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 		return nil
 	default:
 		// saved, poweroff, aborted, or unknown: normal start (never poweroff first).
-		if err := s.startWithRetry(ctx, path, id); err != nil {
+		if err := s.runControlWithLockRetry(ctx, path, startVmArgs(id), "starting VM"); err != nil {
 			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("starting VM", err))
 			return err
 		}
@@ -321,17 +322,19 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 	}
 }
 
-// startWithRetry issues startvm and retries a bounded number of times when it
-// fails because the VM is momentarily locked by another VirtualBox session, a
-// transient condition behind intermittent start failures. It is context-aware
-// and returns the last *ExecutionError when contention persists.
-func (s *service) startWithRetry(ctx context.Context, path, id string) error {
+// runControlWithLockRetry runs a control command and retries a bounded number
+// of times when it fails because the VM is momentarily locked by another
+// VirtualBox session — a transient condition behind intermittent start/resume
+// failures, typically caused by the agent's own concurrent read commands. It is
+// context-aware and returns the last error when contention persists or when the
+// error is not lock contention.
+func (s *service) runControlWithLockRetry(ctx context.Context, path string, args []string, description string) error {
 	const maxAttempts = 3
 	const backoff = 400 * time.Millisecond
 
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		err := s.runControlCommand(ctx, path, startVmArgs(id), "starting VM")
+		err := s.runControlCommand(ctx, path, args, description)
 		if err == nil {
 			return nil
 		}

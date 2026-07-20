@@ -1235,6 +1235,36 @@ func TestStartVM_PausedResumesInsteadOfStart(t *testing.T) {
 	}
 }
 
+// TestStartVM_PausedRetriesOnLockContention covers Part C: resume shares the
+// same lock-contention retry as start, so a transient lock on the first resume
+// is retried and then succeeds.
+func TestStartVM_PausedRetriesOnLockContention(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"paused\""}},
+			path + " controlvm " + id + " resume": {
+				{ExitCode: 1, StandardError: "VBoxManage: error: The machine 'demo' is already locked by a session"},
+				{ExitCode: 0},
+			},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("expected resume retry to succeed, got %v", err)
+	}
+	if !run.issued("controlvm " + id + " resume") {
+		t.Fatal("expected StartVM to resume the paused VM")
+	}
+}
+
 // TestStartVM_AlreadyRunningIsIdempotent covers Part C: starting a running VM is
 // a no-op success, never a second startvm.
 func TestStartVM_AlreadyRunningIsIdempotent(t *testing.T) {
