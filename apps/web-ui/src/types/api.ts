@@ -5,6 +5,17 @@ export interface HealthStatus {
   version?: string;
 }
 
+// Whether a newer TabVM release exists on GitHub. Best-effort and cached by the
+// agent; on any failure the agent returns updateAvailable=false with no latest,
+// never an error, so the local-first UI is never blocked. latest is normalized
+// (no leading "v"); releaseUrl links to the GitHub release download page.
+export interface UpdateStatus {
+  current: string;
+  latest?: string;
+  updateAvailable: boolean;
+  releaseUrl?: string;
+}
+
 // Intentionally omits the resolved VBoxManage path. Host-side path details
 // should only be exposed through a future authenticated diagnostics endpoint.
 export interface VirtualBoxDiscovery {

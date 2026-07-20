@@ -349,6 +349,12 @@ export const es: Record<string, string> = {
   'Filter activity': 'Filtrar actividad',
   'Clear filter': 'Limpiar filtro',
   'No matches.': 'Sin resultados.',
+
+  // ----- UpdateBanner -----
+  'TabVM v{version} is available': 'TabVM v{version} ya está disponible',
+  Download: 'Descargar',
+  'Installed with Scoop? Run `scoop update tabvm`':
+    '¿Instalado con Scoop? Ejecute `scoop update tabvm`',
 };
 
 // Exact-match localization for backend-produced errors and notifications.

@@ -37,6 +37,7 @@ import type {
   VmGuestOSResponse,
   VmSerialConsoleResponse,
   SerialGettyResponse,
+  UpdateStatus,
 } from '../types/api';
 
 const API_BASE = '';
@@ -119,6 +120,10 @@ function hasNumber(value: unknown, key: string): boolean {
 
 function isHealthStatus(value: unknown): value is HealthStatus {
   return hasString(value, 'status') && hasString(value, 'timestamp');
+}
+
+function isUpdateStatus(value: unknown): value is UpdateStatus {
+  return hasString(value, 'current') && hasBoolean(value, 'updateAvailable');
 }
 
 function isVirtualBoxDiscovery(value: unknown): value is VirtualBoxDiscovery {
@@ -518,6 +523,12 @@ async function request<T>(
 
 export const api = {
   getHealth: () => request<HealthStatus>('/health', isHealthStatus),
+  // getUpdateStatus asks the agent whether a newer TabVM release exists.
+  // Privacy: the agent's ONLY outbound call is to GitHub's public,
+  // unauthenticated releases API; it is cached (6h) and fails silently offline.
+  // No telemetry. The user can disable this call via
+  // localStorage['tabvm.updateCheck']='off' (honored by useUpdateStatus).
+  getUpdateStatus: () => request<UpdateStatus>('/api/update-status', isUpdateStatus),
   getVirtualBoxDiscovery: () =>
     request<VirtualBoxDiscovery>('/api/vbox/discovery', isVirtualBoxDiscovery),
   getVms: () => request<VmListResponse>('/api/vms', isVmListResponse),

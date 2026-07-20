@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrandMark } from './BrandMark';
+import { UpdateBanner } from './UpdateBanner';
 import { useLang, useT } from '../i18n/i18n';
+import type { UpdateStatus } from '../types/api';
 
 export type ShellView = 'machines' | 'activity' | 'agent' | 'docs';
 
@@ -54,6 +56,9 @@ interface AppShellProps {
   crumb: string;
   agentOnline: boolean;
   version?: string;
+  // Best-effort "update available" status from useUpdateStatus. Optional so the
+  // shell renders without it (and never triggers the outbound check itself).
+  update?: UpdateStatus;
   children: ReactNode;
 }
 
@@ -143,7 +148,7 @@ export function applyTheme(next: 'light' | 'dark') {
   }
 }
 
-export function AppShell({ active, onNavigate, crumb, agentOnline, version, children }: AppShellProps) {
+export function AppShell({ active, onNavigate, crumb, agentOnline, version, update, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useT();
   const { lang, toggle: toggleLang } = useLang();
@@ -336,7 +341,10 @@ export function AppShell({ active, onNavigate, crumb, agentOnline, version, chil
             </div>
           </div>
 
-          <div className="tv-content">{children}</div>
+          <div className="tv-content">
+            {update && <UpdateBanner status={update} />}
+            {children}
+          </div>
         </div>
       </div>
     </div>
