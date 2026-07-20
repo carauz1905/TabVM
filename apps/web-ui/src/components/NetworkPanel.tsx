@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import type { NetworkAdapter, NetworkOptionsResponse } from '../types/api';
+import type { NetworkAdapter, NetworkOptionsResponse, PortForwardingRule } from '../types/api';
 import { useT } from '../i18n/i18n';
 
 interface NetworkPanelProps {
@@ -21,10 +21,23 @@ function modeLabel(mode: string): string {
   return MODES.find((m) => m.value === mode)?.label ?? mode;
 }
 
+// A blank add-rule form. Ports are kept as strings while typing and parsed on
+// submit; host IP is optional and defaults to 127.0.0.1 on the agent.
+interface ForwardForm {
+  name: string;
+  protocol: string;
+  hostIp: string;
+  hostPort: string;
+  guestPort: string;
+}
+
+const EMPTY_FORM: ForwardForm = { name: '', protocol: 'tcp', hostIp: '', hostPort: '', guestPort: '' };
+
 // NetworkPanel switches a VM's NIC attachment (NAT / bridged / host-only) from
-// the browser. Bridged and host-only require picking a host interface, which is
-// populated from what the host actually offers. On a running VM the change is
-// applied live; on a stopped VM it is written to the config.
+// the browser and, for NAT adapters, manages NAT port-forwarding rules. Bridged
+// and host-only require picking a host interface, which is populated from what
+// the host actually offers. On a running VM changes are applied live; on a
+// stopped VM they are written to the config.
 export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
   const { t, ts } = useT();
   const [options, setOptions] = useState<NetworkOptionsResponse | null>(null);
@@ -32,6 +45,9 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
   const [busySlot, setBusySlot] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Add-rule form state and the slot whose forwarding action is in flight.
+  const [forwardForms, setForwardForms] = useState<Record<number, ForwardForm>>({});
+  const [busyForward, setBusyForward] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -98,6 +114,78 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
     [vmId, load, onChanged],
   );
 
+  function formFor(slot: number): ForwardForm {
+    return forwardForms[slot] ?? EMPTY_FORM;
+  }
+
+  function setForm(slot: number, patch: Partial<ForwardForm>) {
+    setForwardForms((f) => ({ ...f, [slot]: { ...formFor(slot), ...patch } }));
+  }
+
+  function formIsValid(form: ForwardForm): boolean {
+    const hostPort = Number(form.hostPort);
+    const guestPort = Number(form.guestPort);
+    return (
+      form.name.trim() !== '' &&
+      Number.isInteger(hostPort) &&
+      hostPort >= 1 &&
+      hostPort <= 65535 &&
+      Number.isInteger(guestPort) &&
+      guestPort >= 1 &&
+      guestPort <= 65535
+    );
+  }
+
+  const addRule = useCallback(
+    async (nic: NetworkAdapter) => {
+      const form = formFor(nic.slot);
+      if (!formIsValid(form)) return;
+      setBusyForward(nic.slot);
+      setError(null);
+      setNotice(null);
+      try {
+        const res = await api.addPortForwarding(vmId, {
+          slot: nic.slot,
+          name: form.name.trim(),
+          protocol: form.protocol,
+          hostIp: form.hostIp.trim(),
+          hostPort: Number(form.hostPort),
+          guestIp: '',
+          guestPort: Number(form.guestPort),
+        });
+        setNotice(res.message);
+        setForwardForms((f) => ({ ...f, [nic.slot]: EMPTY_FORM }));
+        await load();
+        onChanged?.();
+      } catch (err) {
+        setError(messageFor(err));
+      } finally {
+        setBusyForward(null);
+      }
+    },
+    // formFor reads current state via closure; forwardForms is the dependency.
+    [vmId, load, onChanged, forwardForms],
+  );
+
+  const removeRule = useCallback(
+    async (nic: NetworkAdapter, rule: PortForwardingRule) => {
+      setBusyForward(nic.slot);
+      setError(null);
+      setNotice(null);
+      try {
+        const res = await api.deletePortForwarding(vmId, nic.slot, rule.name);
+        setNotice(res.message);
+        await load();
+        onChanged?.();
+      } catch (err) {
+        setError(messageFor(err));
+      } finally {
+        setBusyForward(null);
+      }
+    },
+    [vmId, load, onChanged],
+  );
+
   const adapters = options?.adapters ?? [];
 
   return (
@@ -120,6 +208,10 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
             const noAdapter = needsAdapter && available.length === 0;
             const changed = sel.mode !== nic.mode || sel.adapter !== (nic.adapter ?? '');
             const busy = busySlot === nic.slot;
+            const isNat = nic.mode === 'nat';
+            const rules = nic.forwarding ?? [];
+            const form = formFor(nic.slot);
+            const fwBusy = busyForward === nic.slot;
 
             return (
               <li className="net-row" key={nic.slot}>
@@ -179,6 +271,97 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
                     {busy ? t('Applying…') : t('Apply')}
                   </button>
                 </div>
+
+                {isNat && (
+                  <div className="net-fwd">
+                    <div className="net-fwd-h">
+                      <span className="net-fwd-title">{t('Port forwarding')}</span>
+                    </div>
+
+                    {rules.length > 0 && (
+                      <ul className="net-fwd-list">
+                        {rules.map((rule) => (
+                          <li className="net-fwd-rule" key={rule.name}>
+                            <span className="net-fwd-map">
+                              {(rule.hostIp || '127.0.0.1')}:{rule.hostPort} → {rule.guestPort}/{rule.protocol}
+                            </span>
+                            <span className="net-fwd-name">{rule.name}</span>
+                            <button
+                              type="button"
+                              className="net-fwd-del"
+                              aria-label={`${t('Remove rule')} ${rule.name}`}
+                              disabled={fwBusy}
+                              onClick={() => void removeRule(nic, rule)}
+                            >
+                              {t('Remove')}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="net-fwd-form">
+                      <input
+                        className="net-fwd-input"
+                        type="text"
+                        aria-label={`${t('Rule name')} (${t('Adapter')} ${nic.slot})`}
+                        placeholder={t('name')}
+                        value={form.name}
+                        disabled={fwBusy}
+                        onChange={(e) => setForm(nic.slot, { name: e.target.value })}
+                      />
+                      <select
+                        className="net-fwd-input"
+                        aria-label={`${t('Protocol')} (${t('Adapter')} ${nic.slot})`}
+                        value={form.protocol}
+                        disabled={fwBusy}
+                        onChange={(e) => setForm(nic.slot, { protocol: e.target.value })}
+                      >
+                        <option value="tcp">TCP</option>
+                        <option value="udp">UDP</option>
+                      </select>
+                      <input
+                        className="net-fwd-input"
+                        type="number"
+                        min={1}
+                        max={65535}
+                        aria-label={`${t('Host port')} (${t('Adapter')} ${nic.slot})`}
+                        placeholder={t('host port')}
+                        value={form.hostPort}
+                        disabled={fwBusy}
+                        onChange={(e) => setForm(nic.slot, { hostPort: e.target.value })}
+                      />
+                      <input
+                        className="net-fwd-input"
+                        type="number"
+                        min={1}
+                        max={65535}
+                        aria-label={`${t('Guest port')} (${t('Adapter')} ${nic.slot})`}
+                        placeholder={t('guest port')}
+                        value={form.guestPort}
+                        disabled={fwBusy}
+                        onChange={(e) => setForm(nic.slot, { guestPort: e.target.value })}
+                      />
+                      <input
+                        className="net-fwd-input"
+                        type="text"
+                        aria-label={`${t('Host IP (optional)')} (${t('Adapter')} ${nic.slot})`}
+                        placeholder="127.0.0.1"
+                        value={form.hostIp}
+                        disabled={fwBusy}
+                        onChange={(e) => setForm(nic.slot, { hostIp: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="net-apply"
+                        onClick={() => void addRule(nic)}
+                        disabled={fwBusy || !formIsValid(form)}
+                      >
+                        {fwBusy ? t('Applying…') : t('Add rule')}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             );
           })}

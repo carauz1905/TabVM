@@ -21,6 +21,7 @@ import type {
   NetworkAdapter,
   NetworkOptionsResponse,
   NetworkOperationResponse,
+  PortForwardingRequest,
   VmHardwareResponse,
   VmStorageResponse,
   DiskInfo,
@@ -637,6 +638,20 @@ export const api = {
       `/api/vms/${encodeURIComponent(id)}/network`,
       isNetworkOperationResponse,
       { method: 'POST', body: { slot, mode, adapter } },
+    ),
+  // addPortForwarding adds a NAT port-forwarding rule to a NIC. An empty hostIp
+  // defaults to 127.0.0.1 on the agent (never all interfaces).
+  addPortForwarding: (id: string, req: PortForwardingRequest) =>
+    request<NetworkOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/network/forwarding`,
+      isNetworkOperationResponse,
+      { method: 'POST', body: req as unknown as Record<string, unknown> },
+    ),
+  deletePortForwarding: (id: string, slot: number, name: string) =>
+    request<NetworkOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/network/forwarding/delete`,
+      isNetworkOperationResponse,
+      { method: 'POST', body: { slot, name } },
     ),
   getVmHardware: (id: string) =>
     request<VmHardwareResponse>(

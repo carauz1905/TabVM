@@ -286,6 +286,8 @@ export function DocsView() {
               </div>
             ))}
           </dl>
+          <h3>{d.network.forwarding.title}</h3>
+          <p>{d.network.forwarding.body}</p>
           <TipBox label={d.tipLabel}>{d.network.tip}</TipBox>
         </section>
 
