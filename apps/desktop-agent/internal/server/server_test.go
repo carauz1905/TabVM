@@ -1118,6 +1118,64 @@ func TestVmOperationSanitizesExecutionError(t *testing.T) {
 	}
 }
 
+// TestSanitizedExecMessage covers Part B2: known VBoxManage stderr signatures
+// map to fixed, actionable messages, and anything else falls back to a generic
+// message that never leaks host paths or the raw "VBoxManage" detail.
+func TestSanitizedExecMessage(t *testing.T) {
+	cases := []struct {
+		name        string
+		err         *vbox.ExecutionError
+		wantContain string
+		wantAbsent  []string
+	}{
+		{
+			name:        "already locked maps to busy message",
+			err:         &vbox.ExecutionError{ExitCode: 1, StandardError: "VBoxManage: error: The machine 'kali' is already locked by a session"},
+			wantContain: "busy or locked",
+		},
+		{
+			name:        "invalid object state maps to busy message",
+			err:         &vbox.ExecutionError{ExitCode: 1, StandardError: "error: code VBOX_E_INVALID_OBJECT_STATE (0x80bb0007)"},
+			wantContain: "busy or locked",
+		},
+		{
+			name:        "VT-x unavailable maps to virtualization message",
+			err:         &vbox.ExecutionError{ExitCode: 1, StandardError: "VERR_VMX_NO_VMX: VT-x is not available"},
+			wantContain: "Hardware virtualization is unavailable",
+		},
+		{
+			name:        "Hyper-V maps to virtualization message",
+			err:         &vbox.ExecutionError{ExitCode: 1, StandardError: "VERR_NEM_NOT_AVAILABLE (Hyper-V is active)"},
+			wantContain: "Hardware virtualization is unavailable",
+		},
+		{
+			name:        "no memory maps to memory message",
+			err:         &vbox.ExecutionError{ExitCode: 1, StandardError: "VERR_NO_MEMORY: not enough memory to complete the operation"},
+			wantContain: "Not enough host memory",
+		},
+		{
+			name:        "unknown stderr falls back without leaking",
+			err:         &vbox.ExecutionError{ExitCode: 7, StandardError: "VBoxManage: could not find executable at C:\\Secret\\VBoxManage.exe"},
+			wantContain: "VirtualBox operation failed",
+			wantAbsent:  []string{"VBoxManage", "C:\\Secret"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sanitizedExecMessage(tc.err)
+			if !strings.Contains(got, tc.wantContain) {
+				t.Fatalf("expected %q to contain %q", got, tc.wantContain)
+			}
+			for _, absent := range tc.wantAbsent {
+				if strings.Contains(got, absent) {
+					t.Fatalf("expected %q to not contain %q", got, absent)
+				}
+			}
+		})
+	}
+}
+
 func TestVmConsoleStatusEndpointReturnsStatus(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.consoleStatus = models.VmConsoleStatusResponse{

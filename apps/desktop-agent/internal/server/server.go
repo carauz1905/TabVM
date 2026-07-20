@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -286,13 +287,37 @@ func (s *Server) handleVboxError(w http.ResponseWriter, err error) {
 	case *vbox.NotDiscoveredError:
 		http.Error(w, e.Message, http.StatusServiceUnavailable)
 	case *vbox.ExecutionError:
-		// Log the full error server-side but only return a generic, sanitized
+		// Log the full error server-side but only return a mapped, sanitized
 		// message to avoid leaking host-sensitive paths or raw runner output.
 		s.logger.Error("vbox command failed", "message", e.Message, "exitCode", e.ExitCode, "stderr", e.StandardError)
-		http.Error(w, "VirtualBox operation failed.", http.StatusBadGateway)
+		http.Error(w, sanitizedExecMessage(e), http.StatusBadGateway)
 	default:
 		s.logger.Error("unexpected error", "error", err)
 		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+	}
+}
+
+// sanitizedExecMessage maps a VBoxManage execution failure to a fixed, safe
+// user-facing message. It matches known stderr signatures case-insensitively and
+// never echoes host paths, tokens, or the raw runner output. The default keeps
+// the exact substring "VirtualBox operation failed" so callers (and tests) can
+// rely on it. The real reason is preserved separately in the operation log and
+// the server-side error log.
+func sanitizedExecMessage(e *vbox.ExecutionError) string {
+	stderr := strings.ToLower(e.StandardError)
+	contains := func(needle string) bool {
+		return strings.Contains(stderr, strings.ToLower(needle))
+	}
+
+	switch {
+	case contains("already locked") || contains("VBOX_E_INVALID_OBJECT_STATE"):
+		return "The VM is busy or locked by another session. Wait a moment and try again."
+	case contains("VERR_VMX") || contains("VT-x is not available") || contains("VERR_NEM") || contains("raw-mode is unavailable") || contains("Hyper-V"):
+		return "Hardware virtualization is unavailable. Check that Hyper-V or Windows memory integrity is not blocking VirtualBox."
+	case contains("VERR_NO_MEMORY") || contains("not enough memory"):
+		return "Not enough host memory to start the VM."
+	default:
+		return fmt.Sprintf("VirtualBox operation failed (exit code %d).", e.ExitCode)
 	}
 }
 
