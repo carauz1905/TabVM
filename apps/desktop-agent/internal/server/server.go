@@ -21,6 +21,7 @@ import (
 	"github.com/tabvm/desktop-agent/internal/hostpick"
 	"github.com/tabvm/desktop-agent/internal/models"
 	"github.com/tabvm/desktop-agent/internal/store"
+	"github.com/tabvm/desktop-agent/internal/updatecheck"
 	"github.com/tabvm/desktop-agent/internal/vbox"
 	"github.com/tabvm/desktop-agent/internal/version"
 	"github.com/tabvm/desktop-agent/internal/webui"
@@ -42,6 +43,9 @@ type Server struct {
 	pickMu     sync.Mutex
 	createMu   sync.Mutex
 	createJobs map[string]*createJob
+	// updateChecker performs the best-effort, cached "update available" check
+	// against GitHub's public releases API. It never blocks or errors the app.
+	updateChecker *updatecheck.Checker
 }
 
 // createJob tracks a background VM import/create. State is "running", "done", or
@@ -59,12 +63,13 @@ func New(cfg *config.Agent, vboxService vbox.Service, db *store.Store, logger *s
 		logger = slog.Default()
 	}
 	return &Server{
-		cfg:        cfg,
-		vbox:       vboxService,
-		store:      db,
-		logger:     logger,
-		startedAt:  time.Now(),
-		createJobs: make(map[string]*createJob),
+		cfg:           cfg,
+		vbox:          vboxService,
+		store:         db,
+		logger:        logger,
+		startedAt:     time.Now(),
+		createJobs:    make(map[string]*createJob),
+		updateChecker: updatecheck.New(version.Version, updatecheck.WithLogger(logger)),
 	}
 }
 
@@ -76,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 	apiMux.HandleFunc("/vbox/discovery", s.handleDiscovery)
 	apiMux.HandleFunc("/console/protocols", s.handleConsoleProtocols)
 	apiMux.HandleFunc("/local-state/status", s.handleLocalStateStatus)
+	apiMux.HandleFunc("/update-status", s.handleUpdateStatus)
 	apiMux.HandleFunc("/host/pick-folder", s.handlePickFolder)
 	apiMux.HandleFunc("/host/pick-file", s.handlePickFile)
 	apiMux.HandleFunc("/activity", s.handleActivity)
@@ -163,6 +169,20 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		UptimeSeconds: int64(time.Since(s.startedAt).Seconds()),
 		Version:       version.Version,
 	})
+}
+
+// handleUpdateStatus reports whether a newer TabVM release is available. The
+// checker is best-effort and cached, and always yields a safe payload, so this
+// endpoint always returns 200 even when the host is offline or GitHub is
+// unreachable — the local-first UI is never blocked by the check.
+func (s *Server) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	status := s.updateChecker.Status(r.Context())
+	respondJSON(w, http.StatusOK, status)
 }
 
 func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
