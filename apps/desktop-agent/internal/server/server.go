@@ -455,6 +455,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleUpdateGuestAdditions(w, r, id)
 		case "clone":
 			s.handleCloneVm(w, r, id)
+		case "export":
+			s.handleExportVm(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}

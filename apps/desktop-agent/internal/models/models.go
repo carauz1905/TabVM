@@ -496,6 +496,15 @@ type VmCloneRequest struct {
 	Linked bool   `json:"linked"`
 }
 
+// VmExportRequest is the body for POST /api/vms/{id}/export — exporting a
+// stopped VM to an .ova appliance. Directory is the destination folder chosen
+// via the host folder picker; the agent derives the filename from the VM name
+// and writes <directory>/<sanitized-vm-name>.ova. The export runs as a
+// background job and is polled like a create.
+type VmExportRequest struct {
+	Directory string `json:"directory"`
+}
+
 // VmCreateResponse is what the service returns once a create/import completes.
 type VmCreateResponse struct {
 	Success bool   `json:"success"`

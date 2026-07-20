@@ -56,6 +56,8 @@ vi.mock('../api/client', () => {
       installGuestAdditions: vi.fn(),
       getVmGuestOS: vi.fn(),
       cloneVm: vi.fn(),
+      exportVm: vi.fn(),
+      pickHostFolder: vi.fn(),
       getCreateStatus: vi.fn(),
     },
   };
@@ -473,6 +475,89 @@ describe('MachinesView', () => {
     await waitFor(() =>
       expect(
         getByText('A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it.'),
+      ).toBeTruthy(),
+    );
+  });
+
+  it('does not offer export for a running VM', () => {
+    const { queryByRole } = render(<MachinesView />);
+    expect(queryByRole('button', { name: 'Export VM One' })).toBeNull();
+  });
+
+  it('offers export for a stopped VM and opens the export dialog', () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Export VM One' }));
+
+    expect(getByRole('button', { name: 'Choose folder & export' })).toBeTruthy();
+  });
+
+  it('picks a destination folder and posts the export directory', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.pickHostFolder).mockResolvedValue({ path: 'C:\\out', cancelled: false });
+    vi.mocked(api.exportVm).mockResolvedValue({ jobId: 'j-export' });
+    vi.mocked(api.getCreateStatus).mockResolvedValue({ state: 'running', message: '' });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Export VM One' }));
+    fireEvent.click(getByRole('button', { name: 'Choose folder & export' }));
+
+    await waitFor(() =>
+      expect(api.exportVm).toHaveBeenCalledWith(RUNNING_ID, { directory: 'C:\\out' }),
+    );
+  });
+
+  it('does not export when the folder picker is cancelled', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.pickHostFolder).mockResolvedValue({ path: '', cancelled: true });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Export VM One' }));
+    fireEvent.click(getByRole('button', { name: 'Choose folder & export' }));
+
+    await waitFor(() => expect(api.pickHostFolder).toHaveBeenCalled());
+    expect(api.exportVm).not.toHaveBeenCalled();
+  });
+
+  it('shows the written .ova path once the export job is done', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.pickHostFolder).mockResolvedValue({ path: 'C:\\out', cancelled: false });
+    vi.mocked(api.exportVm).mockResolvedValue({ jobId: 'j-export' });
+    vi.mocked(api.getCreateStatus).mockResolvedValue({
+      state: 'done',
+      message: 'Exported to C:\\out\\VM One.ova',
+    });
+
+    const { getByRole, findByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Export VM One' }));
+    fireEvent.click(getByRole('button', { name: 'Choose folder & export' }));
+
+    // The poll interval is 2s; give findByText room to see the resolved path.
+    expect(await findByText('Exported to C:\\out\\VM One.ova', undefined, { timeout: 4000 })).toBeTruthy();
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('surfaces an export error and keeps the dialog open', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.pickHostFolder).mockResolvedValue({ path: 'C:\\out', cancelled: false });
+    vi.mocked(api.exportVm).mockRejectedValue(
+      new ApiError({
+        status: 400,
+        statusText: 'Bad Request',
+        body: 'A file named "VM One.ova" already exists in the destination folder. Choose another folder or remove it first.',
+      }),
+    );
+
+    const { getByRole, getByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Export VM One' }));
+    fireEvent.click(getByRole('button', { name: 'Choose folder & export' }));
+
+    await waitFor(() =>
+      expect(
+        getByText(
+          'A file named "VM One.ova" already exists in the destination folder. Choose another folder or remove it first.',
+        ),
       ).toBeTruthy(),
     );
   });
