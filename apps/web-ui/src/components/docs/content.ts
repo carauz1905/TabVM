@@ -92,6 +92,7 @@ export interface DocsStrings {
     installCard: Step;
     manualCard: Step;
     cloneCard: Step;
+    exportCard: Step;
     note: string;
   };
   personalize: {
@@ -266,6 +267,10 @@ const en: DocsStrings = {
     cloneCard: {
       title: 'Clone an existing machine',
       body: 'A stopped machine has a Clone button. Give the copy a name and pick Full (an independent copy of the disks) or Linked (faster and smaller, but it shares the source disk and needs the source to have a snapshot). The clone runs in the background — a full clone copies the disks and can take a few minutes.',
+    },
+    exportCard: {
+      title: 'Export a machine to an .ova',
+      body: 'A stopped machine has an Export button. Pick a destination folder and TabVM writes a portable .ova appliance named after the machine — copying the disks runs in the background and can take a few minutes. Share the file or import it back on another host.',
     },
     note: 'Kali is offered through import only — VirtualBox has no automated-install template for it.',
   },
@@ -453,6 +458,10 @@ const es: DocsStrings = {
     cloneCard: {
       title: 'Clonar una máquina existente',
       body: 'Una máquina apagada muestra un botón Clonar. Da un nombre a la copia y elige Completo (una copia independiente de los discos) o Enlazado (más rápido y ligero, pero comparte el disco de origen y requiere que el origen tenga una instantánea). El clon corre en segundo plano: un clon completo copia los discos y puede tardar unos minutos.',
+    },
+    exportCard: {
+      title: 'Exportar una máquina a un .ova',
+      body: 'Una máquina apagada muestra un botón Exportar. Elige una carpeta de destino y TabVM escribe un dispositivo .ova portátil con el nombre de la máquina: copiar los discos corre en segundo plano y puede tardar unos minutos. Comparte el archivo o vuelve a importarlo en otro host.',
     },
     note: 'Kali se ofrece solo por importación: VirtualBox no tiene plantilla de instalación automatizada para él.',
   },

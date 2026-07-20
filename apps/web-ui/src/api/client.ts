@@ -14,6 +14,7 @@ import type {
   VmCreateRequest,
   VmCreateManualRequest,
   VmCloneRequest,
+  VmExportRequest,
   LocalStateStatusResponse,
   NetworkInterface,
   SharedFolder,
@@ -628,6 +629,14 @@ export const api = {
   // returns a job id; poll it with getCreateStatus like a create/import.
   cloneVm: (id: string, req: VmCloneRequest) =>
     request<VmCreateJobResponse>(`/api/vms/${encodeURIComponent(id)}/clone`, isVmCreateJobResponse, {
+      method: 'POST',
+      body: req as unknown as Record<string, unknown>,
+    }),
+  // exportVm starts a background export of a stopped VM to an .ova appliance in
+  // the chosen destination directory (the agent derives the filename from the VM
+  // name) and returns a job id; poll it with getCreateStatus like a create.
+  exportVm: (id: string, req: VmExportRequest) =>
+    request<VmCreateJobResponse>(`/api/vms/${encodeURIComponent(id)}/export`, isVmCreateJobResponse, {
       method: 'POST',
       body: req as unknown as Record<string, unknown>,
     }),

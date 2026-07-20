@@ -145,6 +145,14 @@ export interface VmCloneRequest {
   linked: boolean;
 }
 
+// Body for exporting a stopped VM to an .ova appliance. directory is the
+// destination folder chosen via the host folder picker; the agent derives the
+// filename from the VM name. The export runs as a background job polled with the
+// same create status endpoint.
+export interface VmExportRequest {
+  directory: string;
+}
+
 // One NAT port-forwarding rule: a host address/port mapped to a guest
 // address/port. hostIp and guestIp are optional.
 export interface PortForwardingRule {

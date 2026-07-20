@@ -366,6 +366,21 @@ export const es: Record<string, string> = {
   'Lost contact with the agent while cloning the VM. Check the machine list before retrying.':
     'Se perdió el contacto con el agente durante la clonación de la VM. Revise la lista de máquinas antes de reintentar.',
 
+  // ----- Export VM (MachinesView) -----
+  export: 'exportar',
+  'Export VM': 'Exportar VM',
+  'Choose folder & export': 'Elegir carpeta y exportar',
+  done: 'listo',
+  'The appliance was exported.': 'El dispositivo se exportó.',
+  'Exporting the VM… copying the disks into the appliance can take several minutes.':
+    'Exportando la VM… copiar los discos al dispositivo puede tardar varios minutos.',
+  'Export "{name}" to an .ova appliance. The machine must be powered off; you choose a destination folder next.':
+    'Exporte "{name}" a un dispositivo .ova. La máquina debe estar apagada; a continuación elegirá una carpeta de destino.',
+  'The export job is no longer available. The agent may have restarted; check the machine list before retrying.':
+    'El trabajo de exportación ya no está disponible. Es posible que el agente se haya reiniciado; revise la lista de máquinas antes de reintentar.',
+  'Lost contact with the agent while exporting the VM. Check the machine list before retrying.':
+    'Se perdió el contacto con el agente durante la exportación de la VM. Revise la lista de máquinas antes de reintentar.',
+
   // ----- ActivityView -----
   'Recorded machine operations, newest first.':
     'Operaciones registradas de las máquinas, las más recientes primero.',
@@ -540,6 +555,7 @@ export const esServerPatterns: Array<[RegExp, string]> = [
   [/^Shared folder "(.+)" added\.$/, 'Carpeta compartida "$1" agregada.'],
   [/^Shared folder "(.+)" removed\.$/, 'Carpeta compartida "$1" quitada.'],
   [/^"(.+)" imported and ready to start\.$/, '"$1" importada y lista para iniciar.'],
+  [/^Exported to (.+)$/, 'Exportado a $1'],
   [
     /^"(.+)" created\. Start it to run the automated install with Guest Additions\.$/,
     '"$1" creada. Iníciela para ejecutar la instalación automatizada con Guest Additions.',

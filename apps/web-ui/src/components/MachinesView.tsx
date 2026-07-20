@@ -99,6 +99,16 @@ export function MachinesView() {
   const [clonePhase, setClonePhase] = useState<'form' | 'working' | 'error'>('form');
   const [cloneError, setCloneError] = useState('');
   const cloneTimerRef = useRef<number | undefined>(undefined);
+  // Export modal: which stopped VM is being exported and the in-flight phase.
+  // The user picks a destination folder via the native host dialog; the agent
+  // derives the .ova filename from the VM name and writes it there. The export
+  // runs as a background job (copying disks is slow) polled to completion,
+  // reusing the create-job status endpoint. On success the written path is shown.
+  const [exportModal, setExportModal] = useState<{ id: string; name: string } | null>(null);
+  const [exportPhase, setExportPhase] = useState<'confirm' | 'working' | 'error' | 'done'>('confirm');
+  const [exportError, setExportError] = useState('');
+  const [exportPath, setExportPath] = useState('');
+  const exportTimerRef = useRef<number | undefined>(undefined);
 
   const agentOnline = health.state === 'success' && health.data?.status === 'healthy';
 
@@ -303,6 +313,9 @@ export function MachinesView() {
   // Stop the clone poll timer when the view unmounts.
   useEffect(() => () => window.clearInterval(cloneTimerRef.current), []);
 
+  // Stop the export poll timer when the view unmounts.
+  useEffect(() => () => window.clearInterval(exportTimerRef.current), []);
+
   const openClone = useCallback((id: string, name: string) => {
     setCloneModal({ id, name });
     setCloneName(`${name} clone`);
@@ -374,6 +387,81 @@ export function MachinesView() {
       setClonePhase('error');
     }
   }, [cloneModal, cloneName, cloneLinked, pollClone]);
+
+  const openExport = useCallback((id: string, name: string) => {
+    setExportModal({ id, name });
+    setExportPhase('confirm');
+    setExportError('');
+    setExportPath('');
+  }, []);
+
+  const closeExport = useCallback(() => {
+    window.clearInterval(exportTimerRef.current);
+    setExportModal(null);
+    setExportPhase('confirm');
+    setExportError('');
+    setExportPath('');
+  }, []);
+
+  // pollExport watches the background export job to completion. On success it
+  // surfaces the written .ova path and refreshes the list; it gives up on a 404
+  // (agent restarted, jobs are in-memory) or after too many consecutive failures.
+  const pollExport = useCallback(
+    (jobId: string) => {
+      let failures = 0;
+      exportTimerRef.current = window.setInterval(async () => {
+        try {
+          const status = await api.getCreateStatus(jobId);
+          failures = 0;
+          if (status.state === 'done') {
+            window.clearInterval(exportTimerRef.current);
+            setExportPath(status.message);
+            setExportPhase('done');
+            void refresh();
+          } else if (status.state === 'error') {
+            window.clearInterval(exportTimerRef.current);
+            setExportError(status.message);
+            setExportPhase('error');
+          }
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 404) {
+            window.clearInterval(exportTimerRef.current);
+            setExportError(
+              t('The export job is no longer available. The agent may have restarted; check the machine list before retrying.'),
+            );
+            setExportPhase('error');
+            return;
+          }
+          failures += 1;
+          if (failures >= 10) {
+            window.clearInterval(exportTimerRef.current);
+            setExportError(t('Lost contact with the agent while exporting the VM. Check the machine list before retrying.'));
+            setExportPhase('error');
+          }
+        }
+      }, 2000);
+    },
+    [refresh, t],
+  );
+
+  const submitExport = useCallback(async () => {
+    if (!exportModal) return;
+    setExportError('');
+    try {
+      // Choose the destination folder via the native host dialog. A browser
+      // cannot read absolute host paths itself, so the agent runs the picker.
+      const picked = await api.pickHostFolder();
+      if (picked.cancelled || picked.path === '') return;
+      setExportPhase('working');
+      const job = await api.exportVm(exportModal.id, { directory: picked.path });
+      pollExport(job.jobId);
+    } catch (err: unknown) {
+      let message = err instanceof Error ? err.message : String(err);
+      if (err instanceof ApiError && err.body.trim() !== '') message = err.body.trim();
+      setExportError(message);
+      setExportPhase('error');
+    }
+  }, [exportModal, pollExport]);
 
   const runAction = useCallback(
     async (id: string, action: VmAction) => {
@@ -732,6 +820,21 @@ export function MachinesView() {
                         </button>
                         <button
                           type="button"
+                          className="tv-abtn"
+                          aria-label={tf('Export {vm}', { vm: vm.name })}
+                          title={t('Export VM')}
+                          disabled={busy}
+                          onClick={() => openExport(vm.id, vm.name)}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <path d="M7 10l5 5 5-5" />
+                            <path d="M12 15V3" />
+                          </svg>
+                          {t('export')}
+                        </button>
+                        <button
+                          type="button"
                           className="tv-abtn go"
                           aria-label={tf('Start {vm}', { vm: vm.name })}
                           disabled={busy}
@@ -909,6 +1012,52 @@ export function MachinesView() {
                     onClick={() => void submitClone()}
                   >
                     {t('Clone')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {exportModal && (
+        <div className="ga-overlay" role="dialog" aria-label={`${t('Export VM')} · ${exportModal.name}`}>
+          <div className="ga-modal">
+            <div className="ga-modal-head">
+              <h3>{t('Export VM')}</h3>
+              <button type="button" className="ga-x" aria-label={t('close')} onClick={closeExport}>
+                ×
+              </button>
+            </div>
+            {exportPhase === 'working' ? (
+              <div className="tv-wiz-status">
+                <span className="tv-wiz-spin" aria-hidden="true" />
+                <p>{t('Exporting the VM… copying the disks into the appliance can take several minutes.')}</p>
+              </div>
+            ) : exportPhase === 'done' ? (
+              <>
+                <p className="ga-modal-note">{t('The appliance was exported.')}</p>
+                {exportPath && <p className="tv-wiz-note">{ts(exportPath)}</p>}
+                <div className="ga-modal-actions">
+                  <button type="button" className="tv-abtn go" onClick={closeExport}>
+                    {t('done')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="ga-modal-note">
+                  {tf('Export "{name}" to an .ova appliance. The machine must be powered off; you choose a destination folder next.', {
+                    name: exportModal.name,
+                  })}
+                </p>
+                {exportPhase === 'error' && exportError && <p className="tv-wiz-err">{ts(exportError)}</p>}
+                <div className="ga-modal-actions">
+                  <button type="button" className="tv-abtn" onClick={closeExport}>
+                    {t('cancel')}
+                  </button>
+                  <button type="button" className="tv-abtn go" onClick={() => void submitExport()}>
+                    {t('Choose folder & export')}
                   </button>
                 </div>
               </>
