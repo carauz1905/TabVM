@@ -13,6 +13,7 @@ import type {
   VmCreateStatusResponse,
   VmCreateRequest,
   VmCreateManualRequest,
+  VmCloneRequest,
   LocalStateStatusResponse,
   NetworkInterface,
   SharedFolder,
@@ -620,6 +621,13 @@ export const api = {
   // attached as a DVD, no unattended setup); poll getCreateStatus.
   createVmManual: (req: VmCreateManualRequest) =>
     request<VmCreateJobResponse>('/api/vms/create-manual', isVmCreateJobResponse, {
+      method: 'POST',
+      body: req as unknown as Record<string, unknown>,
+    }),
+  // cloneVm starts a background clone of a stopped VM (full or linked) and
+  // returns a job id; poll it with getCreateStatus like a create/import.
+  cloneVm: (id: string, req: VmCloneRequest) =>
+    request<VmCreateJobResponse>(`/api/vms/${encodeURIComponent(id)}/clone`, isVmCreateJobResponse, {
       method: 'POST',
       body: req as unknown as Record<string, unknown>,
     }),

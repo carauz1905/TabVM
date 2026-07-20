@@ -346,6 +346,26 @@ export const es: Record<string, string> = {
   'Lost contact with the agent while creating the VM. Check the machine list before retrying.':
     'Se perdió el contacto con el agente durante la creación de la VM. Revise la lista de máquinas antes de reintentar.',
 
+  // ----- Clone VM (MachinesView) -----
+  clone: 'clonar',
+  'Clone VM': 'Clonar VM',
+  Clone: 'Clonar',
+  'New VM name': 'Nombre de la nueva VM',
+  'Clone type': 'Tipo de clon',
+  'Full clone (independent copy)': 'Clon completo (copia independiente)',
+  'Linked clone (faster, shares the source disk)':
+    'Clon enlazado (más rápido, comparte el disco de origen)',
+  'A linked clone requires the source VM to have at least one snapshot. Take a snapshot first if it has none.':
+    'Un clon enlazado requiere que la VM de origen tenga al menos una instantánea. Cree una instantánea primero si no tiene ninguna.',
+  'Cloning the VM… a full clone copies the disks and can take several minutes.':
+    'Clonando la VM… un clon completo copia los discos y puede tardar varios minutos.',
+  'Create a copy of "{name}". The source machine must be powered off.':
+    'Cree una copia de "{name}". La máquina de origen debe estar apagada.',
+  'The clone job is no longer available. The agent may have restarted; check the machine list before retrying.':
+    'El trabajo de clonación ya no está disponible. Es posible que el agente se haya reiniciado; revise la lista de máquinas antes de reintentar.',
+  'Lost contact with the agent while cloning the VM. Check the machine list before retrying.':
+    'Se perdió el contacto con el agente durante la clonación de la VM. Revise la lista de máquinas antes de reintentar.',
+
   // ----- ActivityView -----
   'Recorded machine operations, newest first.':
     'Operaciones registradas de las máquinas, las más recientes primero.',
@@ -471,6 +491,10 @@ export const esServerExact: Record<string, string> = {
   'Could not determine the new VM identifier.':
     'No se pudo determinar el identificador de la nueva VM.',
   'Could not open the file picker.': 'No se pudo abrir el selector de archivos.',
+  'The VM is running. Power it off before cloning it.':
+    'La VM está en marcha. Apáguela antes de clonarla.',
+  'A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it.':
+    'Un clon enlazado requiere una instantánea. Cree una instantánea de la VM de origen primero y luego clónela.',
 };
 
 // Pattern localization for backend messages carrying names or paths. $1, $2… map
