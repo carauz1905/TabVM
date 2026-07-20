@@ -104,6 +104,30 @@ func TestExportEndpointRejectsInvalidBody(t *testing.T) {
 	}
 }
 
+func TestExportEndpointConflictsWhenVmLocked(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	// Hold the per-VM lifecycle lock so a concurrent export must refuse to start.
+	unlock, ok := srv.tryLockVm(cloneSourceID)
+	if !ok {
+		t.Fatal("expected to acquire the VM lock")
+	}
+	defer unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+		strings.NewReader(`{"directory":"C:\\out"}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusConflict, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction == "exportVm" {
+		t.Fatal("ExportVM must not run while the VM is locked")
+	}
+}
+
 func TestExportRouteRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 

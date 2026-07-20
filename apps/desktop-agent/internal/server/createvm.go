@@ -121,9 +121,23 @@ func (s *Server) handleCloneVm(w http.ResponseWriter, r *http.Request, id string
 		return
 	}
 
+	// Hold the per-VM lifecycle lock for the whole background job so a concurrent
+	// start/poweroff/delete on the source cannot race the clone mid-flight. The
+	// lock is released when the job goroutine finishes (deferred inside it).
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+
 	name := body.Name
 	linked := body.Linked
 	jobID := s.startCreateJob(name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		defer unlock()
 		return s.vbox.CloneVM(ctx, id, name, linked)
 	})
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
@@ -152,8 +166,22 @@ func (s *Server) handleExportVm(w http.ResponseWriter, r *http.Request, id strin
 		return
 	}
 
+	// Hold the per-VM lifecycle lock for the whole background job so a concurrent
+	// start/poweroff/delete on the source cannot corrupt the appliance write. The
+	// lock is released when the job goroutine finishes (deferred inside it).
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+
 	directory := body.Directory
 	jobID := s.startCreateJob("", func(ctx context.Context) (models.VmCreateResponse, error) {
+		defer unlock()
 		return s.vbox.ExportVM(ctx, id, directory)
 	})
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})

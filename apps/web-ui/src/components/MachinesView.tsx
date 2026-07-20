@@ -447,12 +447,18 @@ export function MachinesView() {
   const submitExport = useCallback(async () => {
     if (!exportModal) return;
     setExportError('');
+    // Switch out of the confirm phase synchronously, before the folder-picker
+    // round-trip, so the trigger button is gone and a second click cannot start
+    // a duplicate export. Revert to confirm if the user cancels the picker.
+    setExportPhase('working');
     try {
       // Choose the destination folder via the native host dialog. A browser
       // cannot read absolute host paths itself, so the agent runs the picker.
       const picked = await api.pickHostFolder();
-      if (picked.cancelled || picked.path === '') return;
-      setExportPhase('working');
+      if (picked.cancelled || picked.path === '') {
+        setExportPhase('confirm');
+        return;
+      }
       const job = await api.exportVm(exportModal.id, { directory: picked.path });
       pollExport(job.jobId);
     } catch (err: unknown) {

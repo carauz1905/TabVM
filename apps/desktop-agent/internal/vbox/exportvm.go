@@ -23,6 +23,9 @@ func (s *service) ValidateExport(ctx context.Context, sourceID, directory string
 	if !IsValidVmID(sourceID) {
 		return &ValidationError{Message: "Invalid VM identifier."}
 	}
+	// Normalize once so the path that is validated is exactly the path that is
+	// later stat'd and written to.
+	directory = strings.TrimSpace(directory)
 	if err := validateExportDir(directory); err != nil {
 		return err
 	}
@@ -46,6 +49,9 @@ func (s *service) ExportVM(ctx context.Context, sourceID, directory string) (mod
 	if !IsValidVmID(sourceID) {
 		return models.VmCreateResponse{}, &ValidationError{Message: "Invalid VM identifier."}
 	}
+	// Normalize once so the path that is validated is exactly the path that is
+	// later stat'd and written to.
+	directory = strings.TrimSpace(directory)
 	if err := validateExportDir(directory); err != nil {
 		return models.VmCreateResponse{}, err
 	}

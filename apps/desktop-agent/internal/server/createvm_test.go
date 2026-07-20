@@ -43,6 +43,27 @@ func pollJobUntil(t *testing.T, srv *Server, jobID string) models.VmCreateStatus
 	}
 }
 
+func TestCloneEndpointConflictsWhenVmLocked(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+	// Hold the per-VM lifecycle lock so a concurrent clone must refuse to start.
+	unlock, ok := srv.tryLockVm(cloneSourceID)
+	if !ok {
+		t.Fatal("expected to acquire the VM lock")
+	}
+	defer unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+		strings.NewReader(`{"name":"lab-clone","linked":false}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusConflict, rr.Code, rr.Body.String())
+	}
+}
+
 func TestCloneEndpointStartsJobAndSucceeds(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.createResp = models.VmCreateResponse{

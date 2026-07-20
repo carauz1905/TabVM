@@ -11,6 +11,34 @@ import (
 	"github.com/tabvm/desktop-agent/internal/runner"
 )
 
+func TestExportVM_TrimsSurroundingWhitespaceInDirectory(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	id := "11111111-1111-1111-1111-111111111111"
+	dir := t.TempDir()
+	path := createTempExecutable(t)
+	out := filepath.Join(dir, "lab-vm.ova")
+	run := &recordingRunner{
+		results: map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " showvminfo " + id + " --machinereadable": {ExitCode: 0, StandardOutput: "VMState=\"poweroff\"\nname=\"lab-vm\""},
+			path + " export " + id + " --output " + out:       {ExitCode: 0},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	// A directory with surrounding whitespace must be validated and used
+	// identically (trimmed), so the export lands at the trimmed path.
+	if _, err := svc.ExportVM(context.Background(), id, "  "+dir+"  "); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(strings.Join(run.calls, "\n"), "export "+id+" --output "+out) {
+		t.Fatalf("expected export to use the trimmed directory; calls:\n%s", strings.Join(run.calls, "\n"))
+	}
+}
+
 func TestExportVmArgs(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	out := filepath.Join(`C:\out`, "lab-vm.ova")
