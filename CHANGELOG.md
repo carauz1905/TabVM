@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-20
+
+### Fixed
+
+- VM operation failures now surface an actionable, sanitized reason instead of a
+  generic message: known VBoxManage errors (session lock, missing hardware
+  virtualization, low host memory) map to clear guidance, while the real cause
+  (exit code and stderr) is recorded in the operation log. (#21)
+- VM start is now state-aware: it is idempotent when the VM is already running,
+  resumes a paused VM instead of failing, never force-powers-off (preserving a
+  saved state), and retries transient VirtualBox session-lock contention. (#21)
+
 ## [0.1.1] - 2026-07-13
 
 ### Added
@@ -42,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/carauz1905/TabVM/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/carauz1905/TabVM/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/carauz1905/TabVM/releases/tag/v0.1.0
