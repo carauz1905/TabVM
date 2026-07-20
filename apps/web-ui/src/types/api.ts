@@ -137,6 +137,14 @@ export interface VmCreateManualRequest {
   diskGb: number;
 }
 
+// Body for cloning a stopped VM. linked selects a linked clone (requires the
+// source to have a snapshot); otherwise a full, independent copy is made. The
+// clone runs as a background job polled with the same create status endpoint.
+export interface VmCloneRequest {
+  name: string;
+  linked: boolean;
+}
+
 // One NAT port-forwarding rule: a host address/port mapped to a guest
 // address/port. hostIp and guestIp are optional.
 export interface PortForwardingRule {

@@ -99,6 +99,36 @@ func (s *Server) handleCreateVmManual(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
 }
 
+// handleCloneVm clones a stopped source VM as a background job. It validates the
+// request synchronously (source powered off, valid name, and — for a linked
+// clone — an existing snapshot) so the user gets an immediate 4xx on a bad
+// request, then starts the clone on the shared create-job store and returns the
+// job id to poll via the create status endpoint.
+func (s *Server) handleCloneVm(w http.ResponseWriter, r *http.Request, id string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body models.VmCloneRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	// Validate synchronously so a running source, bad name, or linked clone
+	// without a snapshot is rejected now rather than surfacing as a failed job.
+	if err := s.vbox.ValidateClone(r.Context(), id, body.Name, body.Linked); err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+
+	name := body.Name
+	linked := body.Linked
+	jobID := s.startCreateJob(name, func(ctx context.Context) (models.VmCreateResponse, error) {
+		return s.vbox.CloneVM(ctx, id, name, linked)
+	})
+	respondJSON(w, http.StatusAccepted, models.VmCreateJobResponse{JobID: jobID})
+}
+
 // handleCreateStatus returns the current state of a background create/import job.
 func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

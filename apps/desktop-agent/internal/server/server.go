@@ -453,6 +453,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleInstallGuestAdditions(w, r, id)
 		case "guest-additions/update":
 			s.handleUpdateGuestAdditions(w, r, id)
+		case "clone":
+			s.handleCloneVm(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}

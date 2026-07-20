@@ -91,6 +91,7 @@ export interface DocsStrings {
     importCard: Step;
     installCard: Step;
     manualCard: Step;
+    cloneCard: Step;
     note: string;
   };
   personalize: {
@@ -261,6 +262,10 @@ const en: DocsStrings = {
     manualCard: {
       title: 'Other OS (manual install)',
       body: 'Pick any bootable ISO and TabVM creates the machine with the installer attached — you install the OS yourself in the console. Guest Additions are not installed automatically; use the "Install Guest Additions" button afterwards.',
+    },
+    cloneCard: {
+      title: 'Clone an existing machine',
+      body: 'A stopped machine has a Clone button. Give the copy a name and pick Full (an independent copy of the disks) or Linked (faster and smaller, but it shares the source disk and needs the source to have a snapshot). The clone runs in the background — a full clone copies the disks and can take a few minutes.',
     },
     note: 'Kali is offered through import only — VirtualBox has no automated-install template for it.',
   },
@@ -444,6 +449,10 @@ const es: DocsStrings = {
     manualCard: {
       title: 'Otro SO (instalación manual)',
       body: 'Elige cualquier ISO arrancable y TabVM crea la máquina con el instalador adjunto: tú instalas el sistema operativo en la consola. Guest Additions no se instala automáticamente; usa después el botón "Instalar Guest Additions".',
+    },
+    cloneCard: {
+      title: 'Clonar una máquina existente',
+      body: 'Una máquina apagada muestra un botón Clonar. Da un nombre a la copia y elige Completo (una copia independiente de los discos) o Enlazado (más rápido y ligero, pero comparte el disco de origen y requiere que el origen tenga una instantánea). El clon corre en segundo plano: un clon completo copia los discos y puede tardar unos minutos.',
     },
     note: 'Kali se ofrece solo por importación: VirtualBox no tiene plantilla de instalación automatizada para él.',
   },

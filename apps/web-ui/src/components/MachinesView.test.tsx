@@ -55,6 +55,8 @@ vi.mock('../api/client', () => {
       getGuestAdditionsStatus: vi.fn(),
       installGuestAdditions: vi.fn(),
       getVmGuestOS: vi.fn(),
+      cloneVm: vi.fn(),
+      getCreateStatus: vi.fn(),
     },
   };
 });
@@ -372,5 +374,106 @@ describe('MachinesView', () => {
 
     await waitFor(() => expect(api.installGuestAdditions).toHaveBeenCalledWith(RUNNING_ID));
     await waitFor(() => expect(getByText(/disc inserted/i)).toBeTruthy());
+  });
+
+  it('does not offer clone for a running VM', () => {
+    const { queryByRole } = render(<MachinesView />);
+    expect(queryByRole('button', { name: 'Clone VM One' })).toBeNull();
+  });
+
+  it('offers clone for a stopped VM and opens the clone form', () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { getByRole, getByLabelText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+
+    // The modal submit button and the new-name field appear.
+    expect(getByRole('button', { name: 'Clone' })).toBeTruthy();
+    expect((getByLabelText('New VM name') as HTMLInputElement).value).toBe('VM One clone');
+  });
+
+  it('shows the snapshot hint only when the linked clone type is selected', () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { getByRole, queryByText, getByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+
+    const hint = 'A linked clone requires the source VM to have at least one snapshot. Take a snapshot first if it has none.';
+    expect(queryByText(hint)).toBeNull();
+
+    fireEvent.click(getByRole('radio', { name: 'Linked clone (faster, shares the source disk)' }));
+    expect(getByText(hint)).toBeTruthy();
+  });
+
+  it('submits a full clone with the entered name', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.cloneVm).mockResolvedValue({ jobId: 'j-clone' });
+    vi.mocked(api.getCreateStatus).mockResolvedValue({ state: 'running', message: '' });
+
+    const { getByRole, getByLabelText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+    fireEvent.change(getByLabelText('New VM name'), { target: { value: 'my-copy' } });
+    fireEvent.click(getByRole('button', { name: 'Clone' }));
+
+    await waitFor(() =>
+      expect(api.cloneVm).toHaveBeenCalledWith(RUNNING_ID, { name: 'my-copy', linked: false }),
+    );
+  });
+
+  it('submits a linked clone when linked is selected', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.cloneVm).mockResolvedValue({ jobId: 'j-clone' });
+    vi.mocked(api.getCreateStatus).mockResolvedValue({ state: 'running', message: '' });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+    fireEvent.click(getByRole('radio', { name: 'Linked clone (faster, shares the source disk)' }));
+    fireEvent.click(getByRole('button', { name: 'Clone' }));
+
+    await waitFor(() =>
+      expect(api.cloneVm).toHaveBeenCalledWith(RUNNING_ID, { name: 'VM One clone', linked: true }),
+    );
+  });
+
+  it('refreshes the list and closes the form once the clone job is done', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.cloneVm).mockResolvedValue({ jobId: 'j-clone' });
+    vi.mocked(api.getCreateStatus).mockResolvedValue({ state: 'done', message: 'Full clone created.' });
+
+    const { getByRole, queryByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+
+    vi.useFakeTimers();
+    fireEvent.click(getByRole('button', { name: 'Clone' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    vi.useRealTimers();
+
+    expect(api.getCreateStatus).toHaveBeenCalledWith('j-clone');
+    expect(mockRefresh).toHaveBeenCalled();
+    // The modal closed: its submit button is gone.
+    expect(queryByRole('button', { name: 'Clone' })).toBeNull();
+  });
+
+  it('surfaces a clone error and keeps the form open', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.cloneVm).mockRejectedValue(
+      new ApiError({
+        status: 400,
+        statusText: 'Bad Request',
+        body: 'A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it.',
+      }),
+    );
+
+    const { getByRole, getByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Clone VM One' }));
+    fireEvent.click(getByRole('button', { name: 'Clone' }));
+
+    await waitFor(() =>
+      expect(
+        getByText('A linked clone requires a snapshot. Take a snapshot of the source VM first, then clone it.'),
+      ).toBeTruthy(),
+    );
   });
 });

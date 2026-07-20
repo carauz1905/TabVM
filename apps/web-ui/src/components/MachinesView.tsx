@@ -89,6 +89,16 @@ export function MachinesView() {
   // ostype is VBox metadata, readable regardless of power state, fetched once.
   const [termCapable, setTermCapable] = useState<Record<string, boolean>>({});
   const termFetchedRef = useRef<Set<string>>(new Set());
+  // Clone modal: which stopped VM is being cloned, the new name, the clone type
+  // (full vs linked), and the in-flight/error phase. The clone runs as a
+  // background job on the agent (a full clone copies disks and is slow) and is
+  // polled to completion, reusing the create-job status endpoint.
+  const [cloneModal, setCloneModal] = useState<{ id: string; name: string } | null>(null);
+  const [cloneName, setCloneName] = useState('');
+  const [cloneLinked, setCloneLinked] = useState(false);
+  const [clonePhase, setClonePhase] = useState<'form' | 'working' | 'error'>('form');
+  const [cloneError, setCloneError] = useState('');
+  const cloneTimerRef = useRef<number | undefined>(undefined);
 
   const agentOnline = health.state === 'success' && health.data?.status === 'healthy';
 
@@ -289,6 +299,81 @@ export function MachinesView() {
       setGaPass(''); // never keep the password around after the call
     }
   }, [gaUpdateVm, gaUser, gaPass]);
+
+  // Stop the clone poll timer when the view unmounts.
+  useEffect(() => () => window.clearInterval(cloneTimerRef.current), []);
+
+  const openClone = useCallback((id: string, name: string) => {
+    setCloneModal({ id, name });
+    setCloneName(`${name} clone`);
+    setCloneLinked(false);
+    setClonePhase('form');
+    setCloneError('');
+  }, []);
+
+  const closeClone = useCallback(() => {
+    window.clearInterval(cloneTimerRef.current);
+    setCloneModal(null);
+    setCloneName('');
+    setCloneLinked(false);
+    setClonePhase('form');
+    setCloneError('');
+  }, []);
+
+  // pollClone watches the background clone job to completion. On success it
+  // closes the modal and refreshes the list; it gives up on a 404 (agent
+  // restarted, jobs are in-memory) or after too many consecutive failures.
+  const pollClone = useCallback(
+    (jobId: string) => {
+      let failures = 0;
+      cloneTimerRef.current = window.setInterval(async () => {
+        try {
+          const status = await api.getCreateStatus(jobId);
+          failures = 0;
+          if (status.state === 'done') {
+            window.clearInterval(cloneTimerRef.current);
+            closeClone();
+            void refresh();
+          } else if (status.state === 'error') {
+            window.clearInterval(cloneTimerRef.current);
+            setCloneError(status.message);
+            setClonePhase('error');
+          }
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 404) {
+            window.clearInterval(cloneTimerRef.current);
+            setCloneError(
+              t('The clone job is no longer available. The agent may have restarted; check the machine list before retrying.'),
+            );
+            setClonePhase('error');
+            return;
+          }
+          failures += 1;
+          if (failures >= 10) {
+            window.clearInterval(cloneTimerRef.current);
+            setCloneError(t('Lost contact with the agent while cloning the VM. Check the machine list before retrying.'));
+            setClonePhase('error');
+          }
+        }
+      }, 2000);
+    },
+    [closeClone, refresh, t],
+  );
+
+  const submitClone = useCallback(async () => {
+    if (!cloneModal || cloneName.trim() === '') return;
+    setClonePhase('working');
+    setCloneError('');
+    try {
+      const job = await api.cloneVm(cloneModal.id, { name: cloneName.trim(), linked: cloneLinked });
+      pollClone(job.jobId);
+    } catch (err: unknown) {
+      let message = err instanceof Error ? err.message : String(err);
+      if (err instanceof ApiError && err.body.trim() !== '') message = err.body.trim();
+      setCloneError(message);
+      setClonePhase('error');
+    }
+  }, [cloneModal, cloneName, cloneLinked, pollClone]);
 
   const runAction = useCallback(
     async (id: string, action: VmAction) => {
@@ -633,6 +718,20 @@ export function MachinesView() {
                         )}
                         <button
                           type="button"
+                          className="tv-abtn"
+                          aria-label={tf('Clone {vm}', { vm: vm.name })}
+                          title={t('Clone VM')}
+                          disabled={busy}
+                          onClick={() => openClone(vm.id, vm.name)}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="12" height="12" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                          {t('clone')}
+                        </button>
+                        <button
+                          type="button"
                           className="tv-abtn go"
                           aria-label={tf('Start {vm}', { vm: vm.name })}
                           disabled={busy}
@@ -742,6 +841,80 @@ export function MachinesView() {
           onClose={() => setWizardOpen(false)}
           onCreated={() => void refresh()}
         />
+      )}
+
+      {cloneModal && (
+        <div className="ga-overlay" role="dialog" aria-label={`${t('Clone VM')} · ${cloneModal.name}`}>
+          <div className="ga-modal">
+            <div className="ga-modal-head">
+              <h3>{t('Clone VM')}</h3>
+              <button type="button" className="ga-x" aria-label={t('close')} onClick={closeClone}>
+                ×
+              </button>
+            </div>
+            {clonePhase === 'working' ? (
+              <div className="tv-wiz-status">
+                <span className="tv-wiz-spin" aria-hidden="true" />
+                <p>{t('Cloning the VM… a full clone copies the disks and can take several minutes.')}</p>
+              </div>
+            ) : (
+              <>
+                <p className="ga-modal-note">
+                  {tf('Create a copy of "{name}". The source machine must be powered off.', { name: cloneModal.name })}
+                </p>
+                <label className="ga-field">
+                  <span>{t('New VM name')}</span>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={cloneName}
+                    onChange={(e) => setCloneName(e.target.value)}
+                  />
+                </label>
+                <fieldset className="tv-clone-type">
+                  <legend>{t('Clone type')}</legend>
+                  <label>
+                    <input
+                      type="radio"
+                      name="clone-type"
+                      checked={!cloneLinked}
+                      onChange={() => setCloneLinked(false)}
+                    />
+                    <span>{t('Full clone (independent copy)')}</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="clone-type"
+                      checked={cloneLinked}
+                      onChange={() => setCloneLinked(true)}
+                    />
+                    <span>{t('Linked clone (faster, shares the source disk)')}</span>
+                  </label>
+                </fieldset>
+                {cloneLinked && (
+                  <p className="tv-wiz-note">
+                    {t('A linked clone requires the source VM to have at least one snapshot. Take a snapshot first if it has none.')}
+                  </p>
+                )}
+                {clonePhase === 'error' && cloneError && <p className="tv-wiz-err">{ts(cloneError)}</p>}
+                <div className="ga-modal-actions">
+                  <button type="button" className="tv-abtn" onClick={closeClone}>
+                    {t('cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="tv-abtn go"
+                    disabled={cloneName.trim() === ''}
+                    onClick={() => void submitClone()}
+                  >
+                    {t('Clone')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {gaUpdateVm && (

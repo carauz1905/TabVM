@@ -308,6 +308,10 @@ export function DocsView() {
               <h4>{d.create.manualCard.title}</h4>
               <p>{d.create.manualCard.body}</p>
             </div>
+            <div className="docs-card">
+              <h4>{d.create.cloneCard.title}</h4>
+              <p>{d.create.cloneCard.body}</p>
+            </div>
           </div>
           <DemoStage caption={t('New virtual machine')}>
             <WizardDemo
