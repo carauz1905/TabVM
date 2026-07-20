@@ -56,6 +56,11 @@ type fakeVboxService struct {
 	networkOptionsErr error
 	networkOp         models.NetworkOperationResponse
 	networkOpErr      error
+	portForwardOp     models.NetworkOperationResponse
+	portForwardErr    error
+	lastForwardReq    models.PortForwardingRequest
+	lastForwardSlot   int
+	lastForwardName   string
 	createResp        models.VmCreateResponse
 	createErr         error
 	deleteResp        models.VmOperationResponse
@@ -225,6 +230,21 @@ func (f *fakeVboxService) ChangeNetworkMode(ctx context.Context, id string, slot
 	f.lastID = id
 	f.lastMode = mode
 	return f.networkOp, f.networkOpErr
+}
+
+func (f *fakeVboxService) AddPortForwarding(ctx context.Context, id string, req models.PortForwardingRequest) (models.NetworkOperationResponse, error) {
+	f.lastAction = "addPortForwarding"
+	f.lastID = id
+	f.lastForwardReq = req
+	return f.portForwardOp, f.portForwardErr
+}
+
+func (f *fakeVboxService) DeletePortForwarding(ctx context.Context, id string, slot int, name string) (models.NetworkOperationResponse, error) {
+	f.lastAction = "deletePortForwarding"
+	f.lastID = id
+	f.lastForwardSlot = slot
+	f.lastForwardName = name
+	return f.portForwardOp, f.portForwardErr
 }
 
 func (f *fakeVboxService) ListSnapshots(ctx context.Context, id string) (models.SnapshotsResponse, error) {
@@ -769,6 +789,73 @@ func TestDetachDiskEndpointDetachesAndDeletes(t *testing.T) {
 	}
 }
 
+func TestAddPortForwardingEndpointAppliesRule(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.portForwardOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: "Forwarding 127.0.0.1:2222 -> guest:22 added on adapter 1."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
+		strings.NewReader(`{"slot":1,"name":"ssh","protocol":"tcp","hostIp":"","hostPort":2222,"guestIp":"","guestPort":22}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "addPortForwarding" || fake.lastID != id {
+		t.Fatalf("expected addPortForwarding on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+	want := models.PortForwardingRequest{Slot: 1, Name: "ssh", Protocol: "tcp", HostPort: 2222, GuestPort: 22}
+	if fake.lastForwardReq != want {
+		t.Fatalf("unexpected forwarding request: %+v", fake.lastForwardReq)
+	}
+	if !strings.Contains(rr.Body.String(), `"success":true`) {
+		t.Fatalf("expected success response, got %q", rr.Body.String())
+	}
+}
+
+func TestAddPortForwardingEndpointRejectsInvalidRule(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.portForwardErr = &vbox.ValidationError{Message: "Adapter 1 must be in NAT mode to add a port-forwarding rule."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
+		strings.NewReader(`{"slot":1,"name":"ssh","protocol":"tcp","hostPort":2222,"guestPort":22}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestDeletePortForwardingEndpointRemovesRule(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.portForwardOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: `Forwarding rule "ssh" removed from adapter 1.`}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding/delete",
+		strings.NewReader(`{"slot":1,"name":"ssh"}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "deletePortForwarding" || fake.lastForwardSlot != 1 || fake.lastForwardName != "ssh" {
+		t.Fatalf("unexpected call: action=%s slot=%d name=%s", fake.lastAction, fake.lastForwardSlot, fake.lastForwardName)
+	}
+}
+
 func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.createResp = models.VmCreateResponse{
@@ -930,6 +1017,8 @@ func TestVmLifecycleRoutesRequireAuth(t *testing.T) {
 		"/api/vms/11111111-1111-1111-1111-111111111111/start",
 		"/api/vms/11111111-1111-1111-1111-111111111111/stop",
 		"/api/vms/11111111-1111-1111-1111-111111111111/reset",
+		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding",
+		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding/delete",
 	}
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {

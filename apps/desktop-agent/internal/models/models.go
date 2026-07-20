@@ -222,14 +222,27 @@ type GuestAdditionsUpdateResponse struct {
 	Output  string `json:"output,omitempty"`
 }
 
+// PortForwardingRule is one NAT port-forwarding rule: a host address/port that
+// VirtualBox maps to a guest address/port. HostIP and GuestIP are optional; an
+// empty HostIP means the rule was created without an explicit bind address.
+type PortForwardingRule struct {
+	Name      string `json:"name"`
+	Protocol  string `json:"protocol"` // tcp | udp
+	HostIP    string `json:"hostIp,omitempty"`
+	HostPort  int    `json:"hostPort"`
+	GuestIP   string `json:"guestIp,omitempty"`
+	GuestPort int    `json:"guestPort"`
+}
+
 // NetworkAdapter is one configured, enabled virtual NIC: its slot, attachment
 // mode (nat, bridged, hostonly, ...), the host interface it is bound to (for
-// bridged/hostonly), and its MAC.
+// bridged/hostonly), its MAC, and (NAT only) any port-forwarding rules.
 type NetworkAdapter struct {
-	Slot    int    `json:"slot"`
-	Mode    string `json:"mode"`
-	Adapter string `json:"adapter,omitempty"`
-	MAC     string `json:"mac,omitempty"`
+	Slot       int                  `json:"slot"`
+	Mode       string               `json:"mode"`
+	Adapter    string               `json:"adapter,omitempty"`
+	MAC        string               `json:"mac,omitempty"`
+	Forwarding []PortForwardingRule `json:"forwarding,omitempty"`
 }
 
 // NetworkOptionsResponse is the response shape for GET /api/vms/{id}/network. It
@@ -249,11 +262,32 @@ type NetworkModeRequest struct {
 	Adapter string `json:"adapter"`
 }
 
-// NetworkOperationResponse is the response shape for a network mode change.
+// NetworkOperationResponse is the response shape for a network mode change or a
+// port-forwarding add/remove.
 type NetworkOperationResponse struct {
 	Success bool   `json:"success"`
 	VMID    string `json:"vmId"`
 	Message string `json:"message"`
+}
+
+// PortForwardingRequest is the body for POST /api/vms/{id}/network/forwarding.
+// Slot is the NAT NIC the rule is added to; HostIP and GuestIP are optional.
+type PortForwardingRequest struct {
+	Slot      int    `json:"slot"`
+	Name      string `json:"name"`
+	Protocol  string `json:"protocol"`
+	HostIP    string `json:"hostIp"`
+	HostPort  int    `json:"hostPort"`
+	GuestIP   string `json:"guestIp"`
+	GuestPort int    `json:"guestPort"`
+}
+
+// PortForwardingDeleteRequest is the body for POST
+// /api/vms/{id}/network/forwarding/delete. It identifies a rule by NIC slot and
+// name.
+type PortForwardingDeleteRequest struct {
+	Slot int    `json:"slot"`
+	Name string `json:"name"`
 }
 
 // Snapshot is one VirtualBox snapshot in a VM's snapshot tree. Depth is the

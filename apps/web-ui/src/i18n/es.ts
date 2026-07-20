@@ -163,6 +163,18 @@ export const es: Record<string, string> = {
     'No hay adaptador solo-anfitrión — cree uno en VirtualBox primero.',
   Apply: 'Aplicar',
   'Applying…': 'Aplicando…',
+  'Port forwarding': 'Redirección de puertos',
+  'Rule name': 'Nombre de la regla',
+  Protocol: 'Protocolo',
+  'Host port': 'Puerto del anfitrión',
+  'Guest port': 'Puerto del guest',
+  'Host IP (optional)': 'IP del anfitrión (opcional)',
+  'Add rule': 'Agregar regla',
+  'Remove rule': 'Quitar regla',
+  '* = bound to all host interfaces': '* = enlazado a todas las interfaces del anfitrión',
+  name: 'nombre',
+  'host port': 'puerto del anfitrión',
+  'guest port': 'puerto del guest',
 
   // Hardware panel
   Hardware: 'Hardware',
@@ -390,6 +402,17 @@ export const esServerExact: Record<string, string> = {
     'Se requiere una interfaz del anfitrión para los modos puente y solo-anfitrión.',
   'Host interface name contains unsupported characters.':
     'El nombre de la interfaz del anfitrión contiene caracteres no admitidos.',
+  'Protocol must be tcp or udp.': 'El protocolo debe ser tcp o udp.',
+  'Rule name must be 1-64 characters, cannot contain a comma, and cannot start with a dash.':
+    'El nombre de la regla debe tener entre 1 y 64 caracteres, no puede contener una coma ni comenzar con un guion.',
+  'Host port must be between 1 and 65535.':
+    'El puerto del anfitrión debe estar entre 1 y 65535.',
+  'Guest port must be between 1 and 65535.':
+    'El puerto del guest debe estar entre 1 y 65535.',
+  'Host IP is not a valid IP address.':
+    'La IP del anfitrión no es una dirección IP válida.',
+  'Guest IP is not a valid IP address.':
+    'La IP del guest no es una dirección IP válida.',
   'This VM has no shared folder, so copying a file in needs the guest username and password.':
     'Esta VM no tiene carpeta compartida, así que copiar un archivo requiere el usuario y la contraseña del guest.',
   'The VM must be running to copy files into it.':
@@ -460,6 +483,27 @@ export const esServerPatterns: Array<[RegExp, string]> = [
   [/^Snapshot "(.+)" created\.$/, 'Instantánea "$1" creada.'],
   [/^Adapter (\d+) switched to (.+?) \((.+)\)\.$/, 'Adaptador $1 cambiado a $2 ($3).'],
   [/^Adapter (\d+) switched to (.+)\.$/, 'Adaptador $1 cambiado a $2.'],
+  [
+    /^Forwarding (.+):(\d+) -> guest:(\d+) added on adapter (\d+)\.$/,
+    'Redirección $1:$2 -> guest:$3 agregada en el adaptador $4.',
+  ],
+  [
+    /^Forwarding rule "(.+)" removed from adapter (\d+)\.$/,
+    'Regla de redirección "$1" quitada del adaptador $2.',
+  ],
+  [/^Adapter (\d+) is not enabled on this VM\.$/, 'El adaptador $1 no está habilitado en esta VM.'],
+  [
+    /^Adapter (\d+) must be in NAT mode to add a port-forwarding rule\.$/,
+    'El adaptador $1 debe estar en modo NAT para agregar una regla de redirección de puertos.',
+  ],
+  [
+    /^Adapter (\d+) already has a rule named "(.+)"\.$/,
+    'El adaptador $1 ya tiene una regla llamada "$2".',
+  ],
+  [
+    /^Host port (\d+)\/(tcp|udp) is already forwarded on this VM\.$/,
+    'El puerto del anfitrión $1/$2 ya está redirigido en esta VM.',
+  ],
   [
     /^"(.+)" is in shared folder "(.+)" \(guest: (.+)\)\.$/,
     '"$1" está en la carpeta compartida "$2" (guest: $3).',

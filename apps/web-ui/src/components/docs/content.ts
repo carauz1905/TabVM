@@ -83,6 +83,7 @@ export interface DocsStrings {
   network: {
     lead: string;
     modes: Step[];
+    forwarding: Step;
     tip: string;
   };
   create: {
@@ -241,6 +242,10 @@ const en: DocsStrings = {
       { title: 'Bridged', body: 'The machine gets its own address on your real network, as if it were another device plugged into it.' },
       { title: 'Host-only', body: 'A private network between your computer and the machine only — isolated from the internet. Ideal for safe lab work.' },
     ],
+    forwarding: {
+      title: 'Port forwarding (NAT)',
+      body: 'When an adapter is in NAT mode, you can map a port on your computer to a port inside the machine — for example forward 127.0.0.1:2222 to the guest’s port 22 to SSH in. Give each rule a name, pick TCP or UDP, and set the host and guest ports; the host address defaults to 127.0.0.1 so the port is never exposed to your whole network by accident. Rules apply live on a running machine or are saved to its config when stopped, and each is removed with one click.',
+    },
     tip: 'Use Host-only when you are testing malware or an untrusted image — the guest can talk to your computer but never reaches the internet.',
   },
   create: {
@@ -420,6 +425,10 @@ const es: DocsStrings = {
       { title: 'Puente', body: 'La máquina obtiene su propia dirección en tu red real, como si fuera otro dispositivo conectado a ella.' },
       { title: 'Solo anfitrión', body: 'Una red privada solo entre tu computadora y la máquina, aislada de internet. Ideal para laboratorio seguro.' },
     ],
+    forwarding: {
+      title: 'Redirección de puertos (NAT)',
+      body: 'Cuando un adaptador está en modo NAT, puedes asignar un puerto de tu computadora a un puerto dentro de la máquina; por ejemplo, redirigir 127.0.0.1:2222 al puerto 22 del guest para entrar por SSH. Dale un nombre a cada regla, elige TCP o UDP y define los puertos del anfitrión y del guest; la dirección del anfitrión usa 127.0.0.1 de forma predeterminada, así el puerto nunca queda expuesto a toda tu red por accidente. Las reglas se aplican en vivo en una máquina en ejecución o se guardan en su configuración cuando está detenida, y cada una se quita con un clic.',
+    },
     tip: 'Usa Solo anfitrión cuando pruebas malware o una imagen que no es de confianza: el guest habla con tu computadora pero nunca llega a internet.',
   },
   create: {

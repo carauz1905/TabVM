@@ -771,6 +771,37 @@
   flex: none;
 }
 
+/* NAT port forwarding sub-section, shown only for NAT adapters. */
+.net-fwd { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.net-fwd-h { display: flex; align-items: baseline; gap: 8px; }
+.net-fwd-title {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--faint);
+}
+.net-fwd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.net-fwd-rule { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.net-fwd-map { font-family: var(--font-mono); font-size: 11.5px; color: var(--text); }
+.net-fwd-name { font-family: var(--font-mono); font-size: 10.5px; color: var(--faint); }
+.net-fwd-del {
+  margin-left: auto; font-family: var(--font-mono); font-size: 10.5px;
+  padding: 4px 9px; border-radius: var(--r-sm); cursor: pointer;
+  color: var(--muted); background: none; border: 1px solid var(--line-2);
+  transition: color 0.16s, border-color 0.16s;
+}
+.net-fwd-del:hover:not(:disabled) { color: var(--text); border-color: var(--line); }
+.net-fwd-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--text); }
+.net-fwd-del:disabled { opacity: 0.45; cursor: default; }
+.net-fwd-form { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.net-fwd-input {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text);
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-sm);
+  padding: 6px 8px; min-width: 0; max-width: 100%;
+}
+.net-fwd-input[type='text'] { flex: 1 1 120px; }
+.net-fwd-input[type='number'] { flex: 0 1 92px; }
+.net-fwd-input:focus { outline: none; border-color: var(--accent-line); }
+.net-fwd-input:disabled { opacity: 0.6; cursor: default; }
+
 /* Activity rows: clickable + expandable in place, keeping the compact look. */
 .tv-log-entry { border-bottom: 1px solid var(--line); }
 button.tv-log {

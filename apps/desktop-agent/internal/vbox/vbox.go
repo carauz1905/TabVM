@@ -47,6 +47,8 @@ type Service interface {
 	TransferFileToGuest(ctx context.Context, id, filename string, data []byte, username, password string) (models.VmFileTransferResponse, error)
 	NetworkOptions(ctx context.Context, id string) (models.NetworkOptionsResponse, error)
 	ChangeNetworkMode(ctx context.Context, id string, slot int, mode, adapter string) (models.NetworkOperationResponse, error)
+	AddPortForwarding(ctx context.Context, id string, req models.PortForwardingRequest) (models.NetworkOperationResponse, error)
+	DeletePortForwarding(ctx context.Context, id string, slot int, name string) (models.NetworkOperationResponse, error)
 	ListSnapshots(ctx context.Context, id string) (models.SnapshotsResponse, error)
 	TakeSnapshot(ctx context.Context, id, name, description string) (models.SnapshotOperationResponse, error)
 	RestoreSnapshot(ctx context.Context, id, snapshotID string) (models.SnapshotOperationResponse, error)

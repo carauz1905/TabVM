@@ -137,12 +137,37 @@ export interface VmCreateManualRequest {
   diskGb: number;
 }
 
-// One enabled virtual NIC and how it is attached.
+// One NAT port-forwarding rule: a host address/port mapped to a guest
+// address/port. hostIp and guestIp are optional.
+export interface PortForwardingRule {
+  name: string;
+  protocol: string; // 'tcp' | 'udp'
+  hostIp?: string;
+  hostPort: number;
+  guestIp?: string;
+  guestPort: number;
+}
+
+// One enabled virtual NIC and how it is attached. forwarding is present only for
+// NAT adapters that have port-forwarding rules.
 export interface NetworkAdapter {
   slot: number;
   mode: string;
   adapter?: string;
   mac?: string;
+  forwarding?: PortForwardingRule[];
+}
+
+// Body for adding a NAT port-forwarding rule. hostIp/guestIp are optional; an
+// empty hostIp defaults to 127.0.0.1 on the agent.
+export interface PortForwardingRequest {
+  slot: number;
+  name: string;
+  protocol: string;
+  hostIp?: string;
+  hostPort: number;
+  guestIp?: string;
+  guestPort: number;
 }
 
 export interface NetworkOptionsResponse {

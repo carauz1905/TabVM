@@ -37,8 +37,24 @@ func (s *service) NetworkOptions(ctx context.Context, id string) (models.Network
 		return models.NetworkOptionsResponse{}, err
 	}
 
+	adapters := parseNetworkAdapters(info)
+
+	// NAT port-forwarding rules cannot be read from --machinereadable: its
+	// flat Forwarding(N)= index does not encode which NIC a rule belongs to.
+	// The human-readable showvminfo labels each rule with its NIC number, so a
+	// second, best-effort read attaches rules to the matching adapter. A failed
+	// human read still returns the adapters, just without rules.
+	if human, herr := s.readShowVmInfoHuman(ctx, path, id, "reading port forwarding rules"); herr == nil {
+		rulesBySlot := parseForwardingRules(human)
+		for i := range adapters {
+			if rules := rulesBySlot[adapters[i].Slot]; len(rules) > 0 {
+				adapters[i].Forwarding = rules
+			}
+		}
+	}
+
 	return models.NetworkOptionsResponse{
-		Adapters:         parseNetworkAdapters(info),
+		Adapters:         adapters,
 		BridgedAdapters:  s.listHostInterfaces(ctx, path, "bridgedifs"),
 		HostOnlyAdapters: s.listHostInterfaces(ctx, path, "hostonlyifs"),
 	}, nil
