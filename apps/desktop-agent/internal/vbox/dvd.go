@@ -23,12 +23,13 @@ import (
 //	    Location: "C:\...\alpine.iso"
 //	  Port 1, Unit 0: Empty            <- an empty removable (DVD) drive
 //
-// Assumption (documented because the human-readable form has no explicit type
-// column): an attachment is the optical drive when its medium is "Empty" or its
-// Location ends in ".iso". A hard disk is a .vdi/.vmdk/.vhd/.hdd image and is
-// never reported as "Empty" (an unattached hard-disk port is omitted entirely),
-// so this reliably separates the DVD drive from the disks. Only the first optical
-// drive is returned, since a VM normally has exactly one.
+// Disambiguation (the human-readable form has no explicit type column): an
+// attachment is the optical drive when its medium is "Empty" or its medium is
+// NOT a hard-disk image (identified by extension). This recognizes any optical
+// medium — an ISO, a host-DVD passthrough, a .viso — not just ".iso", while
+// excluding the hard disks. A hard disk is never reported as "Empty" (an
+// unattached hard-disk port is omitted entirely). Only the first optical drive
+// is returned, since a VM normally has exactly one.
 var (
 	controllerHeaderRe = regexp.MustCompile(`^#\d+:\s+'([^']*)'`)
 	attachmentLineRe   = regexp.MustCompile(`^Port (\d+), Unit (\d+):\s*(.*)$`)
@@ -69,9 +70,10 @@ func parseOpticalDrive(human string) opticalDrive {
 		if !strings.HasPrefix(rest, "UUID:") {
 			continue
 		}
-		// A medium is attached; its path is on the following Location: line.
+		// A medium is attached; its path is on the following Location: line. It is
+		// the optical drive unless the medium is a hard-disk image.
 		medium := locationAfter(lines, i)
-		if isIsoPath(medium) {
+		if medium != "" && !isHardDiskImage(medium) {
 			return opticalDrive{controller: currentCtl, port: port, device: device, medium: medium, present: true}
 		}
 	}
@@ -95,9 +97,17 @@ func locationAfter(lines []string, i int) string {
 	return ""
 }
 
-// isIsoPath reports whether p names an .iso image (the medium of an optical drive).
-func isIsoPath(p string) bool {
-	return strings.HasSuffix(strings.ToLower(strings.TrimSpace(p)), ".iso")
+// isHardDiskImage reports whether p names a VirtualBox hard-disk image (by
+// extension). Anything else attached to a removable drive — an ISO, a host-DVD
+// passthrough, a .viso — is optical media, not a disk.
+func isHardDiskImage(p string) bool {
+	p = strings.ToLower(strings.TrimSpace(p))
+	for _, ext := range []string{".vdi", ".vmdk", ".vhd", ".vhdx", ".hdd", ".qed", ".qcow", ".qcow2", ".raw"} {
+		if strings.HasSuffix(p, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 // MountDvd inserts an ISO into the VM's optical (DVD) drive, resolving the drive's

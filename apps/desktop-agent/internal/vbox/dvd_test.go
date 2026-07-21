@@ -37,6 +37,15 @@ const humanStorageNoOptical = `Storage Controllers:
   Port 0, Unit 0: UUID: 846b821b-1f6c-4c75-88c8-d462b6596f87
     Location: "C:\VMs\vm\disk.vdi"`
 
+// humanStorageNonIsoOptical shows a disk on port 0 and a non-.iso optical medium
+// (a .viso) in the drive on port 1 — still the optical drive, not a hard disk.
+const humanStorageNonIsoOptical = `Storage Controllers:
+#0: 'SATA', Type: IntelAhci, Instance: 0, Ports: 2 (max 30), Bootable
+  Port 0, Unit 0: UUID: 846b821b-1f6c-4c75-88c8-d462b6596f87
+    Location: "C:\VMs\vm\disk.vdi"
+  Port 1, Unit 0: UUID: 22222222-2222-4b6f-a2fe-8a0d93173323
+    Location: "C:\ISOs\tools.viso"`
+
 func TestParseOpticalDrive_WithIso(t *testing.T) {
 	od := parseOpticalDrive(humanStorageWithIso)
 	if !od.present {
@@ -67,6 +76,19 @@ func TestParseOpticalDrive_NoOptical(t *testing.T) {
 	od := parseOpticalDrive(humanStorageNoOptical)
 	if od.present {
 		t.Fatalf("expected no optical drive, got %+v", od)
+	}
+}
+
+func TestParseOpticalDrive_NonIsoOptical(t *testing.T) {
+	od := parseOpticalDrive(humanStorageNonIsoOptical)
+	if !od.present {
+		t.Fatalf("expected the non-.iso optical medium to be recognized as the DVD drive")
+	}
+	if od.controller != "SATA" || od.port != 1 || od.device != 0 {
+		t.Fatalf("unexpected location: %+v", od)
+	}
+	if od.medium != `C:\ISOs\tools.viso` {
+		t.Fatalf("expected the .viso path as medium, got %q", od.medium)
 	}
 }
 
