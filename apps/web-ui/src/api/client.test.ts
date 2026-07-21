@@ -392,6 +392,23 @@ describe('api client', () => {
     expect(requestMethod()).toBe('POST');
   });
 
+  it('saves a VM state (suspend) with POST', async () => {
+    mockFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () =>
+        '{"success":true,"vmId":"11111111-1111-1111-1111-111111111111","message":"VM state saved. Start it to resume."}',
+    });
+
+    const result = await api.saveState('11111111-1111-1111-1111-111111111111');
+
+    expect(result.success).toBe(true);
+    expect(requestMethod()).toBe('POST');
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(call[0]).toContain('/api/vms/11111111-1111-1111-1111-111111111111/savestate');
+  });
+
   it('resets a VM with POST', async () => {
     mockFetch({
       ok: true,

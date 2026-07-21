@@ -158,8 +158,8 @@ const en: DocsStrings = {
   operate: {
     lead: 'Each machine in the list has a compact set of controls. They mirror exactly what you will use every day.',
     startStop: {
-      title: 'Start, stop, reset',
-      body: 'A stopped machine shows start. A running one shows stop (a clean shutdown, like pressing the power button) and reset (a hard restart — use it only when the guest is stuck).',
+      title: 'Start, stop, suspend, reset',
+      body: 'A stopped machine shows start. A running one shows stop (a clean shutdown, like pressing the power button), suspend and reset (a hard restart — use it only when the guest is stuck). Suspend freezes the machine and saves its memory to disk (a saved state) in an instant; the next start resumes it exactly where you left off — unlike stop, which shuts the guest down and boots it fresh next time.',
     },
     console: {
       title: 'The live console',
@@ -357,8 +357,8 @@ const es: DocsStrings = {
   operate: {
     lead: 'Cada máquina de la lista tiene un conjunto compacto de controles. Reflejan exactamente lo que usarás a diario.',
     startStop: {
-      title: 'Iniciar, detener, reiniciar',
-      body: 'Una máquina detenida muestra iniciar. Una en marcha muestra detener (apagado limpio, como pulsar el botón de encendido) y reiniciar (reinicio forzado: úsalo solo si el guest está trabado).',
+      title: 'Iniciar, detener, suspender, reiniciar',
+      body: 'Una máquina detenida muestra iniciar. Una en marcha muestra detener (apagado limpio, como pulsar el botón de encendido), suspender y reiniciar (reinicio forzado: úsalo solo si el guest está trabado). Suspender congela la máquina y guarda su memoria en el disco (un estado guardado) al instante; el siguiente inicio la reanuda justo donde la dejaste, a diferencia de detener, que apaga el guest y lo arranca de cero la próxima vez.',
     },
     console: {
       title: 'La consola en vivo',

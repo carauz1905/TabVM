@@ -589,6 +589,14 @@ export const api = {
       isVmOperationResponse,
       { method: 'POST' },
     ),
+  // saveState suspends a running VM by freezing its RAM to disk. The VM moves to
+  // the saved state and later resumes from where it left off via the normal start.
+  saveState: (id: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/savestate`,
+      isVmOperationResponse,
+      { method: 'POST' },
+    ),
   resetVm: (id: string) =>
     request<VmOperationResponse>(
       `/api/vms/${encodeURIComponent(id)}/reset`,
