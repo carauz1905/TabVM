@@ -186,7 +186,7 @@ func (s *service) AddPortForwarding(ctx context.Context, id string, req models.P
 		GuestPort: req.GuestPort,
 	}
 	live := vmStateIsLive(parseVmState(info))
-	if err := s.runControlCommand(ctx, path, natpfAddArgs(id, req.Slot, rule, live), "adding port forwarding rule"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, natpfAddArgs(id, req.Slot, rule, live), "adding port forwarding rule"); err != nil {
 		s.logOperation(ctx, id, "network.forwarding.add", false, "VBoxManage port forwarding add failed.")
 		return models.NetworkOperationResponse{}, err
 	}
@@ -223,7 +223,7 @@ func (s *service) DeletePortForwarding(ctx context.Context, id string, slot int,
 	}
 
 	live := vmStateIsLive(parseVmState(info))
-	if err := s.runControlCommand(ctx, path, natpfDeleteArgs(id, slot, name, live), "removing port forwarding rule"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, natpfDeleteArgs(id, slot, name, live), "removing port forwarding rule"); err != nil {
 		s.logOperation(ctx, id, "network.forwarding.delete", false, "VBoxManage port forwarding remove failed.")
 		return models.NetworkOperationResponse{}, err
 	}
@@ -240,7 +240,7 @@ func (s *service) DeletePortForwarding(ctx context.Context, id string, slot int,
 // returns stdout. The human-readable form is required for NAT port-forwarding
 // rules because it labels each rule with its NIC number (see nicRuleLineRe).
 func (s *service) readShowVmInfoHuman(ctx context.Context, path, id, description string) (string, error) {
-	result, runErr := s.runner.RunContext(ctx, path, showVmInfoHumanArgs(id), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, showVmInfoHumanArgs(id), 10*time.Second)
 	if runErr != nil {
 		return "", &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -269,7 +269,7 @@ func showVmInfoHumanArgs(id string) []string {
 // be read, and excludes excludeID (the VM being modified, already checked
 // locally).
 func (s *service) hostPortForwardedByOtherVM(ctx context.Context, path, excludeID, proto string, hostPort int) string {
-	result, err := s.runner.RunContext(ctx, path, listVmsArgs(), 10*time.Second)
+	result, err := s.exec(ctx, path, listVmsArgs(), 10*time.Second)
 	if err != nil || result.ExitCode != 0 {
 		return ""
 	}

@@ -109,7 +109,7 @@ func (s *service) EnableSerialGetty(ctx context.Context, id, username, password 
 	if !root {
 		// Copy the password into the guest so the sudo -S path can read it from
 		// stdin.
-		if cp, cpErr := s.runner.RunContext(ctx, path, guestControlCopyPwArgs(id, username, pwPath), 30*time.Second); cpErr != nil || cp.ExitCode != 0 {
+		if cp, cpErr := s.runForVM(ctx, id, path, guestControlCopyPwArgs(id, username, pwPath), 30*time.Second); cpErr != nil || cp.ExitCode != 0 {
 			s.logOperation(ctx, id, "serial.getty", false, "Copying credentials into guest failed.")
 			return models.SerialGettyResponse{
 				Success: false,
@@ -124,7 +124,7 @@ func (s *service) EnableSerialGetty(ctx context.Context, id, username, password 
 	if !root {
 		args = guestControlSudoEnableGettyArgs(id, username, pwPath)
 	}
-	result, runErr := s.runner.RunContext(ctx, path, args, 90*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, args, 90*time.Second)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "serial.getty", false, "Enabling serial getty failed.")
 		return models.SerialGettyResponse{

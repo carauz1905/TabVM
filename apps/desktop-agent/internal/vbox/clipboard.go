@@ -87,7 +87,7 @@ func (s *service) SetClipboardMode(ctx context.Context, id, mode string) (models
 		args = setClipboardModifyArgs(id, normalized)
 	}
 
-	if err := s.runControlCommand(ctx, path, args, "setting clipboard mode"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, args, "setting clipboard mode"); err != nil {
 		s.logOperation(ctx, id, "clipboard.set", false, "VirtualBox clipboard change failed.")
 		return models.ClipboardModeResponse{}, err
 	}

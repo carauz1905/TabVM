@@ -63,7 +63,7 @@ func (s *service) EnableSerialConsole(ctx context.Context, id string) (models.Vm
 		return models.VmOperationResponse{}, &ValidationError{Message: "The VM is running. Power it off before enabling the serial terminal."}
 	}
 
-	if err := s.runControlCommand(ctx, path, enableSerialConsoleArgs(id, SerialPipeName(id)), "enabling serial console"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, enableSerialConsoleArgs(id, SerialPipeName(id)), "enabling serial console"); err != nil {
 		s.logOperation(ctx, id, "vm.serial.enable", false, "VBoxManage modifyvm uart failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -96,7 +96,7 @@ func (s *service) DisableSerialConsole(ctx context.Context, id string) (models.V
 		return models.VmOperationResponse{}, &ValidationError{Message: "The VM is running. Power it off before disabling the serial terminal."}
 	}
 
-	if err := s.runControlCommand(ctx, path, disableSerialConsoleArgs(id), "disabling serial console"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, disableSerialConsoleArgs(id), "disabling serial console"); err != nil {
 		s.logOperation(ctx, id, "vm.serial.disable", false, "VBoxManage modifyvm uart off failed.")
 		return models.VmOperationResponse{}, err
 	}

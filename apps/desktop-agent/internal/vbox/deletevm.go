@@ -31,7 +31,7 @@ func (s *service) DeleteVM(ctx context.Context, id string) (models.VmOperationRe
 	}
 
 	// Deleting large disk images can take a while.
-	result, runErr := s.runner.RunContext(ctx, path, unregisterVmArgs(id), 5*time.Minute)
+	result, runErr := s.runForVM(ctx, id, path, unregisterVmArgs(id), 5*time.Minute)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "vm.delete", false, "VBoxManage unregistervm failed.")
 		return models.VmOperationResponse{}, &ExecutionError{

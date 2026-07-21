@@ -21,7 +21,7 @@ func (s *service) ListSnapshots(ctx context.Context, id string) (models.Snapshot
 		return models.SnapshotsResponse{}, err
 	}
 
-	result, runErr := s.runner.RunContext(ctx, path, snapshotListArgs(id), 15*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, snapshotListArgs(id), 15*time.Second)
 	if runErr != nil {
 		return models.SnapshotsResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -68,7 +68,7 @@ func (s *service) TakeSnapshot(ctx context.Context, id, name, description string
 
 	// An online snapshot of a large-RAM VM can take a while, so allow more time
 	// than the 30s control-command default.
-	result, runErr := s.runner.RunContext(ctx, path, snapshotTakeArgs(id, name, description), 3*time.Minute)
+	result, runErr := s.runForVM(ctx, id, path, snapshotTakeArgs(id, name, description), 3*time.Minute)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "snapshot.take", false, "VBoxManage snapshot take failed.")
 		return models.SnapshotOperationResponse{}, &ExecutionError{
@@ -108,7 +108,7 @@ func (s *service) RestoreSnapshot(ctx context.Context, id, snapshotID string) (m
 		return models.SnapshotOperationResponse{}, err
 	}
 	if vmStateIsLive(parseVmState(info)) {
-		if err := s.runControlCommand(ctx, path, powerOffVmArgs(id), "powering off before snapshot restore"); err != nil {
+		if err := s.runControlCommand(ctx, id, path, powerOffVmArgs(id), "powering off before snapshot restore"); err != nil {
 			s.logOperation(ctx, id, "snapshot.restore", false, "Power off before restore failed.")
 			return models.SnapshotOperationResponse{}, err
 		}
@@ -118,7 +118,7 @@ func (s *service) RestoreSnapshot(ctx context.Context, id, snapshotID string) (m
 		}
 	}
 
-	result, runErr := s.runner.RunContext(ctx, path, snapshotRestoreArgs(id, snapshotID), 2*time.Minute)
+	result, runErr := s.runForVM(ctx, id, path, snapshotRestoreArgs(id, snapshotID), 2*time.Minute)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "snapshot.restore", false, "VBoxManage snapshot restore failed.")
 		return models.SnapshotOperationResponse{}, &ExecutionError{
@@ -153,7 +153,7 @@ func (s *service) DeleteSnapshot(ctx context.Context, id, snapshotID string) (mo
 	}
 
 	// Merging a large differencing disk can take a while.
-	result, runErr := s.runner.RunContext(ctx, path, snapshotDeleteArgs(id, snapshotID), 5*time.Minute)
+	result, runErr := s.runForVM(ctx, id, path, snapshotDeleteArgs(id, snapshotID), 5*time.Minute)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "snapshot.delete", false, "VBoxManage snapshot delete failed.")
 		return models.SnapshotOperationResponse{}, &ExecutionError{

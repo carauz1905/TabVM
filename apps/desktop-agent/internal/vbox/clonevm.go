@@ -58,7 +58,7 @@ func (s *service) CloneVM(ctx context.Context, sourceID, name string, linked boo
 		return models.VmCreateResponse{}, err
 	}
 
-	if err := s.runControlCommandTimeout(ctx, path, cloneVmArgs(sourceID, name, linked, snapshot), "cloning VM", cloneTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, sourceID, path, cloneVmArgs(sourceID, name, linked, snapshot), "cloning VM", cloneTimeout); err != nil {
 		s.logOperation(ctx, sourceID, "vm.clone", false, "VBoxManage clonevm failed.")
 		return models.VmCreateResponse{}, err
 	}
@@ -109,7 +109,7 @@ func (s *service) checkCloneSource(ctx context.Context, path, sourceID string, l
 // `snapshot list` print "does not have any snapshots" and exit non-zero — that
 // is an empty list, not an error (mirrors ListSnapshots).
 func (s *service) cloneSourceSnapshot(ctx context.Context, path, id string) (string, bool, error) {
-	result, runErr := s.runner.RunContext(ctx, path, snapshotListArgs(id), 15*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, snapshotListArgs(id), 15*time.Second)
 	if runErr != nil {
 		return "", false, &ExecutionError{
 			ExitCode:      result.ExitCode,

@@ -77,7 +77,7 @@ func (s *service) AddSharedFolder(ctx context.Context, id, name, hostPath string
 	}
 	transient := vmStateIsLive(parseVmState(info))
 
-	if err := s.runControlCommand(ctx, path, addSharedFolderArgs(id, name, hostPath, transient), "adding shared folder"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, addSharedFolderArgs(id, name, hostPath, transient), "adding shared folder"); err != nil {
 		s.logOperation(ctx, id, "sharedfolder.add", false, "VirtualBox shared folder add failed.")
 		return models.SharedFolderOperationResponse{}, err
 	}
@@ -124,7 +124,7 @@ func (s *service) RemoveSharedFolder(ctx context.Context, id, name string) (mode
 		return models.SharedFolderOperationResponse{}, &ValidationError{Message: "Shared folder not found."}
 	}
 
-	if err := s.runControlCommand(ctx, path, removeSharedFolderArgs(id, name, target.transient, target.global), "removing shared folder"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, removeSharedFolderArgs(id, name, target.transient, target.global), "removing shared folder"); err != nil {
 		s.logOperation(ctx, id, "sharedfolder.remove", false, "VirtualBox shared folder remove failed.")
 		return models.SharedFolderOperationResponse{}, err
 	}
@@ -140,7 +140,7 @@ func (s *service) RemoveSharedFolder(ctx context.Context, id, name string) (mode
 // readShowVmInfo runs showvminfo --machinereadable and returns stdout, mapping
 // runner and non-zero exit failures to an ExecutionError.
 func (s *service) readShowVmInfo(ctx context.Context, path, id, description string) (string, error) {
-	result, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(id), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, showVmInfoArgs(id), 10*time.Second)
 	if runErr != nil {
 		return "", &ExecutionError{
 			ExitCode:      result.ExitCode,
