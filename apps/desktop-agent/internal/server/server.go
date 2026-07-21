@@ -407,6 +407,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleVmStart(w, r, id)
 		case "stop":
 			s.handleVmStop(w, r, id)
+		case "savestate":
+			s.handleSaveState(w, r, id)
 		case "reset":
 			s.handleVmReset(w, r, id)
 		case "poweroff":
@@ -495,6 +497,10 @@ func (s *Server) handleVmStart(w http.ResponseWriter, r *http.Request, id string
 
 func (s *Server) handleVmStop(w http.ResponseWriter, r *http.Request, id string) {
 	s.handleVmOperation(w, r, id, s.vbox.StopVM, "VM stop requested. ACPI shutdown signal sent.")
+}
+
+func (s *Server) handleSaveState(w http.ResponseWriter, r *http.Request, id string) {
+	s.handleVmOperation(w, r, id, s.vbox.SaveState, "VM state saved. Start it to resume.")
 }
 
 func (s *Server) handleVmReset(w http.ResponseWriter, r *http.Request, id string) {

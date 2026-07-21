@@ -374,6 +374,46 @@ func (s *service) StopVM(ctx context.Context, id string) error {
 	return s.runLoggedControlCommand(ctx, id, "vm.stop", stopVmArgs, "stopping VM")
 }
 
+// SaveState suspends a running VM by freezing its RAM to disk ("controlvm
+// savestate"). The VM transitions to the "saved" state and later resumes from
+// exactly where it left off via the normal start path. It refuses a VM that is
+// not currently executing, since there is no live state to save.
+func (s *service) SaveState(ctx context.Context, id string) error {
+	if !IsValidVmID(id) {
+		return &ExecutionError{
+			ExitCode: -1,
+			Message:  "Invalid VM identifier.",
+		}
+	}
+
+	path, err := s.resolveVBoxManage(ctx)
+	if err != nil {
+		s.logOperation(ctx, id, "vm.savestate", false, "VirtualBox/VBoxManage not discovered.")
+		return err
+	}
+
+	info, infoErr := s.readShowVmInfo(ctx, path, id, "reading VM state before saving")
+	if infoErr != nil {
+		s.logOperation(ctx, id, "vm.savestate", false, controlFailureMessage("reading VM state before saving", infoErr))
+		return infoErr
+	}
+
+	if !vmStateIsLive(parseVmState(info)) {
+		validationErr := &ValidationError{
+			Message: "The VM is not running; there is no running state to save.",
+		}
+		s.logOperation(ctx, id, "vm.savestate", false, validationErr.Message)
+		return validationErr
+	}
+
+	if err := s.runControlCommand(ctx, id, path, saveStateArgs(id), "saving VM state"); err != nil {
+		s.logOperation(ctx, id, "vm.savestate", false, controlFailureMessage("saving VM state", err))
+		return err
+	}
+	s.logOperation(ctx, id, "vm.savestate", true, "")
+	return nil
+}
+
 func (s *service) ResetVM(ctx context.Context, id string) error {
 	return s.runLoggedControlCommand(ctx, id, "vm.reset", resetVmArgs, "resetting VM")
 }
@@ -844,6 +884,10 @@ func startVmArgs(id string) []string {
 
 func stopVmArgs(id string) []string {
 	return []string{"controlvm", id, "acpipowerbutton"}
+}
+
+func saveStateArgs(id string) []string {
+	return []string{"controlvm", id, "savestate"}
 }
 
 func resumeVmArgs(id string) []string {
