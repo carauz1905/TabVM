@@ -52,6 +52,7 @@ type Service interface {
 	CopyFromGuest(ctx context.Context, id, guestPath, hostDir, username, password string) (models.VmGuestCopyFromResponse, error)
 	NetworkOptions(ctx context.Context, id string) (models.NetworkOptionsResponse, error)
 	ChangeNetworkMode(ctx context.Context, id string, slot int, mode, adapter string) (models.NetworkOperationResponse, error)
+	SetLinkState(ctx context.Context, id string, slot int, connected bool) (models.NetworkOperationResponse, error)
 	AddPortForwarding(ctx context.Context, id string, req models.PortForwardingRequest) (models.NetworkOperationResponse, error)
 	DeletePortForwarding(ctx context.Context, id string, slot int, name string) (models.NetworkOperationResponse, error)
 	VmUsb(ctx context.Context, id string) (models.VmUsbResponse, error)
