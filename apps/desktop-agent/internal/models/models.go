@@ -376,12 +376,35 @@ type DiskInfo struct {
 	Reason      string `json:"reason,omitempty"`
 }
 
+// OpticalDrive describes a VM's DVD/optical drive and the medium currently in
+// it, surfaced by GET /api/vms/{id}/storage. Present is false when the VM has no
+// optical drive at all. Medium is the absolute ISO path when a disc is inserted,
+// or empty when the drive holds no disc; Name is the ISO file's basename for
+// display. Controller/Port/Device locate the drive so it can be mounted/ejected.
+type OpticalDrive struct {
+	Present    bool   `json:"present"`
+	Medium     string `json:"medium"`
+	Name       string `json:"name"`
+	Controller string `json:"controller"`
+	Port       int    `json:"port"`
+	Device     int    `json:"device"`
+}
+
 // VmStorageResponse is the response shape for GET /api/vms/{id}/storage.
 // Editable is false while the VM is live, since disks cannot be resized in use.
+// Optical describes the DVD drive; unlike disks, its medium can be changed while
+// the VM is running, so it is reported regardless of Editable.
 type VmStorageResponse struct {
-	ID       string     `json:"id"`
-	Disks    []DiskInfo `json:"disks"`
-	Editable bool       `json:"editable"`
+	ID       string       `json:"id"`
+	Disks    []DiskInfo   `json:"disks"`
+	Optical  OpticalDrive `json:"optical"`
+	Editable bool         `json:"editable"`
+}
+
+// DvdMountRequest is the body for POST /api/vms/{id}/storage/dvd. IsoPath is the
+// absolute host path of the .iso to insert into the VM's DVD drive.
+type DvdMountRequest struct {
+	IsoPath string `json:"isoPath"`
 }
 
 // DiskResizeRequest is the body for POST /api/vms/{id}/storage/resize.

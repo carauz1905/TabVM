@@ -411,16 +411,10 @@ func storageAttachDiskArgs(uuid, diskPath string) []string {
 }
 
 // storageAttachDvdArgs attaches the installer ISO as a DVD on the second SATA
-// port (the controller is created with --portcount 2).
+// port (the controller is created with --portcount 2). It mirrors the general
+// optical-drive attach builder used by mount/eject.
 func storageAttachDvdArgs(uuid, isoPath string) []string {
-	return []string{
-		"storageattach", uuid,
-		"--storagectl", "SATA",
-		"--port", "1",
-		"--device", "0",
-		"--type", "dvddrive",
-		"--medium", isoPath,
-	}
+	return storageAttachDvdMediumArgs(uuid, "SATA", 1, 0, isoPath)
 }
 
 // unattendedInstallArgs configures (does not start) the automated install with

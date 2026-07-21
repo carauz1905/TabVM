@@ -447,6 +447,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleAddDisk(w, r, id)
 		case "storage/detach":
 			s.handleDetachDisk(w, r, id)
+		case "storage/dvd":
+			s.handleMountDvd(w, r, id)
+		case "storage/dvd/eject":
+			s.handleEjectDvd(w, r, id)
 		case "clipboard":
 			s.handleSetClipboardMode(w, r, id)
 		case "guest-additions/install":
@@ -970,6 +974,55 @@ func (s *Server) handleDetachDisk(w http.ResponseWriter, r *http.Request, id str
 	defer unlock()
 
 	resp, err := s.vbox.DetachDisk(r.Context(), id, body.UUID, body.DeleteFile)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleMountDvd inserts an ISO into the VM's optical drive. Mount is
+// live-capable (VirtualBox hot-swaps optical media), but the per-VM lock keeps it
+// from racing another lifecycle operation on the same VM.
+func (s *Server) handleMountDvd(w http.ResponseWriter, r *http.Request, id string) {
+	var body models.DvdMountRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.MountDvd(r.Context(), id, body.IsoPath)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleEjectDvd empties the VM's optical drive (keeping the drive itself).
+func (s *Server) handleEjectDvd(w http.ResponseWriter, r *http.Request, id string) {
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.EjectDvd(r.Context(), id)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return

@@ -32,6 +32,8 @@ type Service interface {
 	ResizeDisk(ctx context.Context, id, uuid string, sizeMB int64) (models.VmOperationResponse, error)
 	AddDisk(ctx context.Context, id string, sizeMB int64) (models.VmOperationResponse, error)
 	DetachDisk(ctx context.Context, id, uuid string, deleteFile bool) (models.VmOperationResponse, error)
+	MountDvd(ctx context.Context, id, isoPath string) (models.VmOperationResponse, error)
+	EjectDvd(ctx context.Context, id string) (models.VmOperationResponse, error)
 	VmConsoleStatus(ctx context.Context, id string) (models.VmConsoleStatusResponse, error)
 	PrepareVmConsole(ctx context.Context, id string) (models.VmConsoleStatusResponse, error)
 	DisableVmConsole(ctx context.Context, id string) error
