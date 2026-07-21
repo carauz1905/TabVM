@@ -448,6 +448,7 @@ func TestLifecycleMethods_RejectsInvalidID(t *testing.T) {
 	}{
 		{"StartVM", func() error { return svc.StartVM(context.Background(), "bad id") }},
 		{"StopVM", func() error { return svc.StopVM(context.Background(), "bad id") }},
+		{"SaveState", func() error { return svc.SaveState(context.Background(), "bad id") }},
 		{"ResetVM", func() error { return svc.ResetVM(context.Background(), "bad id") }},
 		{"DisableVmConsole", func() error { return svc.DisableVmConsole(context.Background(), "bad id") }},
 	}
@@ -1118,6 +1119,75 @@ func TestResetVmArgs(t *testing.T) {
 		if args[i] != expected[i] {
 			t.Fatalf("arg %d mismatch: expected %q, got %q", i, expected[i], args[i])
 		}
+	}
+}
+
+func TestSaveStateArgs(t *testing.T) {
+	args := saveStateArgs("11111111-1111-1111-1111-111111111111")
+	expected := []string{"controlvm", "11111111-1111-1111-1111-111111111111", "savestate"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %v, got %v", expected, args)
+	}
+	for i := range expected {
+		if args[i] != expected[i] {
+			t.Fatalf("arg %d mismatch: expected %q, got %q", i, expected[i], args[i])
+		}
+	}
+}
+
+// TestSaveState_RunningIssuesSaveState covers the happy path: a running VM has
+// its live state frozen to disk with "controlvm <id> savestate".
+func TestSaveState_RunningIssuesSaveState(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"running\""}},
+			path + " controlvm " + id + " savestate":          {{ExitCode: 0}},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.SaveState(context.Background(), id); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !run.issued("controlvm " + id + " savestate") {
+		t.Fatal("expected SaveState to issue controlvm savestate")
+	}
+}
+
+// TestSaveState_NotRunningRejected covers the guard: a VM that is not executing
+// has no live state to save, so SaveState returns a ValidationError and never
+// issues savestate.
+func TestSaveState_NotRunningRejected(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.0.14r161095\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"poweroff\""}},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	err := svc.SaveState(context.Background(), id)
+	if err == nil {
+		t.Fatal("expected SaveState to reject a VM that is not running")
+	}
+	if _, ok := err.(*ValidationError); !ok {
+		t.Fatalf("expected *ValidationError, got %T: %v", err, err)
+	}
+	if run.issued("controlvm " + id + " savestate") {
+		t.Fatal("SaveState must not issue savestate for a VM that is not running")
 	}
 }
 

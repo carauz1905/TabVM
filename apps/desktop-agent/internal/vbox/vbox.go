@@ -19,6 +19,7 @@ type Service interface {
 	VMStatus(ctx context.Context, id string) (models.VmStatusResponse, error)
 	StartVM(ctx context.Context, id string) error
 	StopVM(ctx context.Context, id string) error
+	SaveState(ctx context.Context, id string) error
 	ResetVM(ctx context.Context, id string) error
 	DeleteVM(ctx context.Context, id string) (models.VmOperationResponse, error)
 	VmGuestOS(ctx context.Context, id string) (models.VmGuestOSResponse, error)

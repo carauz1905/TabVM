@@ -21,8 +21,8 @@ import type {
   VmTelemetryResponse,
 } from '../types/api';
 
-type VmAction = 'start' | 'stop' | 'reset' | 'poweroff' | 'delete';
-const lifecycleActions: VmAction[] = ['start', 'stop', 'reset', 'poweroff', 'delete'];
+type VmAction = 'start' | 'stop' | 'savestate' | 'reset' | 'poweroff' | 'delete';
+const lifecycleActions: VmAction[] = ['start', 'stop', 'savestate', 'reset', 'poweroff', 'delete'];
 
 // How long after a stop request the VM may stay running before the UI offers
 // a hard power-off (a guest with no OS never answers the ACPI signal).
@@ -475,7 +475,7 @@ export function MachinesView() {
       setLoadingActions((current) => ({ ...current, [id]: { ...current[id], [action]: true } }));
       setActionError(null);
       // Any power-state change restarts the stop tracking from scratch.
-      if (action === 'start' || action === 'stop' || action === 'poweroff') {
+      if (action === 'start' || action === 'stop' || action === 'savestate' || action === 'poweroff') {
         window.clearTimeout(forceTimersRef.current[id]);
         delete forceTimersRef.current[id];
         setForceOffered((current) => {
@@ -488,6 +488,7 @@ export function MachinesView() {
       try {
         if (action === 'start') await api.startVm(id);
         else if (action === 'stop') await api.stopVm(id);
+        else if (action === 'savestate') await api.saveState(id);
         else if (action === 'reset') await api.resetVm(id);
         else if (action === 'poweroff') await api.forcePowerOffVm(id);
         else if (action === 'delete') await api.deleteVm(id);
@@ -706,6 +707,16 @@ export function MachinesView() {
                             onClick={() => void runAction(vm.id, 'stop')}
                           >
                             {loading.stop ? t('stopping…') : t('stop')}
+                          </button>
+                          <button
+                            type="button"
+                            className="tv-abtn"
+                            aria-label={tf('Suspend {vm}', { vm: vm.name })}
+                            title={t('save state · resume later')}
+                            disabled={busy}
+                            onClick={() => void runAction(vm.id, 'savestate')}
+                          >
+                            {loading.savestate ? t('suspending…') : t('suspend')}
                           </button>
                           {forceOffered[vm.id] && (
                             <button

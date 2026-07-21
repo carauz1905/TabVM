@@ -25,6 +25,7 @@ type fakeVboxService struct {
 	statusErr         error
 	startErr          error
 	stopErr           error
+	saveStateErr      error
 	resetErr          error
 	poweroffErr       error
 	consoleStatus     models.VmConsoleStatusResponse
@@ -145,6 +146,12 @@ func (f *fakeVboxService) StopVM(ctx context.Context, id string) error {
 	f.lastAction = "stop"
 	f.lastID = id
 	return f.stopErr
+}
+
+func (f *fakeVboxService) SaveState(ctx context.Context, id string) error {
+	f.lastAction = "savestate"
+	f.lastID = id
+	return f.saveStateErr
 }
 
 func (f *fakeVboxService) ResetVM(ctx context.Context, id string) error {
@@ -1175,6 +1182,7 @@ func TestVmLifecycleRoutesRequireAuth(t *testing.T) {
 	routes := []string{
 		"/api/vms/11111111-1111-1111-1111-111111111111/start",
 		"/api/vms/11111111-1111-1111-1111-111111111111/stop",
+		"/api/vms/11111111-1111-1111-1111-111111111111/savestate",
 		"/api/vms/11111111-1111-1111-1111-111111111111/reset",
 		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding",
 		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding/delete",
@@ -1280,6 +1288,44 @@ func TestVmStopEndpointReturnsOperationResult(t *testing.T) {
 
 	if fake.lastAction != "stop" || fake.lastID != "11111111-1111-1111-1111-111111111111" {
 		t.Fatalf("expected stop action for 11111111-1111-1111-1111-111111111111, got %s/%s", fake.lastAction, fake.lastID)
+	}
+}
+
+func TestVmSaveStateEndpointReturnsOperationResult(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	if fake.lastAction != "savestate" || fake.lastID != "11111111-1111-1111-1111-111111111111" {
+		t.Fatalf("expected savestate action for 11111111-1111-1111-1111-111111111111, got %s/%s", fake.lastAction, fake.lastID)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, `"success":true`) {
+		t.Fatalf("expected success=true in body, got %q", body)
+	}
+}
+
+func TestVmSaveStateEndpointMapsValidationErrorTo400(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	fake.saveStateErr = &vbox.ValidationError{Message: "The VM is not running; there is no running state to save."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
 	}
 }
 

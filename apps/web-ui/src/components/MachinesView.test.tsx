@@ -49,6 +49,7 @@ vi.mock('../api/client', () => {
       getVmTelemetry: vi.fn(),
       startVm: vi.fn(),
       stopVm: vi.fn(),
+      saveState: vi.fn(),
       resetVm: vi.fn(),
       forcePowerOffVm: vi.fn(),
       deleteVm: vi.fn(),
@@ -137,6 +138,27 @@ describe('MachinesView', () => {
 
     await waitFor(() => expect(api.stopVm).toHaveBeenCalledWith(RUNNING_ID));
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('suspends (saves state of) a running VM and refreshes', async () => {
+    vi.mocked(api.saveState).mockResolvedValue({
+      success: true,
+      vmId: RUNNING_ID,
+      message: 'VM state saved. Start it to resume.',
+    });
+
+    const { getByRole } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Suspend VM One' }));
+
+    await waitFor(() => expect(api.saveState).toHaveBeenCalledWith(RUNNING_ID));
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('does not offer suspend for a stopped VM', () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { queryByRole } = render(<MachinesView />);
+    expect(queryByRole('button', { name: 'Suspend VM One' })).toBeNull();
   });
 
   it('confirms before resetting a running VM', async () => {
