@@ -73,6 +73,7 @@ export interface DocsStrings {
     lead: string;
     share: Step;
     drop: Step;
+    guest: Step;
     tip: string;
   };
   snapshots: {
@@ -227,6 +228,10 @@ const en: DocsStrings = {
     drop: {
       title: 'Drag & drop',
       body: 'Drop files straight onto a machine or its console. If a shared folder exists they land there; otherwise they are copied in over guest control with a one-time username and password.',
+    },
+    guest: {
+      title: 'Guest control',
+      body: 'On a running Linux machine with Guest Additions, the Guest control panel lets you run a command inside the machine (it shows the exit code and output) and copy a file out of the machine into a host folder. Enter the guest username and password once — it is used for that session only and never stored.',
     },
     tip: 'Add the shared folder while the machine is powered OFF and it stays permanent — it survives a full shutdown and comes back every boot. Add it while running and it only lasts for that session.',
   },
@@ -422,6 +427,10 @@ const es: DocsStrings = {
     drop: {
       title: 'Arrastrar y soltar',
       body: 'Suelta archivos directamente sobre una máquina o su consola. Si hay una carpeta compartida, caen allí; si no, se copian por guest control con un usuario y contraseña de un solo uso.',
+    },
+    guest: {
+      title: 'Control del guest',
+      body: 'En una máquina Linux en marcha con Guest Additions, el panel de control del guest permite ejecutar un comando dentro de la máquina (muestra el código de salida y la salida) y copiar un archivo de la máquina hacia una carpeta del anfitrión. Ingresa el usuario y la contraseña del guest una vez: se usan solo en esa sesión y nunca se guardan.',
     },
     tip: 'Agrega la carpeta compartida con la máquina APAGADA y queda permanente: sobrevive a un apagado total y vuelve en cada arranque. Si la agregas en marcha, solo dura esa sesión.',
   },

@@ -32,6 +32,8 @@ import type {
   SnapshotsResponse,
   SnapshotOperationResponse,
   VmFileTransferResponse,
+  VmGuestRunResponse,
+  VmGuestCopyFromResponse,
   VirtualBoxDiscovery,
   VmInfo,
   VmListResponse,
@@ -442,6 +444,26 @@ async function requestUpload(path: string, form: FormData): Promise<VmFileTransf
   return parsed;
 }
 
+function isVmGuestRunResponse(value: unknown): value is VmGuestRunResponse {
+  return (
+    hasBoolean(value, 'success') &&
+    hasString(value, 'vmId') &&
+    hasNumber(value, 'exitCode') &&
+    hasBoolean(value, 'truncated') &&
+    hasString(value, 'message') &&
+    hasBoolean(value, 'credentialsRequired')
+  );
+}
+
+function isVmGuestCopyFromResponse(value: unknown): value is VmGuestCopyFromResponse {
+  return (
+    hasBoolean(value, 'success') &&
+    hasString(value, 'vmId') &&
+    hasString(value, 'message') &&
+    hasBoolean(value, 'credentialsRequired')
+  );
+}
+
 function isClipboardModeResponse(value: unknown): value is ClipboardModeResponse {
   return hasString(value, 'id') && hasString(value, 'mode');
 }
@@ -766,6 +788,24 @@ export const api = {
     }
     return requestUpload(`/api/vms/${encodeURIComponent(id)}/files`, form);
   },
+  // runInGuest runs a program inside a running Linux guest over VBoxManage guest
+  // control and returns its exit code and (capped) output. Guest credentials are
+  // required and used once; the server never stores them.
+  runInGuest: (id: string, exe: string, args: string[], username: string, password: string) =>
+    request<VmGuestRunResponse>(
+      `/api/vms/${encodeURIComponent(id)}/guest/run`,
+      isVmGuestRunResponse,
+      { method: 'POST', body: { exe, args, username, password } },
+    ),
+  // copyFromGuest copies a file out of the guest into a host folder over guest
+  // control. The server writes <directory>/<basename(guestPath)> and refuses to
+  // overwrite an existing file. Guest credentials are required and used once.
+  copyFromGuest: (id: string, guestPath: string, directory: string, username: string, password: string) =>
+    request<VmGuestCopyFromResponse>(
+      `/api/vms/${encodeURIComponent(id)}/guest/copyfrom`,
+      isVmGuestCopyFromResponse,
+      { method: 'POST', body: { guestPath, directory, username, password } },
+    ),
   getClipboardMode: (id: string) =>
     request<ClipboardModeResponse>(
       `/api/vms/${encodeURIComponent(id)}/clipboard`,

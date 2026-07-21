@@ -601,6 +601,45 @@
   border-radius: var(--r-sm); padding: 8px 10px;
 }
 
+/* ===== Guest control panel — run commands / copy files out of the guest ===== */
+.guestctl-panel {
+  margin-top: 20px; border-top: 1px solid var(--line); padding-top: 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.guestctl-note { margin: 0; color: var(--muted); font-size: 12.5px; max-width: 56ch; }
+.guestctl-creds { display: flex; flex-wrap: wrap; gap: 12px; }
+.guestctl-creds .ga-field { flex: 1 1 180px; }
+.guestctl-block { display: flex; flex-direction: column; gap: 9px; }
+.guestctl-block h4 {
+  margin: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--faint);
+}
+.guestctl-row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.guestctl-input {
+  flex: 1 1 220px; min-width: 0; font-family: var(--font-mono); font-size: 12.5px;
+  padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+  background: var(--raise); color: var(--text);
+}
+.guestctl-input:focus { outline: none; border-color: var(--accent-line); }
+.guestctl-result { display: flex; flex-direction: column; gap: 7px; }
+.guestctl-exit {
+  align-self: flex-start; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; border-radius: var(--r-pill); padding: 2px 9px;
+}
+.guestctl-exit.ok { color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); }
+.guestctl-exit.bad { color: #e5484d; background: rgba(229, 72, 77, 0.1); border: 1px solid rgba(229, 72, 77, 0.28); }
+.guestctl-output {
+  margin: 0; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text);
+  background: var(--raise); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 10px 12px;
+}
+.guestctl-copied {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: var(--r-sm); padding: 8px 10px; word-break: break-all;
+}
+.guestctl-copied b { color: var(--accent); font-weight: 500; }
+
 /* ===== Snapshots panel — restore points in the focus section ===== */
 .snap-panel {
   margin-top: 20px; border-top: 1px solid var(--line); padding-top: 20px;

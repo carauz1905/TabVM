@@ -137,6 +137,32 @@ export const es: Record<string, string> = {
   'Runs the installer inside the guest over VirtualBox guest control. Requires a running Linux guest with Guest Additions already active. Use root, or a user with sudo — credentials are used once and never stored.':
     'Ejecuta el instalador dentro del guest mediante guest control de VirtualBox. Requiere un guest Linux en ejecución con Guest Additions ya activo. Use root, o un usuario con sudo — las credenciales se usan una sola vez y nunca se almacenan.',
 
+  // ----- GuestControlPanel -----
+  'Guest control': 'Control del guest',
+  'run commands · copy files out': 'ejecutar comandos · copiar archivos',
+  'Run a command inside this VM or copy a file out of it. Needs a running Linux guest with Guest Additions active and a guest login (used once for this session, never stored).':
+    'Ejecute un comando dentro de esta VM o copie un archivo desde ella. Requiere un guest Linux en marcha con Guest Additions activo y un inicio de sesión del guest (se usa una vez en esta sesión y nunca se guarda).',
+  'Run in guest': 'Ejecutar en el guest',
+  'Command to run': 'Comando a ejecutar',
+  Run: 'Ejecutar',
+  'Running…': 'Ejecutando…',
+  'exit code': 'código de salida',
+  'Command output': 'Salida del comando',
+  '(no output)': '(sin salida)',
+  '(output truncated)': '(salida truncada)',
+  'Copy from guest': 'Copiar desde el guest',
+  'Guest file path': 'Ruta del archivo en el guest',
+  'Choose host folder': 'Elegir carpeta del anfitrión',
+  'Copying…': 'Copiando…',
+  'Copied to': 'Copiado en',
+  'Enter the guest username and password first.':
+    'Primero ingrese el usuario y la contraseña del guest.',
+  'Enter a command to run (an absolute path, for example /usr/bin/uptime).':
+    'Ingrese un comando a ejecutar (una ruta absoluta, por ejemplo /usr/bin/uptime).',
+  'Enter the guest file path to copy out.':
+    'Ingrese la ruta del archivo del guest que desea copiar.',
+  'Choose a host folder to copy the file into.':
+    'Elija una carpeta del anfitrión donde copiar el archivo.',
   // ----- FilesPanel -----
   Files: 'Archivos',
   'shared folders': 'carpetas compartidas',

@@ -437,6 +437,62 @@ describe('api client', () => {
   });
 
 
+  it('runs a command in the guest and returns the exit code and output', async () => {
+    mockFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () =>
+        '{"success":true,"vmId":"11111111-1111-1111-1111-111111111111","exitCode":0,"output":"hello\\n","truncated":false,"message":"Command finished with exit code 0.","credentialsRequired":false}',
+    });
+
+    const res = await api.runInGuest(
+      '11111111-1111-1111-1111-111111111111',
+      '/bin/echo',
+      ['hello'],
+      'root',
+      'secret',
+    );
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(call[0]).toContain('/api/vms/11111111-1111-1111-1111-111111111111/guest/run');
+    expect(requestMethod()).toBe('POST');
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body).toEqual({ exe: '/bin/echo', args: ['hello'], username: 'root', password: 'secret' });
+    expect(res.exitCode).toBe(0);
+    expect(res.output).toBe('hello\n');
+  });
+
+  it('copies a file out of the guest and returns the host path', async () => {
+    mockFetch({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () =>
+        '{"success":true,"vmId":"11111111-1111-1111-1111-111111111111","hostPath":"C:\\\\dst\\\\report.txt","message":"ok","credentialsRequired":false}',
+    });
+
+    const res = await api.copyFromGuest(
+      '11111111-1111-1111-1111-111111111111',
+      '/home/root/report.txt',
+      'C:\\dst',
+      'root',
+      'secret',
+    );
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(call[0]).toContain('/api/vms/11111111-1111-1111-1111-111111111111/guest/copyfrom');
+    expect(requestMethod()).toBe('POST');
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body).toEqual({
+      guestPath: '/home/root/report.txt',
+      directory: 'C:\\dst',
+      username: 'root',
+      password: 'secret',
+    });
+    expect(res.hostPath).toBe('C:\\dst\\report.txt');
+  });
+
   function requestMethod(): string | undefined {
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
     const requestInit = call[1] as RequestInit | undefined;

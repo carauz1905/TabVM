@@ -279,6 +279,31 @@ export interface SharedFolderOperationResponse {
   message: string;
 }
 
+// Result of running a command inside the guest. exitCode is the guest process's
+// exit code (a non-zero code is a completed run, not a transport failure).
+// output is the captured guest output; truncated is true when it was capped.
+// credentialsRequired is true when no guest credentials were supplied, so the UI
+// should prompt for them and retry.
+export interface VmGuestRunResponse {
+  success: boolean;
+  vmId: string;
+  exitCode: number;
+  output?: string;
+  truncated: boolean;
+  message: string;
+  credentialsRequired: boolean;
+}
+
+// Result of copying a file out of the guest. hostPath is the absolute host path
+// the file was written to. credentialsRequired mirrors VmGuestRunResponse.
+export interface VmGuestCopyFromResponse {
+  success: boolean;
+  vmId: string;
+  hostPath?: string;
+  message: string;
+  credentialsRequired: boolean;
+}
+
 export type ClipboardMode = 'disabled' | 'hosttoguest' | 'guesttohost' | 'bidirectional';
 
 export interface ClipboardModeResponse {
