@@ -294,6 +294,8 @@ export function DocsView() {
           </dl>
           <h3>{d.network.forwarding.title}</h3>
           <p>{d.network.forwarding.body}</p>
+          <h3>{d.network.link.title}</h3>
+          <p>{d.network.link.body}</p>
           <TipBox label={d.tipLabel}>{d.network.tip}</TipBox>
         </section>
 

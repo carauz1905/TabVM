@@ -69,6 +69,10 @@ type fakeVboxService struct {
 	lastForwardReq    models.PortForwardingRequest
 	lastForwardSlot   int
 	lastForwardName   string
+	linkOp            models.NetworkOperationResponse
+	linkErr           error
+	lastLinkSlot      int
+	lastLinkConnected bool
 	usbResp           models.VmUsbResponse
 	usbErr            error
 	usbOp             models.UsbOperationResponse
@@ -289,6 +293,14 @@ func (f *fakeVboxService) DeletePortForwarding(ctx context.Context, id string, s
 	f.lastForwardSlot = slot
 	f.lastForwardName = name
 	return f.portForwardOp, f.portForwardErr
+}
+
+func (f *fakeVboxService) SetLinkState(ctx context.Context, id string, slot int, connected bool) (models.NetworkOperationResponse, error) {
+	f.lastAction = "setLinkState"
+	f.lastID = id
+	f.lastLinkSlot = slot
+	f.lastLinkConnected = connected
+	return f.linkOp, f.linkErr
 }
 
 func (f *fakeVboxService) VmUsb(ctx context.Context, id string) (models.VmUsbResponse, error) {
@@ -1047,6 +1059,68 @@ func TestDeletePortForwardingEndpointRemovesRule(t *testing.T) {
 	}
 }
 
+func TestSetLinkStateEndpointTogglesLink(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.linkOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: "Adapter 1 cable disconnected."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+		strings.NewReader(`{"slot":1,"connected":false}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "setLinkState" || fake.lastID != id {
+		t.Fatalf("expected setLinkState on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+	if fake.lastLinkSlot != 1 || fake.lastLinkConnected {
+		t.Fatalf("unexpected link payload: slot=%d connected=%v", fake.lastLinkSlot, fake.lastLinkConnected)
+	}
+	if !strings.Contains(rr.Body.String(), `"success":true`) {
+		t.Fatalf("expected success response, got %q", rr.Body.String())
+	}
+}
+
+func TestSetLinkStateEndpointRejectsInvalidBody(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+		strings.NewReader(`{"slot":}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestSetLinkStateEndpointRejectsInvalidSlot(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.linkErr = &vbox.ValidationError{Message: "Network adapter slot must be between 1 and 8."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+		strings.NewReader(`{"slot":9,"connected":true}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
 func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.createResp = models.VmCreateResponse{
@@ -1211,6 +1285,7 @@ func TestVmLifecycleRoutesRequireAuth(t *testing.T) {
 		"/api/vms/11111111-1111-1111-1111-111111111111/reset",
 		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding",
 		"/api/vms/11111111-1111-1111-1111-111111111111/network/forwarding/delete",
+		"/api/vms/11111111-1111-1111-1111-111111111111/network/link",
 	}
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {

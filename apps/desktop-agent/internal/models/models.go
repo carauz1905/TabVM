@@ -236,13 +236,17 @@ type PortForwardingRule struct {
 
 // NetworkAdapter is one configured, enabled virtual NIC: its slot, attachment
 // mode (nat, bridged, hostonly, ...), the host interface it is bound to (for
-// bridged/hostonly), its MAC, and (NAT only) any port-forwarding rules.
+// bridged/hostonly), its MAC, whether its virtual network cable is plugged in,
+// and (NAT only) any port-forwarding rules. CableConnected mirrors VBoxManage's
+// cableconnected<N> flag, which defaults to on; a disconnected cable simulates
+// unplugging the NIC from its network.
 type NetworkAdapter struct {
-	Slot       int                  `json:"slot"`
-	Mode       string               `json:"mode"`
-	Adapter    string               `json:"adapter,omitempty"`
-	MAC        string               `json:"mac,omitempty"`
-	Forwarding []PortForwardingRule `json:"forwarding,omitempty"`
+	Slot           int                  `json:"slot"`
+	Mode           string               `json:"mode"`
+	Adapter        string               `json:"adapter,omitempty"`
+	MAC            string               `json:"mac,omitempty"`
+	CableConnected bool                 `json:"cableConnected"`
+	Forwarding     []PortForwardingRule `json:"forwarding,omitempty"`
 }
 
 // NetworkOptionsResponse is the response shape for GET /api/vms/{id}/network. It
@@ -262,12 +266,20 @@ type NetworkModeRequest struct {
 	Adapter string `json:"adapter"`
 }
 
-// NetworkOperationResponse is the response shape for a network mode change or a
-// port-forwarding add/remove.
+// NetworkOperationResponse is the response shape for a network mode change, a
+// port-forwarding add/remove, or a NIC link (cable) toggle.
 type NetworkOperationResponse struct {
 	Success bool   `json:"success"`
 	VMID    string `json:"vmId"`
 	Message string `json:"message"`
+}
+
+// NetworkLinkRequest is the body for POST /api/vms/{id}/network/link. Slot is the
+// NIC to toggle; Connected plugs the virtual cable in (true) or unplugs it
+// (false).
+type NetworkLinkRequest struct {
+	Slot      int  `json:"slot"`
+	Connected bool `json:"connected"`
 }
 
 // PortForwardingRequest is the body for POST /api/vms/{id}/network/forwarding.

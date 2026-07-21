@@ -118,6 +118,50 @@ func (s *service) ChangeNetworkMode(ctx context.Context, id string, slot int, mo
 	return models.NetworkOperationResponse{Success: true, VMID: id, Message: message}, nil
 }
 
+// SetLinkState connects or disconnects a NIC's virtual network cable. On a
+// running VM the change is applied live with `controlvm setlinkstateN`; on a
+// stopped VM it is written to the machine config with `modifyvm --cableconnectedN`.
+// A disconnected cable simulates unplugging the adapter without changing its
+// attachment mode.
+func (s *service) SetLinkState(ctx context.Context, id string, slot int, connected bool) (models.NetworkOperationResponse, error) {
+	if !IsValidVmID(id) {
+		return models.NetworkOperationResponse{}, &ValidationError{Message: "Invalid VM identifier."}
+	}
+	if slot < 1 || slot > 8 {
+		return models.NetworkOperationResponse{}, &ValidationError{Message: "Network adapter slot must be between 1 and 8."}
+	}
+
+	path, err := s.resolveVBoxManage(ctx)
+	if err != nil {
+		s.logOperation(ctx, id, "network.link", false, "VirtualBox/VBoxManage not discovered.")
+		return models.NetworkOperationResponse{}, err
+	}
+
+	info, err := s.readShowVmInfo(ctx, path, id, "reading VM state for network link change")
+	if err != nil {
+		return models.NetworkOperationResponse{}, err
+	}
+
+	var args []string
+	if vmStateIsLive(parseVmState(info)) {
+		args = setLinkStateArgs(id, slot, connected)
+	} else {
+		args = modifyLinkStateArgs(id, slot, connected)
+	}
+
+	if err := s.runControlCommand(ctx, id, path, args, "changing network link state"); err != nil {
+		s.logOperation(ctx, id, "network.link", false, "VBoxManage network link change failed.")
+		return models.NetworkOperationResponse{}, err
+	}
+
+	s.logOperation(ctx, id, "network.link", true, "")
+	message := fmt.Sprintf("Adapter %d cable connected.", slot)
+	if !connected {
+		message = fmt.Sprintf("Adapter %d cable disconnected.", slot)
+	}
+	return models.NetworkOperationResponse{Success: true, VMID: id, Message: message}, nil
+}
+
 // listHostInterfaces returns the names of host interfaces for a `list`
 // subcommand (bridgedifs or hostonlyifs). Best-effort: a failure yields an empty
 // list so the UI still renders (the user just cannot pick that mode).
@@ -136,6 +180,7 @@ func parseNetworkAdapters(output string) []models.NetworkAdapter {
 	macs := map[int]string{}
 	bridged := map[int]string{}
 	hostonly := map[int]string{}
+	cable := map[int]string{}
 	maxSlot := 0
 	track := func(slot int) {
 		if slot > maxSlot {
@@ -160,6 +205,9 @@ func parseNetworkAdapters(output string) []models.NetworkAdapter {
 		} else if slot, ok := slotSuffix(key, "hostonlyadapter"); ok {
 			hostonly[slot] = value
 			track(slot)
+		} else if slot, ok := slotSuffix(key, "cableconnected"); ok {
+			cable[slot] = strings.ToLower(value)
+			track(slot)
 		}
 	}
 
@@ -169,7 +217,9 @@ func parseNetworkAdapters(output string) []models.NetworkAdapter {
 		if !ok || mode == "" || mode == "none" {
 			continue
 		}
-		a := models.NetworkAdapter{Slot: slot, Mode: mode, MAC: macs[slot]}
+		// VBoxManage defaults cableconnected<N> to "on", so a missing key (empty
+		// string) means the cable is plugged in; only an explicit "off" unplugs it.
+		a := models.NetworkAdapter{Slot: slot, Mode: mode, MAC: macs[slot], CableConnected: cable[slot] != "off"}
 		switch mode {
 		case "bridged":
 			a.Adapter = bridged[slot]
@@ -245,4 +295,23 @@ func modifyvmNicArgs(id string, slot int, mode, adapter string) []string {
 		args = append(args, "--hostonlyadapter"+n, adapter)
 	}
 	return args
+}
+
+// onOff maps a boolean link state to the VBoxManage "on"/"off" token.
+func onOff(connected bool) string {
+	if connected {
+		return "on"
+	}
+	return "off"
+}
+
+// setLinkStateArgs connects or disconnects a NIC's virtual cable live on a
+// running VM.
+func setLinkStateArgs(id string, slot int, connected bool) []string {
+	return []string{"controlvm", id, "setlinkstate" + strconv.Itoa(slot), onOff(connected)}
+}
+
+// modifyLinkStateArgs writes a NIC's cable state into a stopped VM's config.
+func modifyLinkStateArgs(id string, slot int, connected bool) []string {
+	return []string{"modifyvm", id, "--cableconnected" + strconv.Itoa(slot), onOff(connected)}
 }

@@ -87,6 +87,7 @@ export interface DocsStrings {
     lead: string;
     modes: Step[];
     forwarding: Step;
+    link: Step;
     tip: string;
   };
   usb: {
@@ -266,6 +267,10 @@ const en: DocsStrings = {
     forwarding: {
       title: 'Port forwarding (NAT)',
       body: 'When an adapter is in NAT mode, you can map a port on your computer to a port inside the machine — for example forward 127.0.0.1:2222 to the guest’s port 22 to SSH in. Give each rule a name, pick TCP or UDP, and set the host and guest ports; the host address defaults to 127.0.0.1 so the port is never exposed to your whole network by accident. Rules apply live on a running machine or are saved to its config when stopped, and each is removed with one click.',
+    },
+    link: {
+      title: 'The network cable',
+      body: 'Each adapter shows whether its virtual network cable is connected, with one button to unplug or reconnect it. Disconnecting cuts the machine off the network — the same as pulling the cable out of a real computer — without changing its mode or address. It works on a running machine (applied instantly) or a stopped one (saved to its config), and it is a quick way to test how software behaves when the network drops.',
     },
     tip: 'Use Host-only when you are testing malware or an untrusted image — the guest can talk to your computer but never reaches the internet.',
   },
@@ -482,6 +487,10 @@ const es: DocsStrings = {
     forwarding: {
       title: 'Redirección de puertos (NAT)',
       body: 'Cuando un adaptador está en modo NAT, puedes asignar un puerto de tu computadora a un puerto dentro de la máquina; por ejemplo, redirigir 127.0.0.1:2222 al puerto 22 del guest para entrar por SSH. Dale un nombre a cada regla, elige TCP o UDP y define los puertos del anfitrión y del guest; la dirección del anfitrión usa 127.0.0.1 de forma predeterminada, así el puerto nunca queda expuesto a toda tu red por accidente. Las reglas se aplican en vivo en una máquina en ejecución o se guardan en su configuración cuando está detenida, y cada una se quita con un clic.',
+    },
+    link: {
+      title: 'El cable de red',
+      body: 'Cada adaptador muestra si su cable de red virtual está conectado, con un botón para desenchufarlo o volver a conectarlo. Desconectarlo deja a la máquina fuera de la red, igual que sacar el cable de una computadora real, sin cambiar su modo ni su dirección. Funciona en una máquina en ejecución (se aplica al instante) o detenida (se guarda en su configuración), y es una forma rápida de probar cómo se comporta el software cuando se cae la red.',
     },
     tip: 'Usa Solo anfitrión cuando pruebas malware o una imagen que no es de confianza: el guest habla con tu computadora pero nunca llega a internet.',
   },

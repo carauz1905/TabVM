@@ -23,6 +23,7 @@ import type {
   NetworkAdapter,
   NetworkOptionsResponse,
   NetworkOperationResponse,
+  NetworkLinkRequest,
   PortForwardingRequest,
   UsbDevice,
   VmUsbResponse,
@@ -347,7 +348,7 @@ function isSnapshotOperationResponse(value: unknown): value is SnapshotOperation
 function isNetworkAdapter(value: unknown): value is NetworkAdapter {
   if (typeof value !== 'object' || value === null) return false;
   const r = value as Record<string, unknown>;
-  return typeof r.slot === 'number' && typeof r.mode === 'string';
+  return typeof r.slot === 'number' && typeof r.mode === 'string' && typeof r.cableConnected === 'boolean';
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -742,6 +743,16 @@ export const api = {
       isNetworkOperationResponse,
       { method: 'POST', body: { slot, name } },
     ),
+  // setLinkState connects (true) or disconnects (false) a NIC's virtual network
+  // cable. Applied live on a running VM, written to config on a stopped one.
+  setLinkState: (id: string, slot: number, connected: boolean) => {
+    const body: NetworkLinkRequest = { slot, connected };
+    return request<NetworkOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/network/link`,
+      isNetworkOperationResponse,
+      { method: 'POST', body: body as unknown as Record<string, unknown> },
+    );
+  },
   getVmUsb: (id: string) =>
     request<VmUsbResponse>(
       `/api/vms/${encodeURIComponent(id)}/usb`,
