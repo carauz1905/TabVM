@@ -427,6 +427,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleRemoveSharedFolder(w, r, id)
 		case "files":
 			s.handleTransferFile(w, r, id)
+		case "guest/run":
+			s.handleGuestRun(w, r, id)
+		case "guest/copyfrom":
+			s.handleGuestCopyFrom(w, r, id)
 		case "snapshots":
 			s.handleTakeSnapshot(w, r, id)
 		case "snapshots/restore":
@@ -650,6 +654,62 @@ func (s *Server) handleTransferFile(w http.ResponseWriter, r *http.Request, id s
 	defer unlock()
 
 	resp, err := s.vbox.TransferFileToGuest(r.Context(), id, header.Filename, data, r.FormValue("username"), r.FormValue("password"))
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleGuestRun runs a command inside the guest via VBoxManage guest control.
+// Credentials come from the JSON body (used once, never stored) and the per-VM
+// lock keeps it from racing another lifecycle operation on the same VM.
+func (s *Server) handleGuestRun(w http.ResponseWriter, r *http.Request, id string) {
+	var req models.VmGuestRunRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmGuestRunResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.RunInGuest(r.Context(), id, req.Exe, req.Args, req.Username, req.Password)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// handleGuestCopyFrom copies a file out of the guest into a host directory via
+// VBoxManage guest control. Credentials come from the JSON body (used once,
+// never stored) and the per-VM lock serializes it with other operations.
+func (s *Server) handleGuestCopyFrom(w http.ResponseWriter, r *http.Request, id string) {
+	var req models.VmGuestCopyFromRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.VmGuestCopyFromResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := s.vbox.CopyFromGuest(r.Context(), id, req.GuestPath, req.Directory, req.Username, req.Password)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return
