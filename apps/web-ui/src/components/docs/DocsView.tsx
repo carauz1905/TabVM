@@ -251,6 +251,8 @@ export function DocsView() {
           <p>{d.files.share.body}</p>
           <h4>{d.files.drop.title}</h4>
           <p>{d.files.drop.body}</p>
+          <h4>{d.files.guest.title}</h4>
+          <p>{d.files.guest.body}</p>
           <DemoStage caption="drag & drop">
             <ShareDropDemo playKey={play('drop')} dropLabel={t('Drop files to send to the VM')} />
           </DemoStage>

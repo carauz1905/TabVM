@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
+import { getGuestCreds, setGuestCreds, type GuestCreds } from './guestCreds';
 
 export interface Transfer {
   key: string;
@@ -7,16 +8,6 @@ export interface Transfer {
   state: 'uploading' | 'done' | 'error';
   message?: string;
 }
-
-interface GuestCreds {
-  username: string;
-  password: string;
-}
-
-// Guest credentials are cached in memory only, keyed by VM, for the lifetime of
-// the page. They are never written to disk or storage, so a reload clears them —
-// this is the "cache for the session" the user chose over prompting per file.
-const credCache = new Map<string, GuestCreds>();
 
 let transferSeq = 0;
 
@@ -82,7 +73,7 @@ export function useGuestFileDrop(vmId: string) {
       const files = Array.from(e.dataTransfer?.files ?? []);
       if (files.length === 0) return;
 
-      const cached = credCache.get(vmId);
+      const cached = getGuestCreds(vmId);
       // Pre-check shared folders so we don't upload a large file only to discover
       // credentials are needed. A VM with a shared folder never needs them.
       let hasShare = false;
@@ -126,7 +117,7 @@ export function useGuestFileDrop(vmId: string) {
   const submitCreds = useCallback(
     (username: string, password: string) => {
       const creds = { username, password };
-      credCache.set(vmId, creds);
+      setGuestCreds(vmId, creds);
       const files = credPrompt ?? [];
       setCredPrompt(null);
       void upload(files, creds);

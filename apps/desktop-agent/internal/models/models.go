@@ -460,6 +460,56 @@ type VmFileTransferResponse struct {
 	CredentialsRequired bool   `json:"credentialsRequired"`
 }
 
+// VmGuestRunRequest is the body for POST /api/vms/{id}/guest/run. Exe is the
+// absolute path of the program to run inside the guest; Args are its arguments.
+// The credentials are used once for a single VBoxManage guest-control call and
+// never stored.
+type VmGuestRunRequest struct {
+	Exe      string   `json:"exe"`
+	Args     []string `json:"args"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+}
+
+// VmGuestRunResponse is the response shape for POST /api/vms/{id}/guest/run.
+// ExitCode is the guest process's exit code (a non-zero code is a completed run,
+// not a transport failure). Output carries the captured guest output; Truncated
+// is true when it was capped. CredentialsRequired is true when no guest
+// credentials were supplied, so the UI should prompt for them and retry.
+type VmGuestRunResponse struct {
+	Success             bool   `json:"success"`
+	VMID                string `json:"vmId"`
+	ExitCode            int    `json:"exitCode"`
+	Output              string `json:"output,omitempty"`
+	Truncated           bool   `json:"truncated"`
+	Message             string `json:"message"`
+	CredentialsRequired bool   `json:"credentialsRequired"`
+}
+
+// VmGuestCopyFromRequest is the body for POST /api/vms/{id}/guest/copyfrom.
+// GuestPath is the absolute path of the file to copy out of the guest;
+// Directory is the host destination folder chosen via the host folder picker.
+// The credentials are used once for a single VBoxManage guest-control call and
+// never stored.
+type VmGuestCopyFromRequest struct {
+	GuestPath string `json:"guestPath"`
+	Directory string `json:"directory"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+}
+
+// VmGuestCopyFromResponse is the response shape for POST
+// /api/vms/{id}/guest/copyfrom. HostPath is the absolute host path the guest
+// file was written to. CredentialsRequired is true when no guest credentials
+// were supplied, so the UI should prompt for them and retry.
+type VmGuestCopyFromResponse struct {
+	Success             bool   `json:"success"`
+	VMID                string `json:"vmId"`
+	HostPath            string `json:"hostPath,omitempty"`
+	Message             string `json:"message"`
+	CredentialsRequired bool   `json:"credentialsRequired"`
+}
+
 // HostFolderPickResponse is the response shape for POST /api/host/pick-folder.
 // Path is the absolute host directory the user selected in the native dialog; it
 // is empty and Cancelled is true when the user dismissed the dialog. The path is

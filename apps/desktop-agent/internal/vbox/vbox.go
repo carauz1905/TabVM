@@ -47,6 +47,8 @@ type Service interface {
 	InstallGuestAdditions(ctx context.Context, id string) (models.GuestAdditionsInstallResponse, error)
 	UpdateGuestAdditions(ctx context.Context, id, username, password string) (models.GuestAdditionsUpdateResponse, error)
 	TransferFileToGuest(ctx context.Context, id, filename string, data []byte, username, password string) (models.VmFileTransferResponse, error)
+	RunInGuest(ctx context.Context, id, exe string, args []string, username, password string) (models.VmGuestRunResponse, error)
+	CopyFromGuest(ctx context.Context, id, guestPath, hostDir, username, password string) (models.VmGuestCopyFromResponse, error)
 	NetworkOptions(ctx context.Context, id string) (models.NetworkOptionsResponse, error)
 	ChangeNetworkMode(ctx context.Context, id string, slot int, mode, adapter string) (models.NetworkOperationResponse, error)
 	AddPortForwarding(ctx context.Context, id string, req models.PortForwardingRequest) (models.NetworkOperationResponse, error)

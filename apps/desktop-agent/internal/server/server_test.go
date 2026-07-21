@@ -48,6 +48,13 @@ type fakeVboxService struct {
 	gaUpdateErr       error
 	fileTransfer      models.VmFileTransferResponse
 	fileTransferErr   error
+	guestRun          models.VmGuestRunResponse
+	guestRunErr       error
+	guestCopyFrom     models.VmGuestCopyFromResponse
+	guestCopyFromErr  error
+	lastGuestExe      string
+	lastGuestArgs     []string
+	lastGuestPath     string
 	snapshots         models.SnapshotsResponse
 	snapshotsErr      error
 	snapshotOp        models.SnapshotOperationResponse
@@ -226,6 +233,22 @@ func (f *fakeVboxService) TransferFileToGuest(ctx context.Context, id, filename 
 	f.lastAction = "transferFile"
 	f.lastID = id
 	return f.fileTransfer, f.fileTransferErr
+}
+
+func (f *fakeVboxService) RunInGuest(ctx context.Context, id, exe string, args []string, username, password string) (models.VmGuestRunResponse, error) {
+	f.lastAction = "runInGuest"
+	f.lastID = id
+	f.lastGuestExe = exe
+	f.lastGuestArgs = args
+	return f.guestRun, f.guestRunErr
+}
+
+func (f *fakeVboxService) CopyFromGuest(ctx context.Context, id, guestPath, hostDir, username, password string) (models.VmGuestCopyFromResponse, error) {
+	f.lastAction = "copyFromGuest"
+	f.lastID = id
+	f.lastGuestPath = guestPath
+	f.lastExportDir = hostDir
+	return f.guestCopyFrom, f.guestCopyFromErr
 }
 
 func (f *fakeVboxService) NetworkOptions(ctx context.Context, id string) (models.NetworkOptionsResponse, error) {

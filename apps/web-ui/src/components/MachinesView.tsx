@@ -5,6 +5,7 @@ import { useVmStatus } from '../hooks/useVmStatus';
 import { BrandMark } from './BrandMark';
 import { ConsolePreview } from './ConsolePreview';
 import { FilesPanel } from './FilesPanel';
+import { GuestControlPanel } from './GuestControlPanel';
 import { HardwarePanel } from './HardwarePanel';
 import { StoragePanel } from './StoragePanel';
 import { NetworkPanel } from './NetworkPanel';
@@ -936,6 +937,7 @@ export function MachinesView() {
           <HardwarePanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <StoragePanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <FilesPanel vmId={focusVm.id} vmName={focusVm.name} />
+          {focusRunning && <GuestControlPanel key={focusVm.id} vmId={focusVm.id} vmName={focusVm.name} />}
           <NetworkPanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <SnapshotsPanel vmId={focusVm.id} vmName={focusVm.name} onChanged={() => void refresh()} />
         </section>
