@@ -69,6 +69,11 @@ type fakeVboxService struct {
 	lastForwardReq    models.PortForwardingRequest
 	lastForwardSlot   int
 	lastForwardName   string
+	usbResp           models.VmUsbResponse
+	usbErr            error
+	usbOp             models.UsbOperationResponse
+	usbOpErr          error
+	lastUsbDevice     string
 	createResp        models.VmCreateResponse
 	createErr         error
 	deleteResp        models.VmOperationResponse
@@ -284,6 +289,26 @@ func (f *fakeVboxService) DeletePortForwarding(ctx context.Context, id string, s
 	f.lastForwardSlot = slot
 	f.lastForwardName = name
 	return f.portForwardOp, f.portForwardErr
+}
+
+func (f *fakeVboxService) VmUsb(ctx context.Context, id string) (models.VmUsbResponse, error) {
+	f.lastAction = "vmUsb"
+	f.lastID = id
+	return f.usbResp, f.usbErr
+}
+
+func (f *fakeVboxService) AttachUsb(ctx context.Context, id, deviceUUID string) (models.UsbOperationResponse, error) {
+	f.lastAction = "attachUsb"
+	f.lastID = id
+	f.lastUsbDevice = deviceUUID
+	return f.usbOp, f.usbOpErr
+}
+
+func (f *fakeVboxService) DetachUsb(ctx context.Context, id, deviceUUID string) (models.UsbOperationResponse, error) {
+	f.lastAction = "detachUsb"
+	f.lastID = id
+	f.lastUsbDevice = deviceUUID
+	return f.usbOp, f.usbOpErr
 }
 
 func (f *fakeVboxService) ListSnapshots(ctx context.Context, id string) (models.SnapshotsResponse, error) {
