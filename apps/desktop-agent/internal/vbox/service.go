@@ -685,7 +685,9 @@ func (s *service) collectUsedVRDEPorts(ctx context.Context, path, currentID stri
 			continue
 		}
 
-		infoResult, runErr := s.runForVM(ctx, vm.ID, path, showVmInfoArgs(vm.ID), 10*time.Second)
+		// Bulk read over all VMs: global cap only, not the per-VM gate, so a busy
+		// VM never stalls this best-effort port-collision scan.
+		infoResult, runErr := s.exec(ctx, path, showVmInfoArgs(vm.ID), 10*time.Second)
 		if runErr != nil || infoResult.ExitCode != 0 {
 			// If we cannot determine another VM's VRDE state, we cannot safely
 			// guarantee a collision-free port. Surface the failure sanitized.
@@ -800,7 +802,10 @@ func (s *service) enhanceVmStates(ctx context.Context, path string, vms []models
 		if !IsValidVmID(vms[i].ID) {
 			continue
 		}
-		result, err := s.runForVM(ctx, vms[i].ID, path, showVmInfoArgs(vms[i].ID), 10*time.Second)
+		// Bulk read: use the global cap only, NOT the per-VM gate, so one VM busy
+		// with a long-running op (holding its per-VM slot) can't stall the whole
+		// listing. This is a single read per VM and already best-effort.
+		result, err := s.exec(ctx, path, showVmInfoArgs(vms[i].ID), 10*time.Second)
 		if err != nil || result.ExitCode != 0 {
 			continue
 		}

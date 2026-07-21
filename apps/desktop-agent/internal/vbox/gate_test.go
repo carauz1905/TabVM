@@ -104,6 +104,33 @@ func TestRunForVM_SerializesSameVM(t *testing.T) {
 	}
 }
 
+// TestRunForVM_HonorsContextCancellation proves that when a VM's per-VM slot is
+// held (e.g. by a long export/clone), a caller that cancels its context fails
+// fast with ctx.Err() instead of blocking until the slot frees — no goroutine
+// leak, and the command never runs.
+func TestRunForVM_HonorsContextCancellation(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox serialization tests run on Windows in CI")
+	}
+
+	run := newCountingRunner()
+	svc := &service{runner: run, vmLocks: newVMLocker()}
+	id := "11111111-1111-1111-1111-111111111111"
+
+	// Occupy the VM's per-VM slot so the next acquire must wait.
+	svc.vmLocks.chanFor(id) <- struct{}{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := svc.runForVM(ctx, id, "VBoxManage", []string{"showvminfo", id}, time.Second)
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled when the slot is held and ctx is cancelled, got %v", err)
+	}
+	if got := run.maxConcurrency(); got != 0 {
+		t.Fatalf("expected the command not to run under a cancelled context, saw concurrency %d", got)
+	}
+}
+
 // TestRunForVM_ParallelDifferentVMs proves that calls targeting different VMs
 // still run in parallel: the per-VM gate must not become a global bottleneck.
 func TestRunForVM_ParallelDifferentVMs(t *testing.T) {

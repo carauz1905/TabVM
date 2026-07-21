@@ -22,33 +22,34 @@ const maxConcurrentVBox = 4
 var vboxSlots = make(chan struct{}, maxConcurrentVBox)
 
 // vmLocker serializes VBoxManage executions per VM id. Commands that target the
-// same machine acquire the same mutex and therefore run one at a time, which
-// prevents them from contending for the VirtualBox machine lock
+// same machine acquire the same 1-slot channel semaphore and therefore run one
+// at a time, which prevents them from contending for the VirtualBox machine lock
 // (VBOX_E_INVALID_OBJECT_STATE, "already has a lock request pending") and from
 // flooding VBoxSVC. Commands that target different machines use different
-// mutexes and still run in parallel.
+// channels and still run in parallel. A channel (not a sync.Mutex) is used so
+// acquisition can be selected against ctx.Done() — see runForVM.
 type vmLocker struct {
 	mu    sync.Mutex
-	locks map[string]*sync.Mutex
+	locks map[string]chan struct{}
 }
 
 func newVMLocker() *vmLocker {
-	return &vmLocker{locks: make(map[string]*sync.Mutex)}
+	return &vmLocker{locks: make(map[string]chan struct{})}
 }
 
-// mutexFor returns the mutex dedicated to id, creating it on first use. The
-// per-id mutexes are never deleted: a host runs a small, bounded set of VMs, so
-// the map stays tiny and keeping the entries avoids a race between deletion and
-// a concurrent acquirer.
-func (l *vmLocker) mutexFor(id string) *sync.Mutex {
+// chanFor returns the 1-slot semaphore channel dedicated to id, creating it on
+// first use. The per-id channels are never deleted: a host runs a small, bounded
+// set of VMs, so the map stays tiny and keeping the entries avoids a race
+// between deletion and a concurrent acquirer.
+func (l *vmLocker) chanFor(id string) chan struct{} {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	m, ok := l.locks[id]
+	c, ok := l.locks[id]
 	if !ok {
-		m = &sync.Mutex{}
-		l.locks[id] = m
+		c = make(chan struct{}, 1)
+		l.locks[id] = c
 	}
-	return m
+	return c
 }
 
 // exec runs VBoxManage under the global concurrency cap only. It is the single
@@ -73,12 +74,16 @@ func (s *service) exec(ctx context.Context, path string, args []string, timeout 
 // execution per VM id — so the focus-open burst on a single VM no longer
 // contends for the machine lock — and then applies the global concurrency cap.
 //
-// Locks are always acquired in the same order (the per-VM mutex first, then the
-// global slot) and released in the reverse order, so the two layers can never
-// deadlock. The global slot is the only place a caller blocks indefinitely, and
-// that wait honours context cancellation (see exec); the per-VM mutex is only
-// ever held for the duration of a single bounded RunContext, so it is never held
-// while blocked forever.
+// Both waits (the per-VM slot and, inside exec, the global slot) honour context
+// cancellation: a request that gives up while the VM is busy — e.g. blocked
+// behind a multi-minute export/clone that holds the per-VM slot — fails fast
+// with ctx.Err() instead of leaking a goroutine that hangs until the previous
+// command finishes. Slots are acquired per-VM-then-global and released in the
+// reverse order, so the two layers can never deadlock, and the per-VM slot is
+// only ever held for a single bounded RunContext.
+//
+// Bulk iterations that read many VMs (e.g. enhanceVmStates) must NOT use this —
+// they call s.exec directly so a single busy VM cannot stall the whole loop.
 //
 // When vmID is empty the per-VM gate is skipped and only the global cap applies,
 // which suits calls that create or address a VM before its UUID is known (e.g.
@@ -88,9 +93,13 @@ func (s *service) runForVM(ctx context.Context, vmID, path string, args []string
 		return s.exec(ctx, path, args, timeout)
 	}
 
-	mu := s.vmLocks.mutexFor(vmID)
-	mu.Lock()
-	defer mu.Unlock()
+	ch := s.vmLocks.chanFor(vmID)
+	select {
+	case ch <- struct{}{}:
+	case <-ctx.Done():
+		return runner.Result{ExitCode: -1}, ctx.Err()
+	}
+	defer func() { <-ch }()
 
 	return s.exec(ctx, path, args, timeout)
 }
