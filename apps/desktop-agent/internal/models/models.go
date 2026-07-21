@@ -290,6 +290,45 @@ type PortForwardingDeleteRequest struct {
 	Name string `json:"name"`
 }
 
+// UsbDevice is one USB device present on the host, as reported by
+// `VBoxManage list usbhost`. VendorID/ProductID are kept in their hex form
+// (e.g. "0x0781"). State is the VirtualBox capture state (Available, Busy,
+// Captured, Unavailable). AttachedHere is true when this device is currently
+// captured by the VM the response is about.
+type UsbDevice struct {
+	UUID         string `json:"uuid"`
+	VendorID     string `json:"vendorId"`
+	ProductID    string `json:"productId"`
+	Manufacturer string `json:"manufacturer,omitempty"`
+	Product      string `json:"product,omitempty"`
+	State        string `json:"state"`
+	AttachedHere bool   `json:"attachedHere"`
+}
+
+// VmUsbResponse is the response shape for GET /api/vms/{id}/usb. It lists the
+// host's USB devices plus the two prerequisites the UI must surface: the Oracle
+// Extension Pack (required for USB 2.0/3.0 passthrough) and whether the VM has a
+// USB controller enabled (which cannot be toggled while the VM is running).
+type VmUsbResponse struct {
+	Devices                []UsbDevice `json:"devices"`
+	ExtensionPackInstalled bool        `json:"extensionPackInstalled"`
+	USBControllerEnabled   bool        `json:"usbControllerEnabled"`
+}
+
+// UsbActionRequest is the body for POST /api/vms/{id}/usb/attach and
+// /api/vms/{id}/usb/detach. DeviceUUID is the host device UUID from
+// VmUsbResponse.Devices.
+type UsbActionRequest struct {
+	DeviceUUID string `json:"deviceUuid"`
+}
+
+// UsbOperationResponse is the response shape for a USB attach or detach.
+type UsbOperationResponse struct {
+	Success bool   `json:"success"`
+	VMID    string `json:"vmId"`
+	Message string `json:"message"`
+}
+
 // Snapshot is one VirtualBox snapshot in a VM's snapshot tree. Depth is the
 // nesting level (0 = a root snapshot), so the UI can indent children. Current is
 // true for the snapshot the VM's current state descends from.

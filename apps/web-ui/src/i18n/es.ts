@@ -206,6 +206,33 @@ export const es: Record<string, string> = {
   'host port': 'puerto del anfitrión',
   'guest port': 'puerto del guest',
 
+  // ----- USB panel -----
+  USB: 'USB',
+  'device passthrough': 'paso de dispositivos',
+  'USB device': 'dispositivo USB',
+  Attach: 'Conectar',
+  Available: 'disponible',
+  Busy: 'ocupado',
+  Captured: 'capturado',
+  Unavailable: 'no disponible',
+  'No USB devices detected on the host.': 'No se detectaron dispositivos USB en el anfitrión.',
+  'This VM has no USB controller enabled. Power the VM off and enable USB in its settings — the controller cannot be turned on while the VM is running.':
+    'Esta VM no tiene un controlador USB habilitado. Apaga la VM y habilita USB en su configuración: el controlador no se puede activar mientras la VM está en marcha.',
+  'USB 2.0 and 3.0 passthrough needs the Oracle VirtualBox Extension Pack. Install it to attach most devices.':
+    'El paso de USB 2.0 y 3.0 requiere el Oracle VirtualBox Extension Pack. Instálalo para conectar la mayoría de los dispositivos.',
+  // Server-side USB messages (localized via server-message lookup).
+  'USB device attached to the VM.': 'Dispositivo USB conectado a la VM.',
+  'USB device detached from the VM.': 'Dispositivo USB desconectado de la VM.',
+  'The VM must be running to attach or detach USB devices.':
+    'La VM debe estar en marcha para conectar o desconectar dispositivos USB.',
+  'Invalid USB device identifier.': 'Identificador de dispositivo USB no válido.',
+  'This VM has no USB controller enabled. Power the VM off and enable USB in its settings first.':
+    'Esta VM no tiene un controlador USB habilitado. Apaga la VM y habilita USB en su configuración primero.',
+  'Attaching this device needs the Oracle VirtualBox Extension Pack. Install it, then try again.':
+    'Conectar este dispositivo requiere el Oracle VirtualBox Extension Pack. Instálalo y vuelve a intentarlo.',
+  'The host USB service is unavailable. Reinstall VirtualBox so its USB driver is registered, then reconnect the device.':
+    'El servicio USB del anfitrión no está disponible. Reinstala VirtualBox para registrar su controlador USB y vuelve a conectar el dispositivo.',
+
   // Hardware panel
   Hardware: 'Hardware',
   'vCPU · memory': 'vCPU · memoria',

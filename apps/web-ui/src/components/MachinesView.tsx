@@ -9,6 +9,7 @@ import { GuestControlPanel } from './GuestControlPanel';
 import { HardwarePanel } from './HardwarePanel';
 import { StoragePanel } from './StoragePanel';
 import { NetworkPanel } from './NetworkPanel';
+import { UsbPanel } from './UsbPanel';
 import { ScreenConsole } from './ScreenConsole';
 import { SnapshotsPanel } from './SnapshotsPanel';
 import { CreateVmWizard } from './CreateVmWizard';
@@ -950,6 +951,7 @@ export function MachinesView() {
           <FilesPanel vmId={focusVm.id} vmName={focusVm.name} />
           {focusRunning && <GuestControlPanel key={focusVm.id} vmId={focusVm.id} vmName={focusVm.name} />}
           <NetworkPanel vmId={focusVm.id} onChanged={() => void refresh()} />
+          {focusRunning && <UsbPanel key={focusVm.id} vmId={focusVm.id} onChanged={() => void refresh()} />}
           <SnapshotsPanel vmId={focusVm.id} vmName={focusVm.name} onChanged={() => void refresh()} />
         </section>
       )}

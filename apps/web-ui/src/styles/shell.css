@@ -841,6 +841,15 @@
 .net-fwd-input:focus { outline: none; border-color: var(--accent-line); }
 .net-fwd-input:disabled { opacity: 0.6; cursor: default; }
 
+/* USB passthrough panel: a warning banner for the prerequisites (Extension
+   Pack / USB controller), then the same list/row grammar as the network panel. */
+.usb-notice {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.45; color: var(--muted);
+  background: var(--raise); border: 1px solid var(--line-2); border-left: 2px solid var(--accent-line);
+  border-radius: var(--r-sm); padding: 9px 11px;
+}
+.usb-panel .net-current { text-transform: lowercase; }
+
 /* Activity rows: clickable + expandable in place, keeping the compact look. */
 .tv-log-entry { border-bottom: 1px solid var(--line); }
 button.tv-log {

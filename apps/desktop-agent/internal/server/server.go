@@ -378,6 +378,8 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleListSnapshots(w, r, id)
 		case "network":
 			s.handleNetworkOptions(w, r, id)
+		case "usb":
+			s.handleVmUsb(w, r, id)
 		case "hardware":
 			s.handleVmHardware(w, r, id)
 		case "guest-os":
@@ -445,6 +447,10 @@ func (s *Server) handleVmByID(w http.ResponseWriter, r *http.Request) {
 			s.handleAddPortForwarding(w, r, id)
 		case "network/forwarding/delete":
 			s.handleDeletePortForwarding(w, r, id)
+		case "usb/attach":
+			s.handleAttachUsb(w, r, id)
+		case "usb/detach":
+			s.handleDetachUsb(w, r, id)
 		case "hardware":
 			s.handleSetVmHardware(w, r, id)
 		case "storage/resize":
@@ -800,6 +806,56 @@ func (s *Server) handleDeletePortForwarding(w http.ResponseWriter, r *http.Reque
 	defer unlock()
 
 	resp, err := s.vbox.DeletePortForwarding(r.Context(), id, body.Slot, body.Name)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleVmUsb(w http.ResponseWriter, r *http.Request, id string) {
+	resp, err := s.vbox.VmUsb(r.Context(), id)
+	if err != nil {
+		s.handleVboxError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleAttachUsb(w http.ResponseWriter, r *http.Request, id string) {
+	s.handleUsbAction(w, r, id, s.vbox.AttachUsb)
+}
+
+func (s *Server) handleDetachUsb(w http.ResponseWriter, r *http.Request, id string) {
+	s.handleUsbAction(w, r, id, s.vbox.DetachUsb)
+}
+
+// handleUsbAction decodes the {deviceUuid} body, serializes the operation with
+// the per-VM lock, and runs the attach/detach op. Attach and detach share this
+// path because their request and response shapes are identical.
+func (s *Server) handleUsbAction(
+	w http.ResponseWriter,
+	r *http.Request,
+	id string,
+	op func(context.Context, string, string) (models.UsbOperationResponse, error),
+) {
+	var body models.UsbActionRequest
+	if err := decodeJSONBody(w, r, &body); err != nil {
+		return
+	}
+
+	unlock, ok := s.tryLockVm(id)
+	if !ok {
+		respondJSON(w, http.StatusConflict, models.UsbOperationResponse{
+			Success: false,
+			VMID:    id,
+			Message: "Another operation is already in progress for this VM.",
+		})
+		return
+	}
+	defer unlock()
+
+	resp, err := op(r.Context(), id, body.DeviceUUID)
 	if err != nil {
 		s.handleVboxError(w, err)
 		return
