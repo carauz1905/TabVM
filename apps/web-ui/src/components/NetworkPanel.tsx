@@ -48,6 +48,8 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
   // Add-rule form state and the slot whose forwarding action is in flight.
   const [forwardForms, setForwardForms] = useState<Record<number, ForwardForm>>({});
   const [busyForward, setBusyForward] = useState<number | null>(null);
+  // The slot whose cable (link-state) toggle is in flight.
+  const [busyLink, setBusyLink] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -186,6 +188,27 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
     [vmId, load, onChanged],
   );
 
+  // toggleLink flips a NIC's virtual cable: disconnecting simulates unplugging
+  // it. Works on running and stopped VMs; the agent picks controlvm vs modifyvm.
+  const toggleLink = useCallback(
+    async (nic: NetworkAdapter) => {
+      setBusyLink(nic.slot);
+      setError(null);
+      setNotice(null);
+      try {
+        const res = await api.setLinkState(vmId, nic.slot, !nic.cableConnected);
+        setNotice(res.message);
+        await load();
+        onChanged?.();
+      } catch (err) {
+        setError(messageFor(err));
+      } finally {
+        setBusyLink(null);
+      }
+    },
+    [vmId, load, onChanged],
+  );
+
   const adapters = options?.adapters ?? [];
 
   return (
@@ -212,6 +235,7 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
             const rules = nic.forwarding ?? [];
             const form = formFor(nic.slot);
             const fwBusy = busyForward === nic.slot;
+            const linkBusy = busyLink === nic.slot;
 
             return (
               <li className="net-row" key={nic.slot}>
@@ -270,6 +294,26 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
                   >
                     {busy ? t('Applying…') : t('Apply')}
                   </button>
+                </div>
+
+                <div className="net-link">
+                  <span className="net-link-state">
+                    {t('Cable')}:{' '}
+                    <strong className={nic.cableConnected ? 'net-link-on' : 'net-link-off'}>
+                      {nic.cableConnected ? t('connected') : t('disconnected')}
+                    </strong>
+                  </span>
+                  <button
+                    type="button"
+                    className="net-link-toggle"
+                    disabled={linkBusy}
+                    onClick={() => void toggleLink(nic)}
+                  >
+                    {linkBusy ? t('Applying…') : nic.cableConnected ? t('Disconnect') : t('Connect')}
+                  </button>
+                  <span className="net-hint">
+                    {t('Disconnecting simulates unplugging the cable; works on running and stopped VMs.')}
+                  </span>
                 </div>
 
                 {isNat && (

@@ -164,13 +164,15 @@ export interface PortForwardingRule {
   guestPort: number;
 }
 
-// One enabled virtual NIC and how it is attached. forwarding is present only for
-// NAT adapters that have port-forwarding rules.
+// One enabled virtual NIC and how it is attached. cableConnected mirrors the
+// virtual network cable state (VBoxManage defaults it to connected). forwarding
+// is present only for NAT adapters that have port-forwarding rules.
 export interface NetworkAdapter {
   slot: number;
   mode: string;
   adapter?: string;
   mac?: string;
+  cableConnected: boolean;
   forwarding?: PortForwardingRule[];
 }
 
@@ -196,6 +198,13 @@ export interface NetworkOperationResponse {
   success: boolean;
   vmId: string;
   message: string;
+}
+
+// Body for toggling a NIC's virtual network cable. connected plugs the cable in
+// (true) or unplugs it (false).
+export interface NetworkLinkRequest {
+  slot: number;
+  connected: boolean;
 }
 
 // One USB device present on the host, from `VBoxManage list usbhost`. vendorId

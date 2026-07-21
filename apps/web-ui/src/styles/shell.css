@@ -753,6 +753,23 @@
 .net-apply:hover:not(:disabled) { background: var(--accent-soft); }
 .net-apply:disabled { opacity: 0.45; cursor: default; }
 
+/* NIC virtual-cable (link-state) toggle, shown for every adapter. */
+.net-link {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line-2);
+}
+.net-link-state { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.net-link-on { color: var(--accent); }
+.net-link-off { color: var(--faint); }
+.net-link-toggle {
+  font-family: var(--font-mono); font-size: 11.5px;
+  padding: 6px 12px; border-radius: var(--r-sm); cursor: pointer;
+  color: var(--text); background: var(--panel); border: 1px solid var(--line-2);
+  transition: color 0.16s, border-color 0.16s, background 0.16s;
+}
+.net-link-toggle:hover:not(:disabled) { border-color: var(--accent-line); background: var(--raise); }
+.net-link-toggle:disabled { opacity: 0.45; cursor: default; }
+
 .net-notice {
   font-family: var(--font-mono); font-size: 11.5px; color: var(--accent);
   background: var(--accent-soft); border: 1px solid var(--accent-line);

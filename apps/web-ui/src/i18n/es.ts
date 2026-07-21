@@ -205,6 +205,11 @@ export const es: Record<string, string> = {
   name: 'nombre',
   'host port': 'puerto del anfitrión',
   'guest port': 'puerto del guest',
+  Cable: 'Cable',
+  Connect: 'Conectar',
+  Disconnect: 'Desconectar',
+  'Disconnecting simulates unplugging the cable; works on running and stopped VMs.':
+    'Desconectar simula desenchufar el cable; funciona en máquinas en ejecución y detenidas.',
 
   // ----- USB panel -----
   USB: 'USB',
@@ -593,6 +598,8 @@ export const esServerPatterns: Array<[RegExp, string]> = [
     /^Forwarding rule "(.+)" removed from adapter (\d+)\.$/,
     'Regla de redirección "$1" quitada del adaptador $2.',
   ],
+  [/^Adapter (\d+) cable connected\.$/, 'Adaptador $1: cable conectado.'],
+  [/^Adapter (\d+) cable disconnected\.$/, 'Adaptador $1: cable desconectado.'],
   [/^Adapter (\d+) is not enabled on this VM\.$/, 'El adaptador $1 no está habilitado en esta VM.'],
   [
     /^Adapter (\d+) must be in NAT mode to add a port-forwarding rule\.$/,

@@ -25,13 +25,14 @@ vi.mock('../api/client', () => {
       changeNetworkMode: vi.fn(),
       addPortForwarding: vi.fn(),
       deletePortForwarding: vi.fn(),
+      setLinkState: vi.fn(),
     },
   };
 });
 
-function natOptions(forwarding: PortForwardingRule[] = []) {
+function natOptions(forwarding: PortForwardingRule[] = [], cableConnected = true) {
   return {
-    adapters: [{ slot: 1, mode: 'nat', mac: '08:00:27:11:22:AA', forwarding }],
+    adapters: [{ slot: 1, mode: 'nat', mac: '08:00:27:11:22:AA', cableConnected, forwarding }],
     bridgedAdapters: [],
     hostOnlyAdapters: [],
   };
@@ -108,7 +109,7 @@ describe('NetworkPanel port forwarding', () => {
 
   it('shows no forwarding UI for a non-NAT adapter', async () => {
     vi.mocked(api.getNetworkOptions).mockResolvedValue({
-      adapters: [{ slot: 1, mode: 'bridged', adapter: 'Ethernet', mac: '08:00:27:11:22:AA' }],
+      adapters: [{ slot: 1, mode: 'bridged', adapter: 'Ethernet', mac: '08:00:27:11:22:AA', cableConnected: true }],
       bridgedAdapters: ['Ethernet'],
       hostOnlyAdapters: [],
     });
@@ -118,5 +119,61 @@ describe('NetworkPanel port forwarding', () => {
 
     expect(queryByText('Port forwarding')).toBeNull();
     expect(queryByRole('button', { name: 'Add rule' })).toBeNull();
+  });
+});
+
+describe('NetworkPanel link state', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(natOptions());
+  });
+
+  afterEach(() => cleanup());
+
+  it('renders the current cable state and its toggle', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(natOptions([], true));
+
+    const { findByText, getByRole } = render(<NetworkPanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getNetworkOptions).toHaveBeenCalled());
+
+    expect(await findByText('connected')).toBeTruthy();
+    // A connected cable offers the Disconnect action.
+    expect(getByRole('button', { name: 'Disconnect' })).toBeTruthy();
+  });
+
+  it('posts the toggled state and reloads when disconnecting', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(natOptions([], true));
+    vi.mocked(api.setLinkState).mockResolvedValue({
+      success: true,
+      vmId: VM_ID,
+      message: 'Adapter 1 cable disconnected.',
+    });
+    const onChanged = vi.fn();
+
+    const { getByRole } = render(<NetworkPanel vmId={VM_ID} onChanged={onChanged} />);
+    await waitFor(() => expect(api.getNetworkOptions).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(getByRole('button', { name: 'Disconnect' }));
+
+    await waitFor(() => expect(api.setLinkState).toHaveBeenCalledWith(VM_ID, 1, false));
+    // Reloads the adapters after the toggle so the new cable state shows.
+    await waitFor(() => expect(api.getNetworkOptions).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it('connects a disconnected cable', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(natOptions([], false));
+    vi.mocked(api.setLinkState).mockResolvedValue({
+      success: true,
+      vmId: VM_ID,
+      message: 'Adapter 1 cable connected.',
+    });
+
+    const { getByRole, findByText } = render(<NetworkPanel vmId={VM_ID} />);
+    await findByText('disconnected');
+
+    fireEvent.click(getByRole('button', { name: 'Connect' }));
+
+    await waitFor(() => expect(api.setLinkState).toHaveBeenCalledWith(VM_ID, 1, true));
   });
 });
