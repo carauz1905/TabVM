@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { UsbPanel } from './UsbPanel';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 import type { UsbDevice, VmUsbResponse } from '../types/api';
 
 const VM_ID = '11111111-1111-1111-1111-111111111111';
@@ -124,5 +124,20 @@ describe('UsbPanel', () => {
 
     const { findByText } = render(<UsbPanel vmId={VM_ID} />);
     expect(await findByText('No USB devices detected on the host.')).toBeTruthy();
+  });
+
+  it('surfaces a load error instead of the misleading empty state when enumeration fails', async () => {
+    vi.mocked(api.getVmUsb).mockRejectedValue(
+      new ApiError({
+        status: 500,
+        statusText: 'Internal Server Error',
+        body: 'USB enumeration failed on the host.',
+      }),
+    );
+
+    const { findByText, queryByText } = render(<UsbPanel vmId={VM_ID} />);
+    expect(await findByText('USB enumeration failed on the host.')).toBeTruthy();
+    // The empty state must not appear: a failed enumeration is not "zero devices".
+    expect(queryByText('No USB devices detected on the host.')).toBeNull();
   });
 });

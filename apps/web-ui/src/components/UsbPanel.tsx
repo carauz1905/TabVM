@@ -41,14 +41,17 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
   const [data, setData] = useState<VmUsbResponse | null>(null);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       const res = await api.getVmUsb(vmId);
       setData(res);
-    } catch {
+    } catch (err) {
       setData(null);
+      setLoadError(messageFor(err));
     }
   }, [vmId]);
 
@@ -106,7 +109,9 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
         </div>
       )}
 
-      {devices.length === 0 ? (
+      {loadError ? (
+        <div className="files-error">{ts(loadError)}</div>
+      ) : devices.length === 0 ? (
         <div className="net-empty">
           <p>{t('No USB devices detected on the host.')}</p>
         </div>
