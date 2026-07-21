@@ -85,6 +85,9 @@ type fakeVboxService struct {
 	storageErr        error
 	resizeResp        models.VmOperationResponse
 	resizeErr         error
+	dvdResp           models.VmOperationResponse
+	dvdErr            error
+	lastIsoPath       string
 	lastUUID          string
 	lastSizeMB        int64
 	lastDeleteFile    bool
@@ -355,6 +358,19 @@ func (f *fakeVboxService) DetachDisk(ctx context.Context, id, uuid string, delet
 	f.lastUUID = uuid
 	f.lastDeleteFile = deleteFile
 	return f.resizeResp, f.resizeErr
+}
+
+func (f *fakeVboxService) MountDvd(ctx context.Context, id, isoPath string) (models.VmOperationResponse, error) {
+	f.lastAction = "mountDvd"
+	f.lastID = id
+	f.lastIsoPath = isoPath
+	return f.dvdResp, f.dvdErr
+}
+
+func (f *fakeVboxService) EjectDvd(ctx context.Context, id string) (models.VmOperationResponse, error) {
+	f.lastAction = "ejectDvd"
+	f.lastID = id
+	return f.dvdResp, f.dvdErr
 }
 
 func (f *fakeVboxService) ImportAppliance(ctx context.Context, ovaPath, name string) (models.VmCreateResponse, error) {
@@ -814,6 +830,98 @@ func TestDetachDiskEndpointDetachesAndDeletes(t *testing.T) {
 	}
 	if fake.lastAction != "detachDisk" || fake.lastUUID != "ca9ba73f-d0d3-4184-86f1-7206a952bc10" || !fake.lastDeleteFile {
 		t.Fatalf("unexpected call: action=%s uuid=%s delete=%v", fake.lastAction, fake.lastUUID, fake.lastDeleteFile)
+	}
+}
+
+func TestMountDvdEndpointMountsIso(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.dvdResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Mounted ubuntu.iso into the DVD drive."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+		strings.NewReader(`{"isoPath":"C:\\ISOs\\ubuntu.iso"}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "mountDvd" || fake.lastID != id || fake.lastIsoPath != `C:\ISOs\ubuntu.iso` {
+		t.Fatalf("unexpected call: action=%s id=%s iso=%s", fake.lastAction, fake.lastID, fake.lastIsoPath)
+	}
+}
+
+func TestMountDvdEndpointRejectsInvalidBody(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+		strings.NewReader(`{"isoPath":123}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestMountDvdEndpointMapsValidationTo400(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.dvdErr = &vbox.ValidationError{Message: "The installer must be a .iso file."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+		strings.NewReader(`{"isoPath":"C:\\ISOs\\bad.txt"}`))
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestEjectDvdEndpointEmptiesDrive(t *testing.T) {
+	srv, fake := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+	fake.dvdResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Ejected the DVD medium; the drive is now empty."}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd/eject", nil)
+	req.Header.Set("X-TabVM-Session-Token", "secret")
+	rr := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d (body %q)", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if fake.lastAction != "ejectDvd" || fake.lastID != id {
+		t.Fatalf("expected ejectDvd on %s, got %s on %s", id, fake.lastAction, fake.lastID)
+	}
+}
+
+func TestDvdEndpointsRequireAuth(t *testing.T) {
+	srv, _ := newTestServer(t, "secret")
+	id := "11111111-1111-1111-1111-111111111111"
+
+	for _, path := range []string{"/api/vms/" + id + "/storage/dvd", "/api/vms/" + id + "/storage/dvd/eject"} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"isoPath":"C:\\ISOs\\ubuntu.iso"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		srv.Handler().ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for %s without a token, got %d", path, rr.Code)
+		}
 	}
 }
 

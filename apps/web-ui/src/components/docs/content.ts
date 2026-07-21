@@ -64,6 +64,7 @@ export interface DocsStrings {
     lead: string;
     resize: Step;
     add: Step;
+    optical: Step;
     remove: Step;
     limits: Step;
     tip: string;
@@ -202,6 +203,10 @@ const en: DocsStrings = {
     add: {
       title: 'Add a disk',
       body: 'Need a second disk? Enter a size and press Add disk. TabVM creates a new dynamically-allocated VDI and attaches it to a free SATA port, growing the controller if it is full.',
+    },
+    optical: {
+      title: 'Mount, change, or eject an ISO',
+      body: 'The DVD drive row shows what disc is in the machine. Press Mount ISO to pick an .iso from your computer and insert it, Change ISO to swap it for a different one, or Eject to empty the drive. VirtualBox hot-swaps optical media, so this works while the machine is running or stopped.',
     },
     remove: {
       title: 'Detach or delete a disk',
@@ -393,6 +398,10 @@ const es: DocsStrings = {
     add: {
       title: 'Agregar un disco',
       body: '¿Necesitas un segundo disco? Ingresa un tamaño y pulsa Agregar disco. TabVM crea un nuevo VDI de asignación dinámica y lo conecta a un puerto SATA libre, ampliando el controlador si está lleno.',
+    },
+    optical: {
+      title: 'Montar, cambiar o expulsar una ISO',
+      body: 'La fila Unidad de DVD muestra qué disco hay en la máquina. Pulsa Montar ISO para elegir un archivo .iso de tu computadora e insertarlo, Cambiar ISO para reemplazarlo por otro, o Expulsar para vaciar la unidad. VirtualBox intercambia el medio óptico en caliente, así que funciona con la máquina en marcha o detenida.',
     },
     remove: {
       title: 'Desconectar o eliminar un disco',

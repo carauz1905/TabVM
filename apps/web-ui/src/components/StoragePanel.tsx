@@ -23,6 +23,7 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [addSize, setAddSize] = useState('');
   const [adding, setAdding] = useState(false);
+  const [dvdBusy, setDvdBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -116,8 +117,56 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
     [vmId, tf, load, onChanged],
   );
 
+  // pickAndMount opens the host ISO picker and, unless the dialog is cancelled,
+  // mounts the chosen ISO into the VM's optical drive. It doubles as "Change" —
+  // mounting a new ISO replaces whatever is in the drive.
+  const pickAndMount = useCallback(async () => {
+    setDvdBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const picked = await api.pickHostFile();
+      if (picked.cancelled || picked.path === '') return;
+      const res = await api.mountDvd(vmId, picked.path);
+      setNotice(res.message);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      if (err instanceof ApiError && err.body.trim() !== '') setError(err.body.trim());
+      else setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDvdBusy(false);
+    }
+  }, [vmId, load, onChanged]);
+
+  const eject = useCallback(async () => {
+    setDvdBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await api.ejectDvd(vmId);
+      setNotice(res.message);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      if (err instanceof ApiError && err.body.trim() !== '') setError(err.body.trim());
+      else setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDvdBusy(false);
+    }
+  }, [vmId, load, onChanged]);
+
   const disks = storage?.disks ?? [];
   const editable = storage?.editable ?? false;
+  const optical = storage?.optical ?? {
+    present: false,
+    medium: '',
+    name: '',
+    controller: '',
+    port: 0,
+    device: 0,
+  };
+  const hasDisc = optical.present && optical.medium !== '';
   const addGb = Number.parseInt(addSize, 10);
   const validAdd = Number.isInteger(addGb) && addGb >= 1;
 
@@ -210,6 +259,37 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
             );
           })}
         </ul>
+      )}
+
+      {storage !== null && (
+        <div className="net-row" aria-label={t('DVD drive')}>
+          <div className="net-info">
+            <span className="net-slot">{t('DVD drive')}</span>
+            <span className="net-current">
+              {hasDisc ? optical.name : optical.present ? t('empty') : t('no optical drive')}
+            </span>
+          </div>
+          <div className="net-controls">
+            <button
+              type="button"
+              className="net-apply"
+              onClick={() => void pickAndMount()}
+              disabled={dvdBusy}
+            >
+              {dvdBusy ? t('Working…') : hasDisc ? t('Change ISO') : t('Mount ISO')}
+            </button>
+            {hasDisc && (
+              <button
+                type="button"
+                className="net-apply quiet"
+                onClick={() => void eject()}
+                disabled={dvdBusy}
+              >
+                {t('Eject')}
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {storage !== null && editable && (

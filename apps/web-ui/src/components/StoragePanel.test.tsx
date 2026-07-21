@@ -25,14 +25,30 @@ vi.mock('../api/client', () => {
       resizeDisk: vi.fn(),
       addDisk: vi.fn(),
       detachDisk: vi.fn(),
+      pickHostFile: vi.fn(),
+      mountDvd: vi.fn(),
+      ejectDvd: vi.fn(),
     },
   };
 });
+
+function opticalWithIso(overrides = {}) {
+  return {
+    present: true,
+    medium: 'C:\\ISOs\\ubuntu.iso',
+    name: 'ubuntu.iso',
+    controller: 'SATA',
+    port: 1,
+    device: 0,
+    ...overrides,
+  };
+}
 
 function resizableDisk(diskOverrides = {}, responseOverrides = {}) {
   return {
     id: VM_ID,
     editable: true,
+    optical: opticalWithIso(),
     disks: [
       {
         uuid: DISK_UUID,
@@ -149,6 +165,72 @@ describe('StoragePanel', () => {
 
     fireEvent.click(getByRole('button', { name: 'Detach disk1.vdi' }));
     expect(api.detachDisk).not.toHaveBeenCalled();
+  });
+
+  it('shows the ISO currently in the DVD drive with Change and Eject', async () => {
+    const { findByText, getByRole } = render(<StoragePanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+
+    expect(await findByText('ubuntu.iso')).toBeTruthy();
+    expect(getByRole('button', { name: 'Change ISO' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Eject' })).toBeTruthy();
+  });
+
+  it('renders the empty-drive state with a Mount action', async () => {
+    vi.mocked(api.getVmStorage).mockResolvedValue(
+      resizableDisk({}, { optical: opticalWithIso({ medium: '', name: '' }) }),
+    );
+
+    const { findByText, getByRole, queryByRole } = render(<StoragePanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+
+    expect(await findByText('empty')).toBeTruthy();
+    expect(getByRole('button', { name: 'Mount ISO' })).toBeTruthy();
+    expect(queryByRole('button', { name: 'Eject' })).toBeNull();
+  });
+
+  it('mounts an ISO picked from the host and posts its path', async () => {
+    vi.mocked(api.getVmStorage).mockResolvedValue(
+      resizableDisk({}, { optical: opticalWithIso({ medium: '', name: '' }) }),
+    );
+    vi.mocked(api.pickHostFile).mockResolvedValue({ path: 'C:\\ISOs\\kali.iso', cancelled: false });
+    vi.mocked(api.mountDvd).mockResolvedValue({ success: true, vmId: VM_ID, message: 'Mounted kali.iso.' });
+    const onChanged = vi.fn();
+
+    const { getByRole } = render(<StoragePanel vmId={VM_ID} onChanged={onChanged} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+
+    fireEvent.click(getByRole('button', { name: 'Mount ISO' }));
+
+    await waitFor(() => expect(api.pickHostFile).toHaveBeenCalled());
+    await waitFor(() => expect(api.mountDvd).toHaveBeenCalledWith(VM_ID, 'C:\\ISOs\\kali.iso'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it('does not mount when the file picker is cancelled', async () => {
+    vi.mocked(api.getVmStorage).mockResolvedValue(
+      resizableDisk({}, { optical: opticalWithIso({ medium: '', name: '' }) }),
+    );
+    vi.mocked(api.pickHostFile).mockResolvedValue({ path: '', cancelled: true });
+
+    const { getByRole } = render(<StoragePanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+
+    fireEvent.click(getByRole('button', { name: 'Mount ISO' }));
+
+    await waitFor(() => expect(api.pickHostFile).toHaveBeenCalled());
+    expect(api.mountDvd).not.toHaveBeenCalled();
+  });
+
+  it('ejects the mounted ISO', async () => {
+    vi.mocked(api.ejectDvd).mockResolvedValue({ success: true, vmId: VM_ID, message: 'Drive empty.' });
+
+    const { getByRole } = render(<StoragePanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+
+    fireEvent.click(getByRole('button', { name: 'Eject' }));
+
+    await waitFor(() => expect(api.ejectDvd).toHaveBeenCalledWith(VM_ID));
   });
 
   it('shows the reason and no input when a disk is not resizable', async () => {

@@ -219,9 +219,23 @@ export interface DiskInfo {
   reason?: string;
 }
 
+// The VM's optical (DVD) drive and the medium currently in it. present is false
+// when the VM has no optical drive; medium is the ISO path (empty when no disc is
+// inserted) and name is its filename for display. Unlike disks, the medium can be
+// swapped while the VM is running.
+export interface OpticalDrive {
+  present: boolean;
+  medium: string;
+  name: string;
+  controller: string;
+  port: number;
+  device: number;
+}
+
 export interface VmStorageResponse {
   id: string;
   disks: DiskInfo[];
+  optical: OpticalDrive;
   editable: boolean;
 }
 

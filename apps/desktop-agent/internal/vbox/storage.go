@@ -71,7 +71,24 @@ func (s *service) VmStorage(ctx context.Context, id string) (models.VmStorageRes
 		})
 	}
 
-	return models.VmStorageResponse{ID: id, Disks: disks, Editable: editable}, nil
+	// The optical (DVD) drive is read from the human-readable showvminfo because
+	// the machine-readable form does not label an attachment as dvd vs hdd. It is
+	// best-effort: a failure to read it leaves Optical.Present false rather than
+	// failing the whole storage read.
+	var optical models.OpticalDrive
+	if human, herr := s.readShowVmInfoHuman(ctx, path, id, "reading VM optical drive"); herr == nil {
+		od := parseOpticalDrive(human)
+		optical = models.OpticalDrive{
+			Present:    od.present,
+			Medium:     od.medium,
+			Name:       baseName(od.medium),
+			Controller: od.controller,
+			Port:       od.port,
+			Device:     od.device,
+		}
+	}
+
+	return models.VmStorageResponse{ID: id, Disks: disks, Optical: optical, Editable: editable}, nil
 }
 
 // ResizeDisk grows a virtual disk to sizeMB. VirtualBox can only enlarge a disk
