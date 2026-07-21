@@ -28,6 +28,7 @@ export interface DocsStrings {
     files: string;
     snapshots: string;
     network: string;
+    usb: string;
     create: string;
     personalize: string;
     troubleshoot: string;
@@ -88,6 +89,13 @@ export interface DocsStrings {
     forwarding: Step;
     tip: string;
   };
+  usb: {
+    lead: string;
+    extension: Step;
+    controller: Step;
+    attach: Step;
+    tip: string;
+  };
   create: {
     lead: string;
     importCard: Step;
@@ -134,6 +142,7 @@ const en: DocsStrings = {
     files: 'Files & sharing',
     snapshots: 'Snapshots',
     network: 'Networking',
+    usb: 'USB devices',
     create: 'Create a VM',
     personalize: 'Personalize',
     troubleshoot: 'Troubleshooting',
@@ -260,6 +269,22 @@ const en: DocsStrings = {
     },
     tip: 'Use Host-only when you are testing malware or an untrusted image — the guest can talk to your computer but never reaches the internet.',
   },
+  usb: {
+    lead: 'Pass a USB device from your computer straight into a running machine — a flash drive, a phone, a security key. The USB panel appears in a machine’s focus view while it is running.',
+    extension: {
+      title: 'The Extension Pack',
+      body: 'USB 2.0 and 3.0 passthrough needs the free Oracle VirtualBox Extension Pack. If it is missing, the panel says so — install it once from virtualbox.org and every machine can use USB.',
+    },
+    controller: {
+      title: 'The USB controller',
+      body: 'A machine also needs a USB controller enabled. It cannot be switched on while the machine runs, so if the panel flags it, power the machine off, enable USB in its settings, and start it again.',
+    },
+    attach: {
+      title: 'Attach & detach',
+      body: 'The panel lists the USB devices plugged into your computer with their maker, model and state. Press Attach to hand one to the machine — it disappears from your computer and appears inside the guest. Press Detach to give it back. Only a running machine can capture a device.',
+    },
+    tip: 'Detach a device from the machine before you unplug it from your computer, the same way you would safely eject a drive — that lets the guest release it cleanly.',
+  },
   create: {
     lead: 'The New VM wizard has three paths. The first two leave you with Guest Additions already working; the third gives you full control for any other OS.',
     importCard: {
@@ -333,6 +358,7 @@ const es: DocsStrings = {
     files: 'Archivos y compartir',
     snapshots: 'Instantáneas',
     network: 'Red',
+    usb: 'Dispositivos USB',
     create: 'Crear una VM',
     personalize: 'Personalizar',
     troubleshoot: 'Solución de problemas',
@@ -458,6 +484,22 @@ const es: DocsStrings = {
       body: 'Cuando un adaptador está en modo NAT, puedes asignar un puerto de tu computadora a un puerto dentro de la máquina; por ejemplo, redirigir 127.0.0.1:2222 al puerto 22 del guest para entrar por SSH. Dale un nombre a cada regla, elige TCP o UDP y define los puertos del anfitrión y del guest; la dirección del anfitrión usa 127.0.0.1 de forma predeterminada, así el puerto nunca queda expuesto a toda tu red por accidente. Las reglas se aplican en vivo en una máquina en ejecución o se guardan en su configuración cuando está detenida, y cada una se quita con un clic.',
     },
     tip: 'Usa Solo anfitrión cuando pruebas malware o una imagen que no es de confianza: el guest habla con tu computadora pero nunca llega a internet.',
+  },
+  usb: {
+    lead: 'Pasa un dispositivo USB de tu computadora directamente a una máquina en marcha: una memoria, un teléfono, una llave de seguridad. El panel USB aparece en la vista de enfoque de una máquina mientras está en ejecución.',
+    extension: {
+      title: 'El Extension Pack',
+      body: 'El paso de USB 2.0 y 3.0 requiere el Oracle VirtualBox Extension Pack, que es gratuito. Si falta, el panel lo indica: instálalo una vez desde virtualbox.org y todas las máquinas podrán usar USB.',
+    },
+    controller: {
+      title: 'El controlador USB',
+      body: 'La máquina también necesita un controlador USB habilitado. No se puede activar mientras la máquina está en marcha, así que si el panel lo señala, apaga la máquina, habilita USB en su configuración y vuelve a iniciarla.',
+    },
+    attach: {
+      title: 'Conectar y desconectar',
+      body: 'El panel lista los dispositivos USB conectados a tu computadora con su fabricante, modelo y estado. Pulsa Conectar para entregar uno a la máquina: desaparece de tu computadora y aparece dentro del guest. Pulsa Desconectar para devolverlo. Solo una máquina en marcha puede capturar un dispositivo.',
+    },
+    tip: 'Desconecta el dispositivo de la máquina antes de retirarlo de tu computadora, igual que expulsarías una unidad de forma segura: así el guest lo libera de forma limpia.',
   },
   create: {
     lead: 'El asistente Nueva VM tiene tres caminos. Los dos primeros te dejan con Guest Additions ya funcionando; el tercero te da control total para cualquier otro sistema operativo.',

@@ -24,6 +24,9 @@ import type {
   NetworkOptionsResponse,
   NetworkOperationResponse,
   PortForwardingRequest,
+  UsbDevice,
+  VmUsbResponse,
+  UsbOperationResponse,
   VmHardwareResponse,
   VmStorageResponse,
   DiskInfo,
@@ -363,6 +366,27 @@ function isNetworkOptionsResponse(value: unknown): value is NetworkOptionsRespon
 }
 
 function isNetworkOperationResponse(value: unknown): value is NetworkOperationResponse {
+  return hasBoolean(value, 'success') && hasString(value, 'vmId') && hasString(value, 'message');
+}
+
+function isUsbDevice(value: unknown): value is UsbDevice {
+  if (typeof value !== 'object' || value === null) return false;
+  const r = value as Record<string, unknown>;
+  return typeof r.uuid === 'string' && typeof r.state === 'string' && typeof r.attachedHere === 'boolean';
+}
+
+function isVmUsbResponse(value: unknown): value is VmUsbResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const r = value as Record<string, unknown>;
+  return (
+    Array.isArray(r.devices) &&
+    r.devices.every(isUsbDevice) &&
+    typeof r.extensionPackInstalled === 'boolean' &&
+    typeof r.usbControllerEnabled === 'boolean'
+  );
+}
+
+function isUsbOperationResponse(value: unknown): value is UsbOperationResponse {
   return hasBoolean(value, 'success') && hasString(value, 'vmId') && hasString(value, 'message');
 }
 
@@ -717,6 +741,23 @@ export const api = {
       `/api/vms/${encodeURIComponent(id)}/network/forwarding/delete`,
       isNetworkOperationResponse,
       { method: 'POST', body: { slot, name } },
+    ),
+  getVmUsb: (id: string) =>
+    request<VmUsbResponse>(
+      `/api/vms/${encodeURIComponent(id)}/usb`,
+      isVmUsbResponse,
+    ),
+  attachUsb: (id: string, deviceUuid: string) =>
+    request<UsbOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/usb/attach`,
+      isUsbOperationResponse,
+      { method: 'POST', body: { deviceUuid } },
+    ),
+  detachUsb: (id: string, deviceUuid: string) =>
+    request<UsbOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/usb/detach`,
+      isUsbOperationResponse,
+      { method: 'POST', body: { deviceUuid } },
     ),
   getVmHardware: (id: string) =>
     request<VmHardwareResponse>(

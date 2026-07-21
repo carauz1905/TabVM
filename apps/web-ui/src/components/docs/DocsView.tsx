@@ -28,6 +28,7 @@ type SectionId =
   | 'files'
   | 'snapshots'
   | 'network'
+  | 'usb'
   | 'create'
   | 'personalize'
   | 'troubleshoot';
@@ -42,6 +43,7 @@ const ORDER: SectionId[] = [
   'files',
   'snapshots',
   'network',
+  'usb',
   'create',
   'personalize',
   'troubleshoot',
@@ -293,6 +295,27 @@ export function DocsView() {
           <h3>{d.network.forwarding.title}</h3>
           <p>{d.network.forwarding.body}</p>
           <TipBox label={d.tipLabel}>{d.network.tip}</TipBox>
+        </section>
+
+        {/* USB */}
+        <section id="usb" ref={setRef('usb')} className="docs-sec">
+          <h2>{d.sections.usb}</h2>
+          <p className="docs-lead">{d.usb.lead}</p>
+          <div className="docs-two">
+            <div className="docs-card">
+              <h4>{d.usb.extension.title}</h4>
+              <p>{d.usb.extension.body}</p>
+            </div>
+            <div className="docs-card">
+              <h4>{d.usb.controller.title}</h4>
+              <p>{d.usb.controller.body}</p>
+            </div>
+            <div className="docs-card">
+              <h4>{d.usb.attach.title}</h4>
+              <p>{d.usb.attach.body}</p>
+            </div>
+          </div>
+          <TipBox label={d.tipLabel}>{d.usb.tip}</TipBox>
         </section>
 
         {/* Create */}

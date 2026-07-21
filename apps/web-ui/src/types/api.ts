@@ -198,6 +198,35 @@ export interface NetworkOperationResponse {
   message: string;
 }
 
+// One USB device present on the host, from `VBoxManage list usbhost`. vendorId
+// and productId are hex (e.g. '0x0781'). state is the VirtualBox capture state
+// (Available, Busy, Captured, Unavailable). attachedHere is true when this VM
+// currently has the device captured.
+export interface UsbDevice {
+  uuid: string;
+  vendorId: string;
+  productId: string;
+  manufacturer?: string;
+  product?: string;
+  state: string;
+  attachedHere: boolean;
+}
+
+// Response for GET /api/vms/{id}/usb: the host devices plus the two
+// prerequisites the UI surfaces. usbControllerEnabled cannot be toggled while
+// the VM is running.
+export interface VmUsbResponse {
+  devices: UsbDevice[];
+  extensionPackInstalled: boolean;
+  usbControllerEnabled: boolean;
+}
+
+export interface UsbOperationResponse {
+  success: boolean;
+  vmId: string;
+  message: string;
+}
+
 export interface VmHardwareResponse {
   id: string;
   cpus: number;
