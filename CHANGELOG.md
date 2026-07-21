@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   removing the session-lock contention that could wedge VBoxSVC when several
   operations or reads overlapped on the same VM. (#23)
 
+### Fixed
+
+- The global VBoxManage concurrency cap no longer lets several long operations
+  starve fast reads: the wait for a free slot is now bounded by the command's
+  own timeout, so a status or VM-list refresh fails fast instead of freezing the
+  dashboard while four multi-minute operations run. (#39)
+- Mounting an ISO no longer fails when a VM has a floppy controller enumerated
+  before its DVD drive: optical-drive detection skips the floppy bus and finds
+  the real optical-capable controller. (#39)
+- The USB panel surfaces a load error instead of showing a misleading "no USB
+  devices" state when host USB enumeration fails. (#39)
+
 ## [0.2.0] - 2026-07-20
 
 ### Added
