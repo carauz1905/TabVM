@@ -90,7 +90,7 @@ func (s *service) SetVmHardware(ctx context.Context, id string, cpus, memoryMB i
 		return models.VmOperationResponse{}, &ValidationError{Message: "The VM is running. Power it off before changing vCPU or memory."}
 	}
 
-	if err := s.runControlCommand(ctx, path, modifyHardwareArgs(id, cpus, memoryMB), "changing VM hardware"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, modifyHardwareArgs(id, cpus, memoryMB), "changing VM hardware"); err != nil {
 		s.logOperation(ctx, id, "vm.hardware", false, "VBoxManage modifyvm hardware change failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -129,7 +129,7 @@ func parseConfiguredHardware(output string) (cpus, memoryMB int) {
 // `list hostinfo`. Best-effort: zeros on failure so callers fall back to
 // conservative static bounds.
 func (s *service) readHostLimits(ctx context.Context, path string) (cpus, memoryMB int) {
-	result, err := s.runner.RunContext(ctx, path, []string{"list", "hostinfo"}, 10*time.Second)
+	result, err := s.exec(ctx, path, []string{"list", "hostinfo"}, 10*time.Second)
 	if err != nil || result.ExitCode != 0 {
 		return 0, 0
 	}

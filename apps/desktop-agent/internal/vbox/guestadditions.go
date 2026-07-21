@@ -53,7 +53,7 @@ func (s *service) GuestAdditionsStatus(ctx context.Context, id string) (models.G
 		return models.GuestAdditionsStatusResponse{ID: id, Installed: false, Status: "unknown"}, nil
 	}
 
-	result, runErr := s.runner.RunContext(ctx, path, guestPropertyGetArgs(id, gaVersionProperty), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, guestPropertyGetArgs(id, gaVersionProperty), 10*time.Second)
 	if runErr != nil {
 		return models.GuestAdditionsStatusResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -132,7 +132,7 @@ func (s *service) InstallGuestAdditions(ctx context.Context, id string) (models.
 		}
 	}
 
-	if err := s.runControlCommand(ctx, path, insertGuestAdditionsArgs(id, slot), "inserting Guest Additions disc"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, insertGuestAdditionsArgs(id, slot), "inserting Guest Additions disc"); err != nil {
 		s.logOperation(ctx, id, "guest-additions.install", false, "VirtualBox Guest Additions disc insert failed.")
 		return models.GuestAdditionsInstallResponse{}, err
 	}
@@ -182,7 +182,7 @@ func (s *service) UpdateGuestAdditions(ctx context.Context, id, username, passwo
 	// already inserted, so proceed to run the installer regardless.
 	if info, infoErr := s.readShowVmInfo(ctx, path, id, "reading storage for Guest Additions update"); infoErr == nil {
 		if slot, ok := chooseOpticalTarget(parseOpticalSlots(info)); ok {
-			_ = s.runControlCommand(ctx, path, insertGuestAdditionsArgs(id, slot), "inserting Guest Additions disc")
+			_ = s.runControlCommand(ctx, id, path, insertGuestAdditionsArgs(id, slot), "inserting Guest Additions disc")
 		}
 	}
 
@@ -206,12 +206,12 @@ func (s *service) UpdateGuestAdditions(ctx context.Context, id, username, passwo
 	var result runner.Result
 	var runErr error
 	if strings.EqualFold(username, "root") {
-		result, runErr = s.runner.RunContext(ctx, path, guestControlUpdateGAArgs(id, username, pwPath), 2*time.Minute)
+		result, runErr = s.runForVM(ctx, id, path, guestControlUpdateGAArgs(id, username, pwPath), 2*time.Minute)
 	} else {
 		// Non-root account: the installer needs root, so copy the password into
 		// the guest and run it under `sudo -S` (password fed on the guest
 		// process's stdin, still never on any argv), then delete the copy.
-		if cp, cpErr := s.runner.RunContext(ctx, path, guestControlCopyPwArgs(id, username, pwPath), 30*time.Second); cpErr != nil || cp.ExitCode != 0 {
+		if cp, cpErr := s.runForVM(ctx, id, path, guestControlCopyPwArgs(id, username, pwPath), 30*time.Second); cpErr != nil || cp.ExitCode != 0 {
 			s.logOperation(ctx, id, "guest-additions.update", false, "Copying credentials into guest failed.")
 			return models.GuestAdditionsUpdateResponse{
 				Success: false,
@@ -220,7 +220,7 @@ func (s *service) UpdateGuestAdditions(ctx context.Context, id, username, passwo
 				Output:  combinedOutput(cp.StandardOutput, cp.StandardError),
 			}, nil
 		}
-		result, runErr = s.runner.RunContext(ctx, path, guestControlSudoInstallArgs(id, username, pwPath), 2*time.Minute)
+		result, runErr = s.runForVM(ctx, id, path, guestControlSudoInstallArgs(id, username, pwPath), 2*time.Minute)
 	}
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "guest-additions.update", false, "Guest Additions guest-control install failed.")

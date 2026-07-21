@@ -76,7 +76,7 @@ func (s *service) ImportAppliance(ctx context.Context, ovaPath, name string) (mo
 		return models.VmCreateResponse{}, err
 	}
 
-	if err := s.runControlCommandTimeout(ctx, path, importApplianceArgs(ovaPath, name), "importing appliance", importTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, "", path, importApplianceArgs(ovaPath, name), "importing appliance", importTimeout); err != nil {
 		s.logOperation(ctx, "", "vm.import", false, "VirtualBox appliance import failed.")
 		return models.VmCreateResponse{}, err
 	}
@@ -128,7 +128,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	}
 
 	// 1. Register the VM and learn its UUID + settings folder in one call.
-	createOut, err := s.runCapture(ctx, path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
+	createOut, err := s.runCapture(ctx, "", path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
 	if err != nil {
 		s.logOperation(ctx, "", "vm.create", false, "VBoxManage createvm failed.")
 		return models.VmCreateResponse{}, err
@@ -151,7 +151,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 		{storageAttachDiskArgs(uuid, diskPath), "attaching disk", createStepTimeout},
 	}
 	for _, step := range steps {
-		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
+		if err := s.runControlCommandTimeout(ctx, uuid, path, step.args, step.desc, step.timeout); err != nil {
 			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
 			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
@@ -175,7 +175,7 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	}
 	pwFile.Close()
 
-	if err := s.runControlCommandTimeout(ctx, path, unattendedInstallArgs(uuid, req, pwPath), "configuring unattended install", createStepTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, uuid, path, unattendedInstallArgs(uuid, req, pwPath), "configuring unattended install", createStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage unattended install failed.")
 		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 		return models.VmCreateResponse{}, err
@@ -220,7 +220,7 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 	}
 
 	// 1. Register the VM and learn its UUID + settings folder in one call.
-	createOut, err := s.runCapture(ctx, path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
+	createOut, err := s.runCapture(ctx, "", path, createVmArgs(req.Name, req.OsType), "creating VM", createStepTimeout)
 	if err != nil {
 		s.logOperation(ctx, "", "vm.create", false, "VBoxManage createvm failed.")
 		return models.VmCreateResponse{}, err
@@ -246,7 +246,7 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 		{storageAttachDvdArgs(uuid, req.IsoPath), "attaching installer ISO", createStepTimeout},
 	}
 	for _, step := range steps {
-		if err := s.runControlCommandTimeout(ctx, path, step.args, step.desc, step.timeout); err != nil {
+		if err := s.runControlCommandTimeout(ctx, uuid, path, step.args, step.desc, step.timeout); err != nil {
 			s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage "+step.desc+" failed.")
 			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
@@ -273,7 +273,7 @@ func (s *service) cleanupFailedCreate(ctx context.Context, path, uuid, diskPath 
 	// cleanup still has to run, bounded by its own per-step timeouts.
 	ctx = context.WithoutCancel(ctx)
 
-	if err := s.runControlCommandTimeout(ctx, path, unregisterVmArgs(uuid), "cleaning up a failed create (unregister)", cleanupStepTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, uuid, path, unregisterVmArgs(uuid), "cleaning up a failed create (unregister)", cleanupStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage unregistervm cleanup failed.")
 	}
 	if diskPath == "" {
@@ -284,7 +284,7 @@ func (s *service) cleanupFailedCreate(ctx context.Context, path, uuid, diskPath 
 	}
 	// The disk file survived the unregister, so it was never attached. Release
 	// it from the media registry and delete it.
-	if err := s.runControlCommandTimeout(ctx, path, closeMediumDeleteArgs(diskPath), "cleaning up a failed create (disk)", cleanupStepTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, uuid, path, closeMediumDeleteArgs(diskPath), "cleaning up a failed create (disk)", cleanupStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create.cleanup", false, "VBoxManage closemedium cleanup failed.")
 	}
 	if _, err := statPath(diskPath); err == nil {
@@ -297,7 +297,7 @@ func (s *service) cleanupFailedCreate(ctx context.Context, path, uuid, diskPath 
 // resolveVmUUID looks up a VM's UUID by name after a create/import. Best-effort;
 // returns "" if it cannot be read.
 func (s *service) resolveVmUUID(ctx context.Context, path, name string) string {
-	result, err := s.runner.RunContext(ctx, path, []string{"showvminfo", name, "--machinereadable"}, 10*time.Second)
+	result, err := s.runForVM(ctx, name, path, []string{"showvminfo", name, "--machinereadable"}, 10*time.Second)
 	if err != nil || result.ExitCode != 0 {
 		return ""
 	}
@@ -311,8 +311,8 @@ func (s *service) resolveVmUUID(ctx context.Context, path, name string) string {
 
 // runCapture runs a command with a timeout and returns stdout, mapping failures
 // to an ExecutionError like runControlCommand.
-func (s *service) runCapture(ctx context.Context, path string, args []string, description string, timeout time.Duration) (string, error) {
-	result, runErr := s.runner.RunContext(ctx, path, args, timeout)
+func (s *service) runCapture(ctx context.Context, vmID, path string, args []string, description string, timeout time.Duration) (string, error) {
+	result, runErr := s.runForVM(ctx, vmID, path, args, timeout)
 	if runErr != nil {
 		return "", &ExecutionError{ExitCode: result.ExitCode, StandardError: result.StandardError, Message: fmt.Sprintf("VBoxManage failed while %s: %v", description, runErr)}
 	}
@@ -324,8 +324,8 @@ func (s *service) runCapture(ctx context.Context, path string, args []string, de
 
 // runControlCommandTimeout is runControlCommand with a caller-chosen timeout, for
 // steps that take longer than the default 30s (disk creation, appliance import).
-func (s *service) runControlCommandTimeout(ctx context.Context, path string, args []string, description string, timeout time.Duration) error {
-	_, err := s.runCapture(ctx, path, args, description, timeout)
+func (s *service) runControlCommandTimeout(ctx context.Context, vmID, path string, args []string, description string, timeout time.Duration) error {
+	_, err := s.runCapture(ctx, vmID, path, args, description, timeout)
 	return err
 }
 

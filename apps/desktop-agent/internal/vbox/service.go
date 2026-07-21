@@ -57,13 +57,16 @@ func NewService(runner Runner, cfg Config) Service {
 	if len(paths) == 0 {
 		paths = defaultPaths
 	}
-	return &service{runner: runner, paths: paths, store: cfg.Store}
+	return &service{runner: runner, paths: paths, store: cfg.Store, vmLocks: newVMLocker()}
 }
 
 type service struct {
 	runner Runner
 	paths  []string
 	store  *store.Store
+	// vmLocks serializes VBoxManage executions per VM id so concurrent commands
+	// targeting the same machine never contend for the VirtualBox machine lock.
+	vmLocks *vmLocker
 }
 
 // Discover reports whether VirtualBox / VBoxManage is available. The response
@@ -113,7 +116,7 @@ func (s *service) ListVMs(ctx context.Context) (models.VmListResponse, error) {
 		return models.VmListResponse{}, err
 	}
 
-	result, err := s.runner.RunContext(ctx, path, listVmsArgs(), 30*time.Second)
+	result, err := s.exec(ctx, path, listVmsArgs(), 30*time.Second)
 	if err != nil {
 		return models.VmListResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -149,7 +152,7 @@ func (s *service) VMStatus(ctx context.Context, id string) (models.VmStatusRespo
 		return models.VmStatusResponse{}, err
 	}
 
-	result, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(id), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, showVmInfoArgs(id), 10*time.Second)
 	if runErr != nil {
 		return models.VmStatusResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -194,7 +197,7 @@ func (s *service) VmTelemetry(ctx context.Context, id string) (models.VmTelemetr
 		return models.VmTelemetryResponse{}, err
 	}
 
-	info, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(id), 10*time.Second)
+	info, runErr := s.runForVM(ctx, id, path, showVmInfoArgs(id), 10*time.Second)
 	if runErr != nil {
 		return models.VmTelemetryResponse{}, &ExecutionError{
 			ExitCode:      info.ExitCode,
@@ -218,7 +221,7 @@ func (s *service) VmTelemetry(ctx context.Context, id string) (models.VmTelemetr
 	// instead of failing the whole telemetry read.
 	gaPresent := false
 	ipsByMAC := map[string][]string{}
-	if gp, gpErr := s.runner.RunContext(ctx, path, guestPropertyEnumerateArgs(id), 10*time.Second); gpErr == nil && gp.ExitCode == 0 {
+	if gp, gpErr := s.runForVM(ctx, id, path, guestPropertyEnumerateArgs(id), 10*time.Second); gpErr == nil && gp.ExitCode == 0 {
 		gaPresent, ipsByMAC = parseGuestNetworks(gp.StandardOutput)
 	}
 
@@ -244,7 +247,7 @@ func (s *service) VmTelemetry(ctx context.Context, id string) (models.VmTelemetr
 		if att.uuid == "" {
 			continue
 		}
-		med, medErr := s.runner.RunContext(ctx, path, showMediumInfoArgs(att.uuid), 10*time.Second)
+		med, medErr := s.runForVM(ctx, id, path, showMediumInfoArgs(att.uuid), 10*time.Second)
 		if medErr != nil || med.ExitCode != 0 {
 			continue
 		}
@@ -305,7 +308,7 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 	case "paused":
 		// A paused VM must be resumed, not started. Resume shares the same
 		// lock-contention retry as start.
-		if err := s.runControlWithLockRetry(ctx, path, resumeVmArgs(id), "resuming VM"); err != nil {
+		if err := s.runControlWithLockRetry(ctx, id, path, resumeVmArgs(id), "resuming VM"); err != nil {
 			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("resuming VM", err))
 			return err
 		}
@@ -313,7 +316,7 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 		return nil
 	default:
 		// saved, poweroff, aborted, or unknown: normal start (never poweroff first).
-		if err := s.runControlWithLockRetry(ctx, path, startVmArgs(id), "starting VM"); err != nil {
+		if err := s.runControlWithLockRetry(ctx, id, path, startVmArgs(id), "starting VM"); err != nil {
 			s.logOperation(ctx, id, "vm.start", false, controlFailureMessage("starting VM", err))
 			return err
 		}
@@ -328,13 +331,13 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 // failures, typically caused by the agent's own concurrent read commands. It is
 // context-aware and returns the last error when contention persists or when the
 // error is not lock contention.
-func (s *service) runControlWithLockRetry(ctx context.Context, path string, args []string, description string) error {
+func (s *service) runControlWithLockRetry(ctx context.Context, vmID, path string, args []string, description string) error {
 	const maxAttempts = 3
 	const backoff = 400 * time.Millisecond
 
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		err := s.runControlCommand(ctx, path, args, description)
+		err := s.runControlCommand(ctx, vmID, path, args, description)
 		if err == nil {
 			return nil
 		}
@@ -405,7 +408,7 @@ func (s *service) runLoggedControlCommand(
 		return err
 	}
 
-	err = s.runControlCommand(ctx, path, argsFn(id), description)
+	err = s.runControlCommand(ctx, id, path, argsFn(id), description)
 	if err != nil {
 		s.logOperation(ctx, id, action, false, controlFailureMessage(description, err))
 		return err
@@ -439,7 +442,7 @@ func (s *service) VmConsoleStatus(ctx context.Context, id string) (models.VmCons
 		return models.VmConsoleStatusResponse{}, err
 	}
 
-	result, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(id), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, showVmInfoArgs(id), 10*time.Second)
 	if runErr != nil {
 		return models.VmConsoleStatusResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -478,7 +481,7 @@ func (s *service) PrepareVmConsole(ctx context.Context, id string) (models.VmCon
 	}
 
 	args := enableVrdeArgs(id, port)
-	result, runErr := s.runner.RunContext(ctx, path, args, 30*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, args, 30*time.Second)
 	if runErr != nil {
 		return models.VmConsoleStatusResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -627,7 +630,7 @@ var slogDefault = func() *slog.Logger { return slog.Default() }
 // readCurrentVRDEPort returns the VRDE port currently configured for the VM,
 // or 0 if VRDE is not enabled or no valid port is set.
 func (s *service) readCurrentVRDEPort(ctx context.Context, path, id string) (int, error) {
-	result, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(id), 10*time.Second)
+	result, runErr := s.runForVM(ctx, id, path, showVmInfoArgs(id), 10*time.Second)
 	if runErr != nil {
 		return 0, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -658,7 +661,7 @@ func (s *service) readCurrentVRDEPort(ctx context.Context, path, id string) (int
 // VMs except the one being prepared. This avoids assigning a port that would
 // collide with another VM's remote display server.
 func (s *service) collectUsedVRDEPorts(ctx context.Context, path, currentID string) (map[int]struct{}, error) {
-	result, runErr := s.runner.RunContext(ctx, path, listVmsArgs(), 30*time.Second)
+	result, runErr := s.exec(ctx, path, listVmsArgs(), 30*time.Second)
 	if runErr != nil {
 		return nil, &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -682,7 +685,7 @@ func (s *service) collectUsedVRDEPorts(ctx context.Context, path, currentID stri
 			continue
 		}
 
-		infoResult, runErr := s.runner.RunContext(ctx, path, showVmInfoArgs(vm.ID), 10*time.Second)
+		infoResult, runErr := s.runForVM(ctx, vm.ID, path, showVmInfoArgs(vm.ID), 10*time.Second)
 		if runErr != nil || infoResult.ExitCode != 0 {
 			// If we cannot determine another VM's VRDE state, we cannot safely
 			// guarantee a collision-free port. Surface the failure sanitized.
@@ -735,7 +738,7 @@ func (s *service) DisableVmConsole(ctx context.Context, id string) error {
 		return err
 	}
 
-	err = s.runControlCommand(ctx, path, disableVrdeArgs(id), "disabling console")
+	err = s.runControlCommand(ctx, id, path, disableVrdeArgs(id), "disabling console")
 	if err != nil {
 		s.logOperation(ctx, id, "console.disable", false, "VirtualBox control command failed.")
 		return err
@@ -765,8 +768,8 @@ func (s *service) resolveVBoxManage(ctx context.Context) (string, error) {
 	return path, nil
 }
 
-func (s *service) runControlCommand(ctx context.Context, path string, args []string, description string) error {
-	result, runErr := s.runner.RunContext(ctx, path, args, 30*time.Second)
+func (s *service) runControlCommand(ctx context.Context, vmID, path string, args []string, description string) error {
+	result, runErr := s.runForVM(ctx, vmID, path, args, 30*time.Second)
 	if runErr != nil {
 		return &ExecutionError{
 			ExitCode:      result.ExitCode,
@@ -797,7 +800,7 @@ func (s *service) enhanceVmStates(ctx context.Context, path string, vms []models
 		if !IsValidVmID(vms[i].ID) {
 			continue
 		}
-		result, err := s.runner.RunContext(ctx, path, showVmInfoArgs(vms[i].ID), 10*time.Second)
+		result, err := s.runForVM(ctx, vms[i].ID, path, showVmInfoArgs(vms[i].ID), 10*time.Second)
 		if err != nil || result.ExitCode != 0 {
 			continue
 		}
@@ -929,7 +932,7 @@ func buildConsoleStatusResponse(id string, output string) models.VmConsoleStatus
 }
 
 func (s *service) readVersion(ctx context.Context, path string) (string, error) {
-	result, err := s.runner.RunContext(ctx, path, []string{"--version"}, 10*time.Second)
+	result, err := s.exec(ctx, path, []string{"--version"}, 10*time.Second)
 	if err != nil {
 		return "", err
 	}

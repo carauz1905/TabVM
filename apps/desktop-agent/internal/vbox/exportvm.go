@@ -67,7 +67,7 @@ func (s *service) ExportVM(ctx context.Context, sourceID, directory string) (mod
 		return models.VmCreateResponse{}, err
 	}
 
-	if err := s.runControlCommandTimeout(ctx, path, exportVmArgs(sourceID, outputPath), "exporting VM", exportTimeout); err != nil {
+	if err := s.runControlCommandTimeout(ctx, sourceID, path, exportVmArgs(sourceID, outputPath), "exporting VM", exportTimeout); err != nil {
 		s.logOperation(ctx, sourceID, "vm.export", false, "VBoxManage export failed.")
 		return models.VmCreateResponse{}, err
 	}

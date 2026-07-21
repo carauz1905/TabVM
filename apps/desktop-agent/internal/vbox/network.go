@@ -105,7 +105,7 @@ func (s *service) ChangeNetworkMode(ctx context.Context, id string, slot int, mo
 		args = modifyvmNicArgs(id, slot, mode, adapter)
 	}
 
-	if err := s.runControlCommand(ctx, path, args, "changing network mode"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, args, "changing network mode"); err != nil {
 		s.logOperation(ctx, id, "network.mode", false, "VBoxManage network mode change failed.")
 		return models.NetworkOperationResponse{}, err
 	}
@@ -122,7 +122,7 @@ func (s *service) ChangeNetworkMode(ctx context.Context, id string, slot int, mo
 // subcommand (bridgedifs or hostonlyifs). Best-effort: a failure yields an empty
 // list so the UI still renders (the user just cannot pick that mode).
 func (s *service) listHostInterfaces(ctx context.Context, path, kind string) []string {
-	result, err := s.runner.RunContext(ctx, path, []string{"list", kind}, 10*time.Second)
+	result, err := s.exec(ctx, path, []string{"list", kind}, 10*time.Second)
 	if err != nil || result.ExitCode != 0 {
 		return []string{}
 	}

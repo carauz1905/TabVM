@@ -138,12 +138,12 @@ func (s *service) MountDvd(ctx context.Context, id, isoPath string) (models.VmOp
 	// Grow the controller first when a brand-new drive needs a port beyond the
 	// current port count.
 	if bumpTo > 0 {
-		if err := s.runControlCommand(ctx, path, setPortCountArgs(id, ctl, bumpTo), "growing the storage controller"); err != nil {
+		if err := s.runControlCommand(ctx, id, path, setPortCountArgs(id, ctl, bumpTo), "growing the storage controller"); err != nil {
 			s.logOperation(ctx, id, "vm.dvd.mount", false, "VBoxManage storagectl portcount failed.")
 			return models.VmOperationResponse{}, err
 		}
 	}
-	if err := s.runControlCommand(ctx, path, storageAttachDvdMediumArgs(id, ctl, port, device, isoPath), "mounting ISO"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, storageAttachDvdMediumArgs(id, ctl, port, device, isoPath), "mounting ISO"); err != nil {
 		s.logOperation(ctx, id, "vm.dvd.mount", false, "VBoxManage storageattach dvddrive failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -184,7 +184,7 @@ func (s *service) EjectDvd(ctx context.Context, id string) (models.VmOperationRe
 		return models.VmOperationResponse{Success: true, VMID: id, Message: "The DVD drive is already empty."}, nil
 	}
 
-	if err := s.runControlCommand(ctx, path, storageAttachDvdMediumArgs(id, od.controller, od.port, od.device, "emptydrive"), "ejecting ISO"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, storageAttachDvdMediumArgs(id, od.controller, od.port, od.device, "emptydrive"), "ejecting ISO"); err != nil {
 		s.logOperation(ctx, id, "vm.dvd.eject", false, "VBoxManage storageattach emptydrive failed.")
 		return models.VmOperationResponse{}, err
 	}

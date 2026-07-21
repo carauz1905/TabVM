@@ -97,9 +97,9 @@ func (s *service) TransferFileToGuest(ctx context.Context, id, filename string, 
 	guestDst := guestDir + "/" + safeName
 
 	// Ensure the destination directory exists (best-effort).
-	_, _ = s.runner.RunContext(ctx, path, guestControlMkdirArgs(id, username, pwPath, guestDir), 30*time.Second)
+	_, _ = s.runForVM(ctx, id, path, guestControlMkdirArgs(id, username, pwPath, guestDir), 30*time.Second)
 
-	result, runErr := s.runner.RunContext(ctx, path, guestControlCopyToArgs(id, username, pwPath, tmpPath, guestDst), 5*time.Minute)
+	result, runErr := s.runForVM(ctx, id, path, guestControlCopyToArgs(id, username, pwPath, tmpPath, guestDst), 5*time.Minute)
 	if runErr != nil || result.ExitCode != 0 {
 		s.logOperation(ctx, id, "file.transfer", false, "Guest control copy failed.")
 		return models.VmFileTransferResponse{

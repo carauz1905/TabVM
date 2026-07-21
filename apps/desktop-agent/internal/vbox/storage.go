@@ -54,7 +54,7 @@ func (s *service) VmStorage(ctx context.Context, id string) (models.VmStorageRes
 		if att.uuid == "" {
 			continue
 		}
-		med, medErr := s.runner.RunContext(ctx, path, showMediumInfoArgs(att.uuid), 10*time.Second)
+		med, medErr := s.runForVM(ctx, id, path, showMediumInfoArgs(att.uuid), 10*time.Second)
 		if medErr != nil || med.ExitCode != 0 {
 			continue
 		}
@@ -120,7 +120,7 @@ func (s *service) ResizeDisk(ctx context.Context, id, uuid string, sizeMB int64)
 		return models.VmOperationResponse{}, &ValidationError{Message: "The VM is running. Power it off before resizing a disk."}
 	}
 
-	med, medErr := s.runner.RunContext(ctx, path, showMediumInfoArgs(uuid), 10*time.Second)
+	med, medErr := s.runForVM(ctx, id, path, showMediumInfoArgs(uuid), 10*time.Second)
 	if medErr != nil || med.ExitCode != 0 {
 		return models.VmOperationResponse{}, &ExecutionError{
 			ExitCode:      med.ExitCode,
@@ -137,7 +137,7 @@ func (s *service) ResizeDisk(ctx context.Context, id, uuid string, sizeMB int64)
 	}
 
 	// Growing a large disk rewrites metadata and can take a while.
-	if err := s.runControlCommandTimeout(ctx, path, resizeDiskArgs(uuid, sizeMB), "resizing disk", 10*time.Minute); err != nil {
+	if err := s.runControlCommandTimeout(ctx, id, path, resizeDiskArgs(uuid, sizeMB), "resizing disk", 10*time.Minute); err != nil {
 		s.logOperation(ctx, id, "disk.resize", false, "VBoxManage modifymedium resize failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -219,17 +219,17 @@ func (s *service) AddDisk(ctx context.Context, id string, sizeMB int64) (models.
 		return models.VmOperationResponse{}, &ExecutionError{Message: "Could not choose a filename for the new disk."}
 	}
 
-	if err := s.runControlCommandTimeout(ctx, path, createDiskMBArgs(diskPath, sizeMB), "creating disk", 5*time.Minute); err != nil {
+	if err := s.runControlCommandTimeout(ctx, id, path, createDiskMBArgs(diskPath, sizeMB), "creating disk", 5*time.Minute); err != nil {
 		s.logOperation(ctx, id, "disk.add", false, "VBoxManage createmedium failed.")
 		return models.VmOperationResponse{}, err
 	}
 	if bumpTo > 0 {
-		if err := s.runControlCommand(ctx, path, setPortCountArgs(id, ctlName, bumpTo), "growing the storage controller"); err != nil {
+		if err := s.runControlCommand(ctx, id, path, setPortCountArgs(id, ctlName, bumpTo), "growing the storage controller"); err != nil {
 			s.logOperation(ctx, id, "disk.add", false, "VBoxManage storagectl portcount failed.")
 			return models.VmOperationResponse{}, err
 		}
 	}
-	if err := s.runControlCommand(ctx, path, storageAttachAtArgs(id, ctlName, port, diskPath), "attaching disk"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, storageAttachAtArgs(id, ctlName, port, diskPath), "attaching disk"); err != nil {
 		s.logOperation(ctx, id, "disk.add", false, "VBoxManage storageattach failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -411,13 +411,13 @@ func (s *service) DetachDisk(ctx context.Context, id, uuid string, deleteFile bo
 	}
 
 	if deleteFile {
-		med, medErr := s.runner.RunContext(ctx, path, showMediumInfoArgs(uuid), 10*time.Second)
+		med, medErr := s.runForVM(ctx, id, path, showMediumInfoArgs(uuid), 10*time.Second)
 		if medErr == nil && med.ExitCode == 0 && parseMediumDetails(med.StandardOutput).hasChildren {
 			return models.VmOperationResponse{}, &ValidationError{Message: "This disk has snapshots. Delete them before deleting the disk."}
 		}
 	}
 
-	if err := s.runControlCommand(ctx, path, detachDiskArgs(id, ctl, port, device), "detaching disk"); err != nil {
+	if err := s.runControlCommand(ctx, id, path, detachDiskArgs(id, ctl, port, device), "detaching disk"); err != nil {
 		s.logOperation(ctx, id, "disk.detach", false, "VBoxManage storageattach detach failed.")
 		return models.VmOperationResponse{}, err
 	}
@@ -428,7 +428,7 @@ func (s *service) DetachDisk(ctx context.Context, id, uuid string, deleteFile bo
 	}
 
 	// Deleting the image can rewrite metadata; allow a little longer.
-	if err := s.runControlCommandTimeout(ctx, path, closeMediumDeleteArgs(uuid), "deleting disk image", 5*time.Minute); err != nil {
+	if err := s.runControlCommandTimeout(ctx, id, path, closeMediumDeleteArgs(uuid), "deleting disk image", 5*time.Minute); err != nil {
 		s.logOperation(ctx, id, "disk.detach", false, "VBoxManage closemedium --delete failed.")
 		return models.VmOperationResponse{}, err
 	}
