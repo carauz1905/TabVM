@@ -209,6 +209,75 @@ func TestRunForVM_GlobalCapLimitsConcurrency(t *testing.T) {
 	}
 }
 
+// TestExec_SaturatedGlobalCapFailsFast proves that when every global slot is
+// held, a call whose context has no deadline (e.g. a dashboard read using
+// r.Context()) no longer hangs for the full duration of the in-flight ops:
+// exec bounds the slot wait by the command's own timeout and returns
+// context.DeadlineExceeded quickly with ExitCode -1.
+func TestExec_SaturatedGlobalCapFailsFast(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox serialization tests run on Windows in CI")
+	}
+
+	// vboxSlots is a package global: fill it completely and drain it afterwards
+	// so other tests see an empty cap again.
+	for i := 0; i < maxConcurrentVBox; i++ {
+		vboxSlots <- struct{}{}
+	}
+	defer func() {
+		for i := 0; i < maxConcurrentVBox; i++ {
+			<-vboxSlots
+		}
+	}()
+
+	run := newCountingRunner()
+	svc := &service{runner: run, vmLocks: newVMLocker()}
+
+	start := time.Now()
+	res, err := svc.exec(context.Background(), "VBoxManage", listVmsArgs(), 50*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err != context.DeadlineExceeded {
+		t.Fatalf("expected context.DeadlineExceeded when the global cap is saturated, got %v", err)
+	}
+	if res.ExitCode != -1 {
+		t.Fatalf("expected ExitCode -1 on a bounded slot-wait failure, got %d", res.ExitCode)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("expected a fast, bounded failure well under a second, waited %v", elapsed)
+	}
+	if got := run.maxConcurrency(); got != 0 {
+		t.Fatalf("expected the command not to run when no slot was acquired, saw concurrency %d", got)
+	}
+}
+
+// TestAcquireSlot_FreeCapRunsCommand proves the other side: when a slot is free,
+// acquireSlot claims it (returning nil) and exec runs the command through to
+// RunContext.
+func TestAcquireSlot_FreeCapRunsCommand(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox serialization tests run on Windows in CI")
+	}
+
+	sem := make(chan struct{}, 1)
+	if err := acquireSlot(context.Background(), sem, 50*time.Millisecond); err != nil {
+		t.Fatalf("expected acquireSlot to claim a free slot, got %v", err)
+	}
+	<-sem // release what we acquired
+
+	run := &fakeRunner{results: map[string]runner.Result{
+		"VBoxManage " + joinArgs(listVmsArgs()): {ExitCode: 0},
+	}}
+	svc := &service{runner: run, vmLocks: newVMLocker()}
+	res, err := svc.exec(context.Background(), "VBoxManage", listVmsArgs(), time.Second)
+	if err != nil {
+		t.Fatalf("unexpected error with a free cap: %v", err)
+	}
+	if res.ExitCode != 0 {
+		t.Fatalf("expected the command to run through to RunContext (ExitCode 0), got %d", res.ExitCode)
+	}
+}
+
 // TestReadShowVmInfo_SerializesSameVM proves the gate reaches a real read helper:
 // two concurrent readShowVmInfo calls for the same VM are serialized end to end.
 func TestReadShowVmInfo_SerializesSameVM(t *testing.T) {

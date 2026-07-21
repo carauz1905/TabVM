@@ -46,6 +46,31 @@ const humanStorageNonIsoOptical = `Storage Controllers:
   Port 1, Unit 0: UUID: 22222222-2222-4b6f-a2fe-8a0d93173323
     Location: "C:\ISOs\tools.viso"`
 
+// humanStorageFloppyBeforeSata reproduces the review's failure input: a floppy
+// controller (Type I82078) is enumerated BEFORE the SATA DVD, and both expose an
+// "Empty" slot. A floppy bus only accepts `--type fdd`, so its empty slot must
+// never be picked as the optical drive — the SATA DVD on port 1 must win.
+const humanStorageFloppyBeforeSata = `Storage Controllers:
+#0: 'Floppy', Type: I82078, Instance: 0, Ports: 1 (max 1)
+  Port 0, Unit 0: Empty
+#1: 'SATA', Type: IntelAhci, Instance: 0, Ports: 2 (max 30), Bootable
+  Port 0, Unit 0: UUID: 846b821b-1f6c-4c75-88c8-d462b6596f87
+    Location: "C:\VMs\disk.vdi"
+  Port 1, Unit 0: Empty`
+
+func TestParseOpticalDrive_SkipsFloppyController(t *testing.T) {
+	od := parseOpticalDrive(humanStorageFloppyBeforeSata)
+	if !od.present {
+		t.Fatalf("expected the SATA optical drive to be found past the floppy controller")
+	}
+	if od.controller != "SATA" || od.port != 1 || od.device != 0 {
+		t.Fatalf("expected the SATA DVD at port 1, not the floppy: %+v", od)
+	}
+	if od.medium != "" {
+		t.Fatalf("expected an empty medium on the SATA DVD, got %q", od.medium)
+	}
+}
+
 func TestParseOpticalDrive_WithIso(t *testing.T) {
 	od := parseOpticalDrive(humanStorageWithIso)
 	if !od.present {

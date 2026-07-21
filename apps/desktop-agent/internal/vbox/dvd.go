@@ -32,6 +32,7 @@ import (
 // is returned, since a VM normally has exactly one.
 var (
 	controllerHeaderRe = regexp.MustCompile(`^#\d+:\s+'([^']*)'`)
+	controllerTypeRe   = regexp.MustCompile(`Type:\s*([^,]+)`)
 	attachmentLineRe   = regexp.MustCompile(`^Port (\d+), Unit (\d+):\s*(.*)$`)
 )
 
@@ -49,14 +50,23 @@ type opticalDrive struct {
 func parseOpticalDrive(human string) opticalDrive {
 	lines := strings.Split(human, "\n")
 	currentCtl := ""
+	currentIsFloppy := false
 	for i := 0; i < len(lines); i++ {
 		trimmed := strings.TrimSpace(lines[i])
 		if m := controllerHeaderRe.FindStringSubmatch(trimmed); m != nil {
 			currentCtl = m[1]
+			currentIsFloppy = isFloppyController(currentCtl, trimmed)
 			continue
 		}
 		m := attachmentLineRe.FindStringSubmatch(trimmed)
 		if m == nil {
+			continue
+		}
+		if currentIsFloppy {
+			// A floppy bus only accepts `--type fdd`, so its (empty) slot must
+			// never be reported as the optical drive: storageattach --type
+			// dvddrive on a Floppy controller is rejected by VBoxManage. Keep
+			// scanning for a real optical-capable controller (IDE/SATA/...).
 			continue
 		}
 		port, _ := strconv.Atoi(m[1])
@@ -78,6 +88,22 @@ func parseOpticalDrive(human string) opticalDrive {
 		}
 	}
 	return opticalDrive{present: false}
+}
+
+// isFloppyController reports whether a controller header describes the floppy bus,
+// identified by the controller name `Floppy` or the controller type `I82078`
+// (both matched case-insensitively). A floppy controller only accepts `--type
+// fdd`, so its empty slot must be excluded when picking the optical drive:
+// otherwise a Floppy enumerated before the real DVD would be chosen and the
+// subsequent `storageattach --type dvddrive` would be rejected by VBoxManage.
+func isFloppyController(name, header string) bool {
+	if strings.EqualFold(strings.TrimSpace(name), "Floppy") {
+		return true
+	}
+	if m := controllerTypeRe.FindStringSubmatch(header); m != nil {
+		return strings.EqualFold(strings.TrimSpace(m[1]), "I82078")
+	}
+	return false
 }
 
 // locationAfter returns the quoted path from the first `Location:` line following

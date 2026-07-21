@@ -52,18 +52,34 @@ func (l *vmLocker) chanFor(id string) chan struct{} {
 	return c
 }
 
+// acquireSlot claims a slot from sem, bounding the wait by the command's own
+// timeout so a saturated global cap turns into a fast, bounded failure instead
+// of an unbounded hang (a read with no request deadline no longer blocks for the
+// full duration of several multi-minute operations). The caller's ctx still
+// cancels the wait immediately. Once the slot is held, RunContext applies the
+// full timeout to the command itself.
+func acquireSlot(ctx context.Context, sem chan struct{}, timeout time.Duration) error {
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	select {
+	case sem <- struct{}{}:
+		return nil
+	case <-waitCtx.Done():
+		return waitCtx.Err()
+	}
+}
+
 // exec runs VBoxManage under the global concurrency cap only. It is the single
 // chokepoint every VBoxManage invocation in this package flows through, so the
 // cap is enforced uniformly. Use it directly for calls that do not target a
 // specific VM (host discovery, `list vms`, `--version`); VM-targeting calls go
-// through runForVM, which layers the per-VM gate on top. It respects context
-// cancellation while waiting for a free slot so a cancelled request never blocks
-// indefinitely behind a saturated cap.
+// through runForVM, which layers the per-VM gate on top. The wait for a free slot
+// honours context cancellation and is additionally bounded by the command's own
+// timeout (see acquireSlot), so a read with no request deadline can never hang
+// behind a saturated cap; the run itself still receives the full timeout.
 func (s *service) exec(ctx context.Context, path string, args []string, timeout time.Duration) (runner.Result, error) {
-	select {
-	case vboxSlots <- struct{}{}:
-	case <-ctx.Done():
-		return runner.Result{ExitCode: -1}, ctx.Err()
+	if err := acquireSlot(ctx, vboxSlots, timeout); err != nil {
+		return runner.Result{ExitCode: -1}, err
 	}
 	defer func() { <-vboxSlots }()
 
