@@ -937,7 +937,7 @@ export function MachinesView() {
           <HardwarePanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <StoragePanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <FilesPanel vmId={focusVm.id} vmName={focusVm.name} />
-          {focusRunning && <GuestControlPanel vmId={focusVm.id} vmName={focusVm.name} />}
+          {focusRunning && <GuestControlPanel key={focusVm.id} vmId={focusVm.id} vmName={focusVm.name} />}
           <NetworkPanel vmId={focusVm.id} onChanged={() => void refresh()} />
           <SnapshotsPanel vmId={focusVm.id} vmName={focusVm.name} onChanged={() => void refresh()} />
         </section>

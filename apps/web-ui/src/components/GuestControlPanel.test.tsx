@@ -1,8 +1,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { GuestControlPanel } from './GuestControlPanel';
+import { GuestControlPanel, tokenizeCommand } from './GuestControlPanel';
 import { api } from '../api/client';
 import { clearGuestCreds } from '../hooks/guestCreds';
+
+describe('tokenizeCommand', () => {
+  it('splits on whitespace', () => {
+    expect(tokenizeCommand('/bin/ls -la /home')).toEqual(['/bin/ls', '-la', '/home']);
+  });
+  it('keeps a double-quoted argument with spaces intact', () => {
+    expect(tokenizeCommand('/bin/cat "/home/user/my file.txt"')).toEqual([
+      '/bin/cat',
+      '/home/user/my file.txt',
+    ]);
+  });
+  it('keeps a single-quoted argument intact', () => {
+    expect(tokenizeCommand("/bin/echo 'a b c'")).toEqual(['/bin/echo', 'a b c']);
+  });
+  it('ignores surrounding/extra whitespace and returns empty for blank input', () => {
+    expect(tokenizeCommand('   ')).toEqual([]);
+    expect(tokenizeCommand('  /bin/true   ')).toEqual(['/bin/true']);
+  });
+});
 
 vi.mock('../api/client', () => {
   class ApiError extends Error {

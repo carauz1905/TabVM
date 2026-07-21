@@ -19,6 +19,38 @@ function messageFor(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+// tokenizeCommand splits a command line into tokens, honoring single and double
+// quotes so an argument that contains spaces (e.g. a quoted path) stays intact
+// instead of being split into several wrong arguments. Surrounding quotes are
+// removed; a naive split on whitespace would mangle such arguments.
+export function tokenizeCommand(input: string): string[] {
+  const tokens: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+  let hasToken = false;
+  for (const ch of input) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else current += ch;
+      hasToken = true;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      hasToken = true;
+    } else if (/\s/.test(ch)) {
+      if (hasToken) {
+        tokens.push(current);
+        current = '';
+        hasToken = false;
+      }
+    } else {
+      current += ch;
+      hasToken = true;
+    }
+  }
+  if (hasToken) tokens.push(current);
+  return tokens;
+}
+
 // GuestControlPanel exposes two VBoxManage guest-control operations for a running
 // Linux VM: running a command inside the guest and copying a file out of it. Both
 // need guest credentials, which are entered once here and cached in memory for
@@ -64,7 +96,7 @@ export function GuestControlPanel({ vmId, vmName }: GuestControlPanelProps) {
       setRunError(t('Enter the guest username and password first.'));
       return;
     }
-    const parts = command.trim().split(/\s+/).filter((p) => p !== '');
+    const parts = tokenizeCommand(command.trim());
     if (parts.length === 0) {
       setRunError(t('Enter a command to run (an absolute path, for example /usr/bin/uptime).'));
       return;

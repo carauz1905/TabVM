@@ -48,6 +48,7 @@ func (s *service) RunInGuest(ctx context.Context, id, exe string, args []string,
 			Message:             "Running a command in the guest needs the guest username and password.",
 		}, nil
 	}
+	username = strings.TrimSpace(username)
 	if !isPlausibleGuestUsername(username) {
 		return models.VmGuestRunResponse{}, &ValidationError{Message: "Guest username contains unsupported characters."}
 	}
@@ -94,7 +95,11 @@ func (s *service) RunInGuest(ctx context.Context, id, exe string, args []string,
 		}, nil
 	}
 
-	output, truncated := capGuestOutput(combinedOutput(result.StandardOutput, result.StandardError))
+	// Only the guest's stdout is returned. result.StandardError here is
+	// VBoxManage's OWN diagnostics (the guest's stderr is not captured — combining
+	// --wait-stderr with --wait-stdout triggers VERR_DUPLICATE on this version), so
+	// folding it into the guest output would be misleading.
+	output, truncated := capGuestOutput(result.StandardOutput)
 	s.logOperation(ctx, id, "vm.guest.run", true, "")
 	return models.VmGuestRunResponse{
 		Success:   true,
@@ -125,6 +130,7 @@ func (s *service) CopyFromGuest(ctx context.Context, id, guestPath, hostDir, use
 			Message:             "Copying a file out of the guest needs the guest username and password.",
 		}, nil
 	}
+	username = strings.TrimSpace(username)
 	if !isPlausibleGuestUsername(username) {
 		return models.VmGuestCopyFromResponse{}, &ValidationError{Message: "Guest username contains unsupported characters."}
 	}
