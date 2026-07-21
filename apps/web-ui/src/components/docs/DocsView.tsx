@@ -224,6 +224,8 @@ export function DocsView() {
               labels={{ free: t('free port'), attached: t('new disk attached') }}
             />
           </DemoStage>
+          <h4>{d.storage.optical.title}</h4>
+          <p>{d.storage.optical.body}</p>
           <h4>{d.storage.remove.title}</h4>
           <p>{d.storage.remove.body}</p>
           <DemoStage caption="detach vs delete">

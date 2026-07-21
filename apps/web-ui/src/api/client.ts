@@ -27,6 +27,7 @@ import type {
   VmHardwareResponse,
   VmStorageResponse,
   DiskInfo,
+  OpticalDrive,
   Snapshot,
   SnapshotsResponse,
   SnapshotOperationResponse,
@@ -385,10 +386,27 @@ function isDiskInfo(value: unknown): value is DiskInfo {
   );
 }
 
+function isOpticalDrive(value: unknown): value is OpticalDrive {
+  return (
+    hasBoolean(value, 'present') &&
+    hasString(value, 'medium') &&
+    hasString(value, 'name') &&
+    hasString(value, 'controller') &&
+    hasNumber(value, 'port') &&
+    hasNumber(value, 'device')
+  );
+}
+
 function isVmStorageResponse(value: unknown): value is VmStorageResponse {
   if (typeof value !== 'object' || value === null) return false;
   const r = value as Record<string, unknown>;
-  return hasString(value, 'id') && hasBoolean(value, 'editable') && Array.isArray(r.disks) && r.disks.every(isDiskInfo);
+  return (
+    hasString(value, 'id') &&
+    hasBoolean(value, 'editable') &&
+    Array.isArray(r.disks) &&
+    r.disks.every(isDiskInfo) &&
+    isOpticalDrive(r.optical)
+  );
 }
 
 function isVmFileTransferResponse(value: unknown): value is VmFileTransferResponse {
@@ -700,6 +718,21 @@ export const api = {
       `/api/vms/${encodeURIComponent(id)}/storage/detach`,
       isVmOperationResponse,
       { method: 'POST', body: { uuid, deleteFile } },
+    ),
+  // mountDvd inserts an ISO into the VM's optical drive. Live-capable — VirtualBox
+  // hot-swaps optical media, so it works whether the VM is running or stopped.
+  mountDvd: (id: string, isoPath: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/storage/dvd`,
+      isVmOperationResponse,
+      { method: 'POST', body: { isoPath } },
+    ),
+  // ejectDvd empties the VM's optical drive, keeping the drive itself.
+  ejectDvd: (id: string) =>
+    request<VmOperationResponse>(
+      `/api/vms/${encodeURIComponent(id)}/storage/dvd/eject`,
+      isVmOperationResponse,
+      { method: 'POST' },
     ),
   getSnapshots: (id: string) =>
     request<SnapshotsResponse>(`/api/vms/${encodeURIComponent(id)}/snapshots`, isSnapshotsResponse),
