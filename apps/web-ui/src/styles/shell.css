@@ -319,11 +319,13 @@
 .tv-vm.is-focused::before { opacity: 1; }
 .tv-vm-ico { width: 38px; height: 38px; flex: none; display: grid; place-items: center; }
 .tv-vm-ico svg { width: 26px; height: 26px; }
-.tv-vm-meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.tv-vm-name { display: flex; align-items: center; gap: 11px; }
-.tv-vm-name h3 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0; letter-spacing: -0.01em; }
+/* min-width floor keeps the name/id column from collapsing to 0 when a running
+   VM's action bar is wide, which used to push the actions on top of the id. */
+.tv-vm-meta { min-width: 150px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; }
+.tv-vm-name { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.tv-vm-name h3 { font-family: var(--font-display); font-weight: 600; font-size: 15px; margin: 0; letter-spacing: -0.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-state {
-  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px;
+  display: inline-flex; align-items: center; gap: 6px; flex: none; font-family: var(--font-mono); font-size: 10px;
   letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill);
   color: var(--st); background: var(--st-bg);
 }
@@ -333,10 +335,12 @@
 .tv-vm.booting { --st: #c98a2e; --st-bg: rgba(201, 138, 46, 0.1); }
 .tv-vm.running .tv-state .d { animation: tv-breathe 2.6s var(--ease-out) infinite; }
 .tv-vm.booting .tv-state .d { animation: tv-breathe 1.4s var(--ease-out) infinite; }
-.tv-vm-sub { display: flex; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex-wrap: wrap; }
-.tv-vm-sub .id { color: var(--faint); }
+.tv-vm-sub { display: flex; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex-wrap: nowrap; min-width: 0; }
+.tv-vm-sub .id { color: var(--faint); display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-vm-sub b { color: var(--text); font-weight: 500; }
-.tv-vm-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+/* The action bar wraps to a second line (right-aligned) when the row is too
+   narrow to hold every button, instead of overflowing onto the name/id. */
+.tv-vm-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; row-gap: 6px; flex: 0 1 auto; min-width: 0; }
 .tv-quiet { display: inline-flex; gap: 6px; opacity: 0; transform: translateX(4px); transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
 .tv-vm:hover .tv-quiet,
 .tv-vm:focus-within .tv-quiet { opacity: 1; transform: none; }
