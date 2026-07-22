@@ -1412,6 +1412,34 @@ func TestStartVM_RetriesOnLockContention(t *testing.T) {
 	}
 }
 
+// TestStartVM_RetriesOnUnresolvedHostError covers the transient host-platform
+// failure (VERR_UNRESOLVED_ERROR) that VirtualBox intermittently returns when a
+// Windows hypervisor backend is not yet ready: the first startvm fails and the
+// retry succeeds.
+func TestStartVM_RetriesOnUnresolvedHostError(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	id := "11111111-1111-1111-1111-111111111111"
+	run := &queuedRunner{
+		queues: map[string][]runner.Result{
+			path + " --version": {{ExitCode: 0, StandardOutput: "7.2.12r174389\n"}},
+			path + " showvminfo " + id + " --machinereadable": {{ExitCode: 0, StandardOutput: "VMState=\"poweroff\""}},
+			path + " startvm " + id + " --type headless": {
+				{ExitCode: 1, StandardError: "VBoxManage.exe: error: Unresolved (unknown) host platform error. (VERR_UNRESOLVED_ERROR)"},
+				{ExitCode: 0},
+			},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if err := svc.StartVM(context.Background(), id); err != nil {
+		t.Fatalf("expected retry to succeed, got %v", err)
+	}
+}
+
 // TestStartVM_LockContentionExhaustsRetries covers Part C: persistent lock
 // contention surfaces as an *ExecutionError after the retries are exhausted.
 func TestStartVM_LockContentionExhaustsRetries(t *testing.T) {

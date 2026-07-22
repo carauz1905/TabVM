@@ -326,11 +326,12 @@ func (s *service) StartVM(ctx context.Context, id string) error {
 }
 
 // runControlWithLockRetry runs a control command and retries a bounded number
-// of times when it fails because the VM is momentarily locked by another
-// VirtualBox session — a transient condition behind intermittent start/resume
-// failures, typically caused by the agent's own concurrent read commands. It is
-// context-aware and returns the last error when contention persists or when the
-// error is not lock contention.
+// of times when it fails with a transient start/resume condition: the VM being
+// momentarily locked by another VirtualBox session (typically the agent's own
+// concurrent read commands), or a transient host-platform initialization failure
+// (VERR_UNRESOLVED_ERROR under an active Windows hypervisor). See
+// isRetryableStartError. It is context-aware and returns the last error when the
+// condition persists or when the error is not retryable.
 func (s *service) runControlWithLockRetry(ctx context.Context, vmID, path string, args []string, description string) error {
 	const maxAttempts = 3
 	const backoff = 400 * time.Millisecond
@@ -342,7 +343,7 @@ func (s *service) runControlWithLockRetry(ctx context.Context, vmID, path string
 			return nil
 		}
 		lastErr = err
-		if !isLockContention(err) {
+		if !isRetryableStartError(err) {
 			return err
 		}
 		if attempt == maxAttempts {
@@ -357,6 +358,15 @@ func (s *service) runControlWithLockRetry(ctx context.Context, vmID, path string
 	return lastErr
 }
 
+// isRetryableStartError reports whether a start/resume execution error is a
+// transient condition worth retrying: the VM being momentarily locked by another
+// VirtualBox session (isLockContention), or a transient host-platform
+// initialization failure (isUnresolvedHostError). Both clear on a quick retry;
+// a genuinely permanent error is returned unchanged after the bounded attempts.
+func isRetryableStartError(err error) bool {
+	return isLockContention(err) || isUnresolvedHostError(err)
+}
+
 // isLockContention reports whether an execution error indicates the VM was
 // momentarily locked by another VirtualBox session, which is typically
 // transient and worth retrying.
@@ -368,6 +378,20 @@ func isLockContention(err error) bool {
 	stderr := strings.ToLower(execErr.StandardError)
 	return strings.Contains(stderr, "already locked") ||
 		strings.Contains(stderr, strings.ToLower("VBOX_E_INVALID_OBJECT_STATE"))
+}
+
+// isUnresolvedHostError reports whether an execution error is the transient
+// "Unresolved (unknown) host platform error" (VERR_UNRESOLVED_ERROR) that
+// VirtualBox intermittently returns when starting a VM while a Windows
+// hypervisor backend (Hyper-V/VBS) was momentarily not ready. It clears on a
+// quick retry, so it is treated like lock contention rather than surfaced.
+func isUnresolvedHostError(err error) bool {
+	execErr, ok := err.(*ExecutionError)
+	if !ok {
+		return false
+	}
+	stderr := strings.ToLower(execErr.StandardError)
+	return strings.Contains(stderr, strings.ToLower("VERR_UNRESOLVED_ERROR"))
 }
 
 func (s *service) StopVM(ctx context.Context, id string) error {
