@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-22
+
+### Fixed
+
+- Running VM row: the action bar no longer overlaps the machine name and UUID.
+  On a running VM the button set could collapse the name/UUID column to zero
+  width and render on top of it, wrapping the UUID across several lines; the
+  column now keeps a minimum width with the name and UUID on one line, and the
+  action bar wraps to a second line instead of overflowing. (#42)
+
 ## [0.3.1] - 2026-07-22
 
 ### Fixed
@@ -115,7 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/carauz1905/TabVM/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/carauz1905/TabVM/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/carauz1905/TabVM/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/carauz1905/TabVM/compare/v0.1.2...v0.2.0
