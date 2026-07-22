@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-22
+
+### Fixed
+
+- Starting a VM now retries automatically on the transient
+  `VERR_UNRESOLVED_ERROR` host-platform failure that VirtualBox intermittently
+  returns under an active Windows hypervisor (Hyper-V/VBS), so a self-clearing
+  error no longer surfaces to the user. A genuinely persistent failure still
+  surfaces after the bounded retries. (#40)
+
 ## [0.3.0] - 2026-07-21
 
 ### Added
@@ -105,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/carauz1905/TabVM/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/carauz1905/TabVM/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/carauz1905/TabVM/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/carauz1905/TabVM/compare/v0.1.1...v0.1.2
