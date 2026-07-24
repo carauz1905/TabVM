@@ -69,7 +69,7 @@ func TestListSnapshots_NoSnapshotsIsEmptyListNotError(t *testing.T) {
 
 // TestListSnapshots_RealFailureStillErrors ensures the fix does not swallow a
 // genuine failure: a non-zero exit WITHOUT the no-snapshots marker must still
-// surface as an ExecutionError.
+// surface as an ExecutionError carrying the exit code.
 func TestListSnapshots_RealFailureStillErrors(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("VirtualBox discovery is Windows-only in this test")
@@ -91,7 +91,15 @@ func TestListSnapshots_RealFailureStillErrors(t *testing.T) {
 	}
 
 	svc := NewService(run, Config{CandidatePaths: []string{path}})
-	if _, err := svc.ListSnapshots(context.Background(), id); err == nil {
+	_, err := svc.ListSnapshots(context.Background(), id)
+	if err == nil {
 		t.Fatal("expected an error for a genuine snapshot list failure, got nil")
+	}
+	var execErr *ExecutionError
+	if !errors.As(err, &execErr) {
+		t.Fatalf("expected an *ExecutionError, got %T: %v", err, err)
+	}
+	if execErr.ExitCode != 1 {
+		t.Fatalf("expected exit code 1 in the ExecutionError, got %d", execErr.ExitCode)
 	}
 }
