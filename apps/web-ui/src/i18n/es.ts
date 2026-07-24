@@ -482,6 +482,10 @@ export const es: Record<string, string> = {
   'Filter activity': 'Filtrar actividad',
   'Clear filter': 'Limpiar filtro',
   'No matches.': 'Sin resultados.',
+  // ----- Docs manual search -----
+  'Search the manual': 'Buscar en el manual',
+  'Clear search': 'Limpiar búsqueda',
+  'No results for "{q}"': 'Sin resultados para "{q}"',
   // Activity action labels (English label = key, produced by actionLabel()).
   // Labels already defined above (Install/Update Guest Additions, Delete VM,
   // Enable/Disable serial terminal, Add disk, Mount ISO, Take snapshot,
