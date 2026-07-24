@@ -398,7 +398,7 @@ export const es: Record<string, string> = {
   'Install from ISO': 'Instalar desde ISO',
   'Other OS (manual install)': 'Otro SO (instalación manual)',
   'Import a prebuilt appliance that already has Guest Additions. Best for Kali. One click, no install.':
-    'Importe un appliance prehorneado que ya tiene Guest Additions. Ideal para Kali. Un clic, sin instalación.',
+    'Importe un appliance preconfigurado que ya tiene Guest Additions. Ideal para Kali. Un clic, sin instalación.',
   'Create a VM and run an automated Ubuntu, Debian or Windows install with Guest Additions included. Kali is not supported here.':
     'Cree una VM y ejecute una instalación automatizada de Ubuntu, Debian o Windows con Guest Additions incluido. Kali no está soportado aquí.',
   'Create a VM with any bootable ISO attached. You install the OS yourself in the console; Guest Additions are not installed automatically.':

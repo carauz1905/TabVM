@@ -514,7 +514,7 @@ const es: DocsStrings = {
     lead: 'El asistente Nueva VM tiene tres caminos. Los dos primeros le dejan con Guest Additions ya funcionando; el tercero le da control total para cualquier otro sistema operativo.',
     importCard: {
       title: 'Importar una imagen',
-      body: 'Apúntelo a un appliance .ova prehorneado (por ejemplo una imagen de laboratorio Kali). Un clic la importa, lista para iniciar, con Guest Additions ya dentro.',
+      body: 'Apúntelo a un appliance .ova preconfigurado (por ejemplo una imagen de laboratorio Kali). Un clic la importa, lista para iniciar, con Guest Additions ya dentro.',
     },
     installCard: {
       title: 'Instalar desde ISO',
