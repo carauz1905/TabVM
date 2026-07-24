@@ -36,7 +36,7 @@ export const es: Record<string, string> = {
   'Toggle theme': 'Cambiar tema',
   'Switch language': 'Cambiar idioma',
   'Accent color': 'Color de acento',
-  Teal: 'Turquesa',
+  Teal: 'Verde azulado',
   Pink: 'Rosa',
   Orange: 'Naranja',
   Yellow: 'Amarillo',
@@ -55,7 +55,7 @@ export const es: Record<string, string> = {
   'No virtual machines found.': 'No se encontraron máquinas virtuales.',
   'Install Guest Additions': 'Instalar Guest Additions',
   'inserting…': 'insertando…',
-  'disc inserted · run installer in VM': 'disco insertado · ejecuta el instalador en la VM',
+  'disc inserted · run installer in VM': 'disco insertado · ejecute el instalador en la VM',
   'Update Guest Additions': 'Actualizar Guest Additions',
   'stopping…': 'deteniendo…',
   stop: 'detener',
@@ -119,12 +119,12 @@ export const es: Record<string, string> = {
   connecting: 'conectando',
   disconnected: 'desconectado',
   'A serial console gives you a shell in a tab, no GUI window.':
-    'Una consola serial te da una shell en una pestaña, sin ventana gráfica.',
+    'Una consola serial le da una shell en una pestaña, sin ventana gráfica.',
   'Enable serial terminal': 'Habilitar terminal serial',
   'Disable serial terminal': 'Deshabilitar terminal serial',
   'Power off the VM to enable the serial terminal.':
-    'Apaga la máquina para habilitar la terminal serial.',
-  'Start the VM to use the terminal.': 'Enciende la máquina para usar la terminal.',
+    'Apague la máquina para habilitar la terminal serial.',
+  'Start the VM to use the terminal.': 'Encienda la máquina para usar la terminal.',
   'Open terminal': 'Abrir terminal',
   'Enable login (getty)': 'Habilitar inicio de sesión (getty)',
   'Turns on a login prompt on the serial port. Needs a root or sudo account.':
@@ -138,11 +138,15 @@ export const es: Record<string, string> = {
   'The terminal is connected but the guest is not responding.':
     'La terminal está conectada pero el guest no responde.',
   'Activate it with a guest account (root or sudo). It is used once.':
-    'Actívala con una cuenta de la máquina virtual (root o con sudo). Se usa una sola vez.',
+    'Actívela con una cuenta de la máquina virtual (root o con sudo). Se usa una sola vez.',
   'Activate terminal': 'Activar terminal',
   'Loading…': 'Cargando…',
   cancel: 'cancelar',
   close: 'cerrar',
+  // Sentence-case variants for modal action buttons (tv-btn / modal pairs);
+  // the lowercase keys above stay for mono row actions and icon aria-labels.
+  Cancel: 'Cancelar',
+  Close: 'Cerrar',
   'updating…': 'actualizando…',
   Update: 'Actualizar',
   'Runs the installer inside the guest over VirtualBox guest control. Requires a running Linux guest with Guest Additions already active. Use root, or a user with sudo — credentials are used once and never stored.':
@@ -229,9 +233,9 @@ export const es: Record<string, string> = {
   Unavailable: 'no disponible',
   'No USB devices detected on the host.': 'No se detectaron dispositivos USB en el anfitrión.',
   'This VM has no USB controller enabled. Power the VM off and enable USB in its settings — the controller cannot be turned on while the VM is running.':
-    'Esta VM no tiene un controlador USB habilitado. Apaga la VM y habilita USB en su configuración: el controlador no se puede activar mientras la VM está en marcha.',
+    'Esta VM no tiene un controlador USB habilitado. Apague la VM y habilite USB en su configuración: el controlador no se puede activar mientras la VM está en marcha.',
   'USB 2.0 and 3.0 passthrough needs the Oracle VirtualBox Extension Pack. Install it to attach most devices.':
-    'El paso de USB 2.0 y 3.0 requiere el Oracle VirtualBox Extension Pack. Instálalo para conectar la mayoría de los dispositivos.',
+    'El paso de USB 2.0 y 3.0 requiere el Oracle VirtualBox Extension Pack. Instálelo para conectar la mayoría de los dispositivos.',
   // Server-side USB messages (localized via server-message lookup).
   'USB device attached to the VM.': 'Dispositivo USB conectado a la VM.',
   'USB device detached from the VM.': 'Dispositivo USB desconectado de la VM.',
@@ -239,16 +243,16 @@ export const es: Record<string, string> = {
     'La VM debe estar en marcha para conectar o desconectar dispositivos USB.',
   'Invalid USB device identifier.': 'Identificador de dispositivo USB no válido.',
   'This VM has no USB controller enabled. Power the VM off and enable USB in its settings first.':
-    'Esta VM no tiene un controlador USB habilitado. Apaga la VM y habilita USB en su configuración primero.',
+    'Esta VM no tiene un controlador USB habilitado. Apague la VM y habilite USB en su configuración primero.',
   'Attaching this device needs the Oracle VirtualBox Extension Pack. Install it, then try again.':
-    'Conectar este dispositivo requiere el Oracle VirtualBox Extension Pack. Instálalo y vuelve a intentarlo.',
+    'Conectar este dispositivo requiere el Oracle VirtualBox Extension Pack. Instálelo y vuelva a intentarlo.',
   'The host USB service is unavailable. Reinstall VirtualBox so its USB driver is registered, then reconnect the device.':
-    'El servicio USB del anfitrión no está disponible. Reinstala VirtualBox para registrar su controlador USB y vuelve a conectar el dispositivo.',
+    'El servicio USB del anfitrión no está disponible. Reinstale VirtualBox para registrar su controlador USB y vuelva a conectar el dispositivo.',
 
   // Hardware panel
   Hardware: 'Hardware',
   'vCPU · memory': 'vCPU · memoria',
-  'Power off the VM to change hardware.': 'Apaga la VM para cambiar el hardware.',
+  'Power off the VM to change hardware.': 'Apague la VM para cambiar el hardware.',
   'Hardware information unavailable.': 'Información de hardware no disponible.',
 
   // Storage panel
@@ -284,11 +288,11 @@ export const es: Record<string, string> = {
     '¿Eliminar "{name}" de forma permanente? El archivo de imagen del disco se eliminará de este equipo. Esta acción no se puede deshacer.',
   'This disk cannot be resized.': 'Este disco no se puede redimensionar.',
   'Resizing only enlarges the virtual disk. Expand the partition inside the guest OS to use the new space.':
-    'Redimensionar solo agranda el disco virtual. Expande la partición dentro del sistema guest para usar el espacio nuevo.',
+    'Redimensionar solo agranda el disco virtual. Expanda la partición dentro del sistema guest para usar el espacio nuevo.',
   'Fixed-size disks cannot be resized.': 'Los discos de tamaño fijo no se pueden redimensionar.',
   'This disk has snapshots. Delete them before resizing.':
-    'Este disco tiene instantáneas. Elimínalas antes de redimensionar.',
-  'Power off the VM to resize its disks.': 'Apaga la VM para redimensionar sus discos.',
+    'Este disco tiene instantáneas. Elimínelas antes de redimensionar.',
+  'Power off the VM to resize its disks.': 'Apague la VM para redimensionar sus discos.',
   now: 'ahora',
 
   // ----- SnapshotsPanel -----
@@ -387,15 +391,15 @@ export const es: Record<string, string> = {
   'Install from ISO': 'Instalar desde ISO',
   'Other OS (manual install)': 'Otro SO (instalación manual)',
   'Import a prebuilt appliance that already has Guest Additions. Best for Kali. One click, no install.':
-    'Importa un appliance prehorneado que ya tiene Guest Additions. Ideal para Kali. Un clic, sin instalación.',
+    'Importe un appliance prehorneado que ya tiene Guest Additions. Ideal para Kali. Un clic, sin instalación.',
   'Create a VM and run an automated Ubuntu, Debian or Windows install with Guest Additions included. Kali is not supported here.':
-    'Crea una VM y ejecuta una instalación automatizada de Ubuntu, Debian o Windows con Guest Additions incluido. Kali no está soportado aquí.',
+    'Cree una VM y ejecute una instalación automatizada de Ubuntu, Debian o Windows con Guest Additions incluido. Kali no está soportado aquí.',
   'Create a VM with any bootable ISO attached. You install the OS yourself in the console; Guest Additions are not installed automatically.':
-    'Crea una VM con cualquier ISO arrancable adjunta. Usted instala el sistema operativo en la consola; Guest Additions no se instala automáticamente.',
+    'Cree una VM con cualquier ISO arrancable adjunta. Usted instala el sistema operativo en la consola; Guest Additions no se instala automáticamente.',
   'VM name': 'Nombre de la VM',
-  'Choose .ova/.ovf…': 'Elegir .ova/.ovf…',
-  'No file chosen': 'Ningún archivo elegido',
-  'Choose .iso…': 'Elegir .iso…',
+  'Choose .ova/.ovf file': 'Elegir archivo .ova/.ovf',
+  'No file selected': 'Ningún archivo seleccionado',
+  'Choose .iso file': 'Elegir archivo .iso',
   'Operating system': 'Sistema operativo',
   'Memory (MB)': 'Memoria (MB)',
   CPUs: 'CPUs',
@@ -675,11 +679,11 @@ export const esServerPatterns: Array<[RegExp, string]> = [
   ],
   [
     /^Disk resized to (\d+) MB\. Expand the partition inside the guest to use the new space\.$/,
-    'Disco redimensionado a $1 MB. Expande la partición dentro del guest para usar el espacio nuevo.',
+    'Disco redimensionado a $1 MB. Expanda la partición dentro del guest para usar el espacio nuevo.',
   ],
   [
     /^Disks can only grow\. Enter a size larger than the current (\d+) MB\.$/,
-    'Los discos solo pueden crecer. Ingresa un tamaño mayor que los $1 MB actuales.',
+    'Los discos solo pueden crecer. Ingrese un tamaño mayor que los $1 MB actuales.',
   ],
   [
     /^Added a (\d+) MB disk on (.+) port (\d+)\.$/,
@@ -703,7 +707,7 @@ export const esServerPatterns: Array<[RegExp, string]> = [
   ],
   [
     /^This disk has snapshots\. Delete them before deleting the disk\.$/,
-    'Este disco tiene instantáneas. Elimínalas antes de eliminar el disco.',
+    'Este disco tiene instantáneas. Elimínelas antes de eliminar el disco.',
   ],
   [/^That disk is not attached to this VM\.$/, 'Ese disco no está conectado a esta VM.'],
 ];
