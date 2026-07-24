@@ -479,9 +479,11 @@
   font-family: var(--font-mono); font-size: 12px;
 }
 .tv-log-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--muted); }
-.tv-log-dot.ok { background: var(--accent); }
+/* Success/failure dots use fixed semantic colors (green/red) independent of the
+   configurable accent, and legible on both light and dark surfaces. */
+.tv-log-dot.ok { background: #22a06b; }
 .tv-log-dot.fail { background: #c0454b; }
-.tv-log-action { color: var(--text); font-weight: 500; text-transform: capitalize; min-width: 120px; }
+.tv-log-action { color: var(--text); font-weight: 500; min-width: 120px; }
 .tv-log-vm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
 .tv-log-time { color: var(--muted); flex: none; }
 @media (max-width: 640px) { .tv-log-vm { display: none; } }
