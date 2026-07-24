@@ -18,6 +18,7 @@ import type {
   GuestAdditionsStatusResponse,
   GuestAdditionsUpdateResponse,
   LocalStateStatusResponse,
+  VmHardwareResponse,
   VmInfo,
   VmTelemetryResponse,
 } from '../types/api';
@@ -140,6 +141,31 @@ export function MachinesView() {
   const focusLoading = focusVm ? (loadingActions[focusVm.id] ?? {}) : {};
   const focusBusy = Object.values(focusLoading).some(Boolean);
 
+  // Auto-select a machine when the list arrives so the focus section is never
+  // empty: prefer the first running VM, else the first row. It never steals an
+  // existing valid selection, so a refresh that keeps the selected VM in the
+  // list is a no-op and the user's choice always wins.
+  useEffect(() => {
+    if (vms.length === 0) return;
+    setSelectedId((current) => {
+      if (current !== null && vms.some((vm) => vm.id === current)) return current;
+      const running = vms.find((vm) => vm.state.toLowerCase() === 'running');
+      return (running ?? vms[0]).id;
+    });
+  }, [vms]);
+
+  // Guest Additions call-to-action state for the focused machine. The CTA
+  // lives in the focus section, not in the row: install when additions are
+  // missing, update when the host ships a newer version, and the disc-inserted
+  // note after a successful insert. The probing logic is unchanged (see the
+  // gaStatus effect below); only the placement moved out of the row.
+  const focusGa = focusVm ? gaStatus[focusVm.id] : undefined;
+  const focusGaInserted = focusVm ? gaInserted[focusVm.id] === true : false;
+  const focusGaBusy = focusVm ? gaBusy[focusVm.id] === true : false;
+  const focusGaNeedsInstall = focusRunning && !focusGaInserted && focusGa?.status !== 'installed';
+  const focusGaUpdate = focusRunning && focusGa?.updateAvailable === true;
+  const showGaNotice = focusRunning && (focusGaNeedsInstall || focusGaInserted || focusGaUpdate);
+
   function openConsole(id: string) {
     const vm = vms.find((candidate) => candidate.id === id);
     setSelectedId(id);
@@ -218,6 +244,32 @@ export function MachinesView() {
       cancelled = true;
     };
   }, [focusVm]);
+
+  // Configured hardware for a non-running focused machine. The telemetry
+  // endpoint only answers for a live session, so the rail falls back to the
+  // configured vCPU/memory from the hardware endpoint. Note: this duplicates
+  // HardwarePanel's fetch for a stopped focus (one extra request per focus);
+  // lifting the panel's retrying loader up here was judged too invasive.
+  const [focusHardware, setFocusHardware] = useState<VmHardwareResponse | null>(null);
+  const focusId = focusVm?.id;
+  useEffect(() => {
+    if (!focusId || focusRunning) {
+      setFocusHardware(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getVmHardware(focusId)
+      .then((hw) => {
+        if (!cancelled) setFocusHardware(hw);
+      })
+      .catch(() => {
+        if (!cancelled) setFocusHardware(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focusId, focusRunning]);
 
   // Guest Additions is only detectable while a VM is running (the version guest
   // property is populated by the running additions service). Probe each running
@@ -694,43 +746,6 @@ export function MachinesView() {
                   <div className="tv-vm-actions">
                     {cls === 'running' && (
                       <>
-                        {gaStatus[vm.id]?.status !== 'installed' && !gaInserted[vm.id] && (
-                          <button
-                            type="button"
-                            className="tv-abtn ga"
-                            aria-label={tf('Install Guest Additions on {vm}', { vm: vm.name })}
-                            title={t('Install Guest Additions')}
-                            disabled={gaBusy[vm.id]}
-                            onClick={() => void installGuestAdditions(vm.id)}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 3v12" />
-                              <path d="M7 10l5 5 5-5" />
-                              <path d="M5 21h14" />
-                            </svg>
-                            {gaBusy[vm.id] ? t('inserting…') : t('Install Guest Additions')}
-                          </button>
-                        )}
-                        {gaInserted[vm.id] && (
-                          <span className="tv-ga-done" title={t('disc inserted · run installer in VM')}>
-                            {t('disc inserted · run installer in VM')}
-                          </span>
-                        )}
-                        {gaStatus[vm.id]?.updateAvailable && (
-                          <button
-                            type="button"
-                            className="tv-abtn ga"
-                            aria-label={tf('Update Guest Additions on {vm}', { vm: vm.name })}
-                            title={`Guest Additions ${gaStatus[vm.id]?.version ?? ''} → ${gaStatus[vm.id]?.hostVersion ?? ''}`}
-                            onClick={() => openGaUpdate(vm.id, vm.name)}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-                              <path d="M21 3v5h-5" />
-                            </svg>
-                            {t('Update Guest Additions')}
-                          </button>
-                        )}
                         <div className={showStopNotice ? 'tv-quiet tv-quiet--open' : 'tv-quiet'}>
                           <button
                             type="button"
@@ -933,15 +948,25 @@ export function MachinesView() {
               <div>
                 <div className="lab">{t('Configured')}</div>
                 <div className="big">
-                  {telemetry?.cpuCount ?? '—'}
+                  {(focusRunning ? telemetry?.cpuCount : focusHardware?.cpus) ?? '—'}
                   <small>vCPU</small>
                 </div>
               </div>
               <div>
-                <div className="lab">{t('Session')}</div>
+                {/* For a live VM the group reports session data; for a stopped
+                    one it shows the configured memory, labeled accordingly. */}
+                <div className="lab">{focusRunning ? t('Session') : t('Configured')}</div>
                 <div className="tv-kv">
                   <span className="k">{t('Memory')}</span>
-                  <span className="v">{telemetry ? formatRam(telemetry.ramMb) : '—'}</span>
+                  <span className="v">
+                    {focusRunning
+                      ? telemetry
+                        ? formatRam(telemetry.ramMb)
+                        : '—'
+                      : focusHardware
+                        ? formatRam(focusHardware.memoryMb)
+                        : '—'}
+                  </span>
                 </div>
                 <div className="tv-kv">
                   <span className="k">{t('Disk')}</span>
@@ -963,8 +988,63 @@ export function MachinesView() {
             </div>
           </div>
 
-          <HardwarePanel vmId={focusVm.id} onChanged={() => void refresh()} />
-          <StoragePanel vmId={focusVm.id} onChanged={() => void refresh()} />
+          {showGaNotice && (
+            <div className="tv-ga-notice" role="status">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
+              {focusGaInserted ? (
+                <span className="tv-ga-notice-msg">{t('disc inserted · run installer in VM')}</span>
+              ) : focusGaUpdate ? (
+                <>
+                  <span className="tv-ga-notice-msg">
+                    {`Guest Additions ${focusGa?.version ?? ''} → ${focusGa?.hostVersion ?? ''}`}
+                  </span>
+                  <button
+                    type="button"
+                    className="tv-abtn ga"
+                    aria-label={tf('Update Guest Additions on {vm}', { vm: focusVm.name })}
+                    onClick={() => openGaUpdate(focusVm.id, focusVm.name)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+                      <path d="M21 3v5h-5" />
+                    </svg>
+                    {t('Update Guest Additions')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="tv-ga-notice-msg">{t('Guest Additions not detected')}</span>
+                  <button
+                    type="button"
+                    className="tv-abtn ga"
+                    aria-label={tf('Install Guest Additions on {vm}', { vm: focusVm.name })}
+                    disabled={focusGaBusy}
+                    onClick={() => void installGuestAdditions(focusVm.id)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3v12" />
+                      <path d="M7 10l5 5 5-5" />
+                      <path d="M5 21h14" />
+                    </svg>
+                    {focusGaBusy ? t('inserting…') : t('Install Guest Additions')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          <HardwarePanel vmId={focusVm.id} running={focusRunning} onChanged={() => void refresh()} />
+          <StoragePanel vmId={focusVm.id} running={focusRunning} onChanged={() => void refresh()} />
           <FilesPanel vmId={focusVm.id} vmName={focusVm.name} />
           {focusRunning && <GuestControlPanel key={focusVm.id} vmId={focusVm.id} vmName={focusVm.name} />}
           <NetworkPanel vmId={focusVm.id} onChanged={() => void refresh()} />

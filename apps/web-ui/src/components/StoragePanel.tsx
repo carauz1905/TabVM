@@ -5,6 +5,11 @@ import { useT } from '../i18n/i18n';
 
 interface StoragePanelProps {
   vmId: string;
+  // running mirrors the focused VM's live state so the panel re-gates the
+  // moment the machine starts or stops, without waiting for a refocus. When it
+  // changes the storage is re-fetched, and while true resize/detach/add stay
+  // gated even if the last response predates the start.
+  running?: boolean;
   // onChanged lets the parent refresh telemetry after a disk resize.
   onChanged?: () => void;
 }
@@ -16,7 +21,7 @@ function formatGb(mb: number): string {
 // StoragePanel lists a VM's disks and grows the resizable ones. VirtualBox can
 // only enlarge a disk (never shrink) and only while the VM is off, so the input
 // is bounded to grow-only and the whole panel goes read-only for a live VM.
-export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
+export function StoragePanel({ vmId, running, onChanged }: StoragePanelProps) {
   const { t, tf, ts } = useT();
   const [storage, setStorage] = useState<VmStorageResponse | null>(null);
   const [sizes, setSizes] = useState<Record<string, string>>({});
@@ -43,9 +48,11 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
     setStorage(null);
   }, [vmId]);
 
+  // Reload on focus change and whenever the VM's running state flips, so the
+  // editable/resizable flags always reflect the machine's current power state.
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, running]);
 
   const resize = useCallback(
     async (disk: DiskInfo, sizeMb: number) => {
@@ -157,7 +164,9 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
   }, [vmId, load, onChanged]);
 
   const disks = storage?.disks ?? [];
-  const editable = storage?.editable ?? false;
+  // A live VM is never disk-editable, even while the post-start re-fetch is
+  // still in flight and the last response predates the state change.
+  const editable = (storage?.editable ?? false) && running !== true;
   const optical = storage?.optical ?? {
     present: false,
     medium: '',
@@ -193,6 +202,9 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
             const nextGb = Number.parseFloat(raw);
             const validGrow = Number.isFinite(nextGb) && nextGb > currentGb;
             const busy = busyUuid === disk.uuid;
+            // Resizing needs a powered-off VM: gate a stale resizable=true
+            // response the moment the running prop flips.
+            const resizable = disk.resizable && running !== true;
 
             return (
               <li className="net-row" key={disk.uuid}>
@@ -204,7 +216,7 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
                 </div>
 
                 <div className="net-controls">
-                  {disk.resizable ? (
+                  {resizable ? (
                     <>
                       <label className="net-field">
                         <span>{t('New size (GB)')}</span>
@@ -230,7 +242,11 @@ export function StoragePanel({ vmId, onChanged }: StoragePanelProps) {
                       </button>
                     </>
                   ) : (
-                    <span className="net-hint">{ts(disk.reason || t('This disk cannot be resized.'))}</span>
+                    <span className="net-hint">
+                      {disk.resizable
+                        ? t('Power off the VM to resize its disks.')
+                        : ts(disk.reason || t('This disk cannot be resized.'))}
+                    </span>
                   )}
                   {editable && (
                     <>

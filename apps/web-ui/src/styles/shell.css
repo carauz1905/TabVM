@@ -384,6 +384,19 @@
 .tv-ga-done { font-family: var(--font-mono); font-size: 11px; color: var(--muted); align-self: center; }
 @media (prefers-reduced-motion: reduce) { .tv-abtn.ga { animation: none; } }
 
+/* Guest Additions notice: the install/update call-to-action lives in the focus
+   section (below the console, above the panels) so the VM row stays compact.
+   Same notice grammar as .usb-notice; the button keeps the accent pulse. */
+.tv-ga-notice {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px; padding: 9px 11px;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.45; color: var(--muted);
+  background: var(--raise); border: 1px solid var(--line-2); border-left: 2px solid var(--accent-line);
+  border-radius: var(--r-sm);
+}
+.tv-ga-notice > svg { width: 14px; height: 14px; stroke: currentColor; flex: none; }
+.tv-ga-notice .tv-ga-notice-msg { flex: 1 1 auto; }
+
 .tv-error { margin: 14px 0 0; padding: 10px 14px; border-radius: var(--r-md); font-family: var(--font-mono); font-size: 12px; color: #c0454b; background: rgba(192, 69, 75, 0.08); border: 1px solid rgba(192, 69, 75, 0.2); }
 
 /* ---------- Console + telemetry ---------- */

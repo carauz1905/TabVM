@@ -231,6 +231,11 @@ export const es: Record<string, string> = {
   Busy: 'ocupado',
   Captured: 'capturado',
   Unavailable: 'no disponible',
+  // Tooltips explaining each USB capture state.
+  'Free to attach': 'Libre para conectar',
+  'In use by the host or another program': 'En uso por el anfitrión u otro programa',
+  'Attached to a virtual machine': 'Conectado a una máquina virtual',
+  'Cannot be captured': 'No se puede capturar',
   'No USB devices detected on the host.': 'No se detectaron dispositivos USB en el anfitrión.',
   'This VM has no USB controller enabled. Power the VM off and enable USB in its settings — the controller cannot be turned on while the VM is running.':
     'Esta VM no tiene un controlador USB habilitado. Apague la VM y habilite USB en su configuración: el controlador no se puede activar mientras la VM está en marcha.',
@@ -361,6 +366,8 @@ export const es: Record<string, string> = {
   found: 'encontrado',
   'not found': 'no encontrado',
   Version: 'Versión',
+  'Latest available release': 'Última versión disponible',
+  'update available': 'actualización disponible',
   'Local state': 'Estado local',
   Store: 'Almacén',
   ready: 'listo',
