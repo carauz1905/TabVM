@@ -38,8 +38,15 @@
 }
 
 /* Light theme (default) */
+/* color-scheme keeps native form controls (inputs, selects, file pickers,
+   scrollbars) rendered in the app's theme instead of the OS preference —
+   without it Chromium paints dark native controls inside the light theme
+   whenever the OS is in dark mode. Mirrored in every theme block below,
+   including the OS-preference path, so the pre-paint boot theme set by
+   index.html is covered both ways. */
 :root,
 :root[data-theme="light"] {
+  color-scheme: light;
   --tabvm-bg: var(--tabvm-neutral-000);
   --tabvm-surface: var(--tabvm-neutral-050);
   --tabvm-surface-alt: var(--tabvm-neutral-100);
@@ -53,6 +60,7 @@
 
 /* Dark theme */
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --tabvm-bg: var(--tabvm-neutral-900);
   --tabvm-surface: var(--tabvm-neutral-800);
   --tabvm-surface-alt: var(--tabvm-neutral-700);
@@ -67,6 +75,7 @@
 /* Follow the OS when no explicit theme is set */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --tabvm-bg: var(--tabvm-neutral-900);
     --tabvm-surface: var(--tabvm-neutral-800);
     --tabvm-surface-alt: var(--tabvm-neutral-700);

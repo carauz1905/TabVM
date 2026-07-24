@@ -233,6 +233,49 @@ describe('MachinesView', () => {
     open.mockRestore();
   });
 
+  it('offers the terminal for a running terminal-capable VM', async () => {
+    const { findByRole } = render(<MachinesView />);
+    expect(await findByRole('button', { name: 'Open VM One terminal in a new tab' })).toBeTruthy();
+  });
+
+  it('does not offer the terminal for a stopped VM', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { queryByRole } = render(<MachinesView />);
+    // Flush the guest-OS probe so termCapable is resolved before asserting.
+    await act(async () => {});
+
+    expect(queryByRole('button', { name: 'Open VM One terminal in a new tab' })).toBeNull();
+  });
+
+  it('shows crash-specific placeholder copy when the focused machine is aborted', () => {
+    vi.mocked(useVmStatus).mockReturnValue({
+      ...stoppedVm(),
+      vms: [{ id: RUNNING_ID, name: 'VM One', state: 'aborted' }],
+    });
+
+    const { getByText } = render(<MachinesView />);
+    fireEvent.click(getByText('VM One'));
+
+    expect(
+      getByText('This machine stopped unexpectedly (aborted). Start it to boot again.'),
+    ).toBeTruthy();
+  });
+
+  it('shows resume placeholder copy when the focused machine has a saved state', () => {
+    vi.mocked(useVmStatus).mockReturnValue({
+      ...stoppedVm(),
+      vms: [{ id: RUNNING_ID, name: 'VM One', state: 'saved' }],
+    });
+
+    const { getByText } = render(<MachinesView />);
+    fireEvent.click(getByText('VM One'));
+
+    expect(
+      getByText('This machine is suspended — start it to resume exactly where it left off.'),
+    ).toBeTruthy();
+  });
+
   it('opens the live console for a running VM', async () => {
     const { getByRole, getByTestId, queryByTestId } = render(<MachinesView />);
 
@@ -271,7 +314,7 @@ describe('MachinesView', () => {
 
     expect(api.stopVm).toHaveBeenCalledWith(RUNNING_ID);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(9000);
+      await vi.advanceTimersByTimeAsync(14000);
     });
     expect(queryByRole('button', { name: 'Force power off VM One' })).toBeNull();
   });
@@ -283,7 +326,7 @@ describe('MachinesView', () => {
     const { getByRole } = render(<MachinesView />);
     fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
 
     expect(getByRole('button', { name: 'Force power off VM One' })).toBeTruthy();
@@ -301,7 +344,7 @@ describe('MachinesView', () => {
     const { getByRole } = render(<MachinesView />);
     fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
 
     fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
@@ -321,7 +364,7 @@ describe('MachinesView', () => {
     const { getByRole, getByText } = render(<MachinesView />);
     fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
 
     fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
@@ -342,7 +385,7 @@ describe('MachinesView', () => {
     const { getByRole } = render(<MachinesView />);
     fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
 
     fireEvent.click(getByRole('button', { name: 'Force power off VM One' }));
@@ -367,10 +410,68 @@ describe('MachinesView', () => {
     vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
     rerender(<MachinesView />);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(15000);
     });
 
     expect(queryByRole('button', { name: 'Force power off VM One' })).toBeNull();
+  });
+
+  it('surfaces a notice and a visible force button when the guest ignores the stop signal', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole, getByText, container } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(
+      getByText('The guest did not respond to the shutdown signal. You can force power off.'),
+    ).toBeTruthy();
+    expect(getByRole('button', { name: 'Force power off VM One' })).toBeTruthy();
+    // The quiet action group is forced visible so force power off is not hover-only.
+    expect(container.querySelector('.tv-quiet--open')).toBeTruthy();
+  });
+
+  it('shows no unresponsive-guest notice when the VM stops before the grace period', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole, queryByText, rerender } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // The ACPI signal worked: the next poll reports the VM as powered off.
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    rerender(<MachinesView />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(
+      queryByText('The guest did not respond to the shutdown signal. You can force power off.'),
+    ).toBeNull();
+  });
+
+  it('dismisses the unresponsive-guest notice while keeping force power off available', async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.stopVm).mockResolvedValue({ success: true, vmId: RUNNING_ID, message: 'stopped' });
+
+    const { getByRole, queryByText } = render(<MachinesView />);
+    fireEvent.click(getByRole('button', { name: 'Stop VM One' }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+    });
+
+    fireEvent.click(getByRole('button', { name: 'Dismiss shutdown notice for VM One' }));
+
+    expect(
+      queryByText('The guest did not respond to the shutdown signal. You can force power off.'),
+    ).toBeNull();
+    expect(getByRole('button', { name: 'Force power off VM One' })).toBeTruthy();
   });
 
   it('offers and triggers Guest Additions install when not detected', async () => {

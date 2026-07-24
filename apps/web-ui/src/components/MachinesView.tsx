@@ -25,9 +25,10 @@ import type {
 type VmAction = 'start' | 'stop' | 'savestate' | 'reset' | 'poweroff' | 'delete';
 const lifecycleActions: VmAction[] = ['start', 'stop', 'savestate', 'reset', 'poweroff', 'delete'];
 
-// How long after a stop request the VM may stay running before the UI offers
-// a hard power-off (a guest with no OS never answers the ACPI signal).
-const FORCE_POWER_OFF_DELAY_MS = 10_000;
+// How long after a stop request the VM may stay running before the UI surfaces
+// the unresponsive-guest notice and offers a hard power-off (a guest with no
+// OS — or one sitting at a login prompt — never answers the ACPI signal).
+const FORCE_POWER_OFF_DELAY_MS = 15_000;
 
 // formatUptime renders a seconds count as HH:MM:SS for the agent meta line.
 function formatUptime(totalSeconds: number): string {
@@ -84,8 +85,11 @@ export function MachinesView() {
   const [gaUpdateBusy, setGaUpdateBusy] = useState(false);
   const [gaUpdateResult, setGaUpdateResult] = useState<GuestAdditionsUpdateResponse | null>(null);
   // VMs whose stop request went unanswered long enough to offer a hard
-  // power-off, plus the per-VM grace timers backing that offer.
+  // power-off, plus the per-VM grace timers backing that offer. While the offer
+  // stands, an inline notice tells the user the guest ignored the ACPI signal;
+  // dismissing it hides the notice without withdrawing the force affordance.
   const [forceOffered, setForceOffered] = useState<Record<string, boolean>>({});
+  const [stopNoticeDismissed, setStopNoticeDismissed] = useState<Record<string, boolean>>({});
   const forceTimersRef = useRef<Record<string, number>>({});
   // Which VMs are Linux guests (so the serial-terminal button is offered). The
   // ostype is VBox metadata, readable regardless of power state, fetched once.
@@ -485,6 +489,12 @@ export function MachinesView() {
           delete next[id];
           return next;
         });
+        setStopNoticeDismissed((current) => {
+          if (!(id in current)) return current;
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
       }
       try {
         if (action === 'start') await api.startVm(id);
@@ -638,6 +648,10 @@ export function MachinesView() {
               const cls = stateClass(vm.state);
               const loading = loadingActions[vm.id] ?? {};
               const busy = Object.values(loading).some(Boolean);
+              // The stop request went unanswered and the VM is still running:
+              // surface the notice and keep the force affordance visible.
+              const showStopNotice =
+                cls === 'running' && forceOffered[vm.id] === true && !stopNoticeDismissed[vm.id];
               return (
                 <div
                   className={`tv-vm ${cls} ${focusVm?.id === vm.id ? 'is-focused' : ''}`}
@@ -658,6 +672,24 @@ export function MachinesView() {
                     <div className="tv-vm-sub">
                       <span className="id">{vm.id}</span>
                     </div>
+                    {showStopNotice && (
+                      <div className="tv-stop-notice" role="status">
+                        <span>
+                          {t('The guest did not respond to the shutdown signal. You can force power off.')}
+                        </span>
+                        <button
+                          type="button"
+                          className="tv-stop-notice-x"
+                          aria-label={tf('Dismiss shutdown notice for {vm}', { vm: vm.name })}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setStopNoticeDismissed((current) => ({ ...current, [vm.id]: true }));
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="tv-vm-actions">
                     {cls === 'running' && (
@@ -699,7 +731,7 @@ export function MachinesView() {
                             {t('Update Guest Additions')}
                           </button>
                         )}
-                        <div className="tv-quiet">
+                        <div className={showStopNotice ? 'tv-quiet tv-quiet--open' : 'tv-quiet'}>
                           <button
                             type="button"
                             className="tv-abtn"
@@ -808,21 +840,6 @@ export function MachinesView() {
                           </svg>
                           {loading.delete ? t('deleting…') : t('delete')}
                         </button>
-                        {termCapable[vm.id] && (
-                          <button
-                            type="button"
-                            className="tv-abtn"
-                            aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
-                            title={t('terminal')}
-                            onClick={() => openTerminalTab(vm.id, vm.name)}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 17l6-6-6-6" />
-                              <path d="M12 19h8" />
-                            </svg>
-                            {t('terminal')}
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="tv-abtn"
@@ -892,7 +909,7 @@ export function MachinesView() {
               <div className="tv-screen tv-screen--live">
                 {!focusRunning ? (
                   <div className="tv-screen-off">
-                    <span className="tv-off-note">{t('This machine is powered off.')}</span>
+                    <span className="tv-off-note">{t(offNote(focusVm.state))}</span>
                     <button
                       type="button"
                       className="tv-abtn go"
@@ -1146,6 +1163,20 @@ export function MachinesView() {
       )}
     </>
   );
+}
+
+// offNote picks the focus-screen placeholder copy for a non-running machine:
+// a crash (aborted) and a suspend (saved) read differently than a clean
+// power-off. States come from the backend's normalized vocabulary.
+function offNote(state: string): string {
+  switch (state.toLowerCase()) {
+    case 'aborted':
+      return 'This machine stopped unexpectedly (aborted). Start it to boot again.';
+    case 'saved':
+      return 'This machine is suspended — start it to resume exactly where it left off.';
+    default:
+      return 'This machine is powered off.';
+  }
 }
 
 // networkSummary renders the first interface that has a guest IP, or its mode
