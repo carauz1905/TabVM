@@ -11,19 +11,16 @@ interface UsbPanelProps {
   onChanged?: () => void;
 }
 
-// usbStateLabel maps VirtualBox capture states to the keys translated in the
-// dictionary. Unknown states pass through unchanged.
-function usbStateLabel(state: string): string {
-  switch (state) {
-    case 'Available':
-    case 'Busy':
-    case 'Captured':
-    case 'Unavailable':
-      return state;
-    default:
-      return state;
-  }
-}
+// Canonical VirtualBox capture states, matched case-insensitively against the
+// raw VBoxManage string. label is the dictionary key rendered (and translated);
+// hint is the tooltip explaining what the state means for the user. Unknown
+// states render the raw string with no tooltip.
+const USB_STATES: Record<string, { label: string; hint: string }> = {
+  available: { label: 'Available', hint: 'Free to attach' },
+  busy: { label: 'Busy', hint: 'In use by the host or another program' },
+  captured: { label: 'Captured', hint: 'Attached to a virtual machine' },
+  unavailable: { label: 'Unavailable', hint: 'Cannot be captured' },
+};
 
 // deviceLabel builds a human name from the manufacturer and product, falling
 // back to a generic label when the host reported neither.
@@ -121,6 +118,7 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
           {devices.map((device) => {
             const busy = busyUuid === device.uuid;
             const label = deviceLabel(device, t('USB device'));
+            const knownState = USB_STATES[device.state.trim().toLowerCase()];
             return (
               <li className="net-row" key={device.uuid}>
                 <div className="net-info">
@@ -128,7 +126,9 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
                   <span className="net-mac">
                     {device.vendorId}:{device.productId}
                   </span>
-                  <span className="net-current">{t(usbStateLabel(device.state))}</span>
+                  <span className="net-current" title={knownState ? t(knownState.hint) : undefined}>
+                    {knownState ? t(knownState.label) : device.state}
+                  </span>
                 </div>
                 <div className="net-controls">
                   {device.attachedHere ? (

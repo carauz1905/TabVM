@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useHealth } from '../hooks/useHealth';
+import { useUpdateStatus } from '../hooks/useUpdateStatus';
 import { useVmStatus } from '../hooks/useVmStatus';
 import type { LocalStateStatusResponse } from '../types/api';
 import { useT } from '../i18n/i18n';
@@ -19,6 +20,10 @@ export function AgentView() {
   const { t } = useT();
   const health = useHealth();
   const { discovery } = useVmStatus();
+  // Best-effort latest-release info: shares useUpdateStatus (and its cache and
+  // opt-out semantics) with the update banner; a failed or disabled check
+  // simply leaves the row as a dash.
+  const update = useUpdateStatus();
   const [localState, setLocalState] = useState<LocalStateStatusResponse | undefined>();
 
   useEffect(() => {
@@ -63,6 +68,16 @@ export function AgentView() {
           <div className="tv-kv">
             <span className="k">{t('Bound')}</span>
             <span className="v">127.0.0.1</span>
+          </div>
+          <div className="tv-kv">
+            <span className="k">{t('Latest available release')}</span>
+            <span className="v">
+              {update.latest
+                ? update.updateAvailable
+                  ? `v${update.latest} — ${t('update available')}`
+                  : `v${update.latest}`
+                : '—'}
+            </span>
           </div>
         </div>
       </section>

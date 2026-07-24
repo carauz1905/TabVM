@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { UsbPanel } from './UsbPanel';
 import { api, ApiError } from '../api/client';
+import { LanguageProvider } from '../i18n/i18n';
 import type { UsbDevice, VmUsbResponse } from '../types/api';
 
 const VM_ID = '11111111-1111-1111-1111-111111111111';
@@ -48,9 +49,23 @@ function usbResponse(overrides: Partial<VmUsbResponse> = {}, devices?: UsbDevice
   };
 }
 
+// busyDevice builds a device whose state exercises the tooltip mapping.
+function deviceWithState(state: string): UsbDevice {
+  return {
+    uuid: SANDISK,
+    vendorId: '0x0781',
+    productId: '0x5567',
+    manufacturer: 'SanDisk',
+    product: 'Cruzer Blade',
+    state,
+    attachedHere: false,
+  };
+}
+
 describe('UsbPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse());
   });
 
@@ -166,6 +181,47 @@ describe('UsbPanel', () => {
 
     const { findByText } = render(<UsbPanel vmId={VM_ID} />);
     expect(await findByText('No USB devices detected on the host.')).toBeTruthy();
+  });
+
+  it('shows an explanatory tooltip for the Busy state', async () => {
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({}, [deviceWithState('Busy')]));
+
+    const { findByText } = render(<UsbPanel vmId={VM_ID} />);
+    const state = await findByText('Busy');
+
+    expect(state.getAttribute('title')).toBe('In use by the host or another program');
+  });
+
+  it('translates the state label and its tooltip in Spanish', async () => {
+    localStorage.setItem('tabvm.lang', 'es');
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({}, [deviceWithState('Busy')]));
+
+    const { findByText } = render(
+      <LanguageProvider>
+        <UsbPanel vmId={VM_ID} />
+      </LanguageProvider>,
+    );
+    const state = await findByText('ocupado');
+
+    expect(state.getAttribute('title')).toBe('En uso por el anfitrión u otro programa');
+  });
+
+  it('matches device states case-insensitively', async () => {
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({}, [deviceWithState('busy')]));
+
+    const { findByText } = render(<UsbPanel vmId={VM_ID} />);
+    const state = await findByText('Busy');
+
+    expect(state.getAttribute('title')).toBe('In use by the host or another program');
+  });
+
+  it('falls back to the raw string with no tooltip for unknown states', async () => {
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({}, [deviceWithState('Flux')]));
+
+    const { findByText } = render(<UsbPanel vmId={VM_ID} />);
+    const state = await findByText('Flux');
+
+    expect(state.getAttribute('title')).toBeNull();
   });
 
   it('surfaces a load error instead of the misleading empty state when enumeration fails', async () => {

@@ -244,4 +244,49 @@ describe('StoragePanel', () => {
     expect(getByText('This disk has snapshots. Delete them before resizing.')).toBeTruthy();
     expect(queryByLabelText('New size (GB)')).toBeNull();
   });
+
+  it('re-gates resize, detach and add-disk the moment the VM starts while focused', async () => {
+    const { getByLabelText, getByRole, getByText, queryByLabelText, queryByRole, rerender } =
+      render(<StoragePanel vmId={VM_ID} running={false} />);
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+    expect(getByLabelText('New size (GB)')).toBeTruthy();
+    expect(getByRole('button', { name: 'Delete disk1.vdi' })).toBeTruthy();
+
+    // The VM starts while focused: the fresh fetch reports read-only too.
+    vi.mocked(api.getVmStorage).mockResolvedValue(
+      resizableDisk(
+        { resizable: false, reason: 'Power off the VM to resize its disks.' },
+        { editable: false },
+      ),
+    );
+    rerender(<StoragePanel vmId={VM_ID} running={true} />);
+
+    await waitFor(() => expect(queryByLabelText('New size (GB)')).toBeNull());
+    expect(getByText('Power off the VM to resize its disks.')).toBeTruthy();
+    expect(queryByRole('button', { name: 'Delete disk1.vdi' })).toBeNull();
+    expect(queryByRole('button', { name: 'Detach disk1.vdi' })).toBeNull();
+    expect(queryByLabelText('New disk size (GB)')).toBeNull();
+  });
+
+  it('returns to the editable variant when the VM stops while focused', async () => {
+    vi.mocked(api.getVmStorage).mockResolvedValue(
+      resizableDisk(
+        { resizable: false, reason: 'Power off the VM to resize its disks.' },
+        { editable: false },
+      ),
+    );
+
+    const { getByLabelText, getByRole, queryByLabelText, rerender } = render(
+      <StoragePanel vmId={VM_ID} running={true} />,
+    );
+    await waitFor(() => expect(api.getVmStorage).toHaveBeenCalled());
+    expect(queryByLabelText('New size (GB)')).toBeNull();
+
+    // The VM stops: the panel must re-fetch and unlock without a refocus.
+    vi.mocked(api.getVmStorage).mockResolvedValue(resizableDisk());
+    rerender(<StoragePanel vmId={VM_ID} running={false} />);
+
+    await waitFor(() => expect(getByLabelText('New size (GB)')).toBeTruthy());
+    expect(getByRole('button', { name: 'Delete disk1.vdi' })).toBeTruthy();
+  });
 });

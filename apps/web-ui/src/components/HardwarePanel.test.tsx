@@ -104,4 +104,64 @@ describe('HardwarePanel', () => {
     fireEvent.change(getByLabelText('Memory (MB)'), { target: { value: '64' } });
     expect((getByRole('button', { name: 'Apply' }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('re-gates to read-only the moment the VM starts while focused', async () => {
+    const { getByLabelText, getByText, queryByText, rerender } = render(
+      <HardwarePanel vmId={VM_ID} running={false} />,
+    );
+    await waitFor(() => expect(api.getVmHardware).toHaveBeenCalled());
+    await waitFor(() =>
+      expect((getByLabelText('vCPU') as HTMLInputElement).disabled).toBe(false),
+    );
+    expect(queryByText('Power off the VM to change hardware.')).toBeNull();
+
+    // The VM starts while focused: the fresh fetch reports read-only too.
+    vi.mocked(api.getVmHardware).mockResolvedValue({
+      id: VM_ID,
+      cpus: 2,
+      memoryMb: 2048,
+      hostCpus: 8,
+      hostMemoryMb: 16384,
+      editable: false,
+    });
+    rerender(<HardwarePanel vmId={VM_ID} running={true} />);
+
+    await waitFor(() =>
+      expect((getByLabelText('vCPU') as HTMLInputElement).disabled).toBe(true),
+    );
+    expect(getByText('Power off the VM to change hardware.')).toBeTruthy();
+  });
+
+  it('returns to the editable variant when the VM stops while focused', async () => {
+    vi.mocked(api.getVmHardware).mockResolvedValue({
+      id: VM_ID,
+      cpus: 2,
+      memoryMb: 2048,
+      hostCpus: 8,
+      hostMemoryMb: 16384,
+      editable: false,
+    });
+
+    const { getByLabelText, queryByText, rerender } = render(
+      <HardwarePanel vmId={VM_ID} running={true} />,
+    );
+    await waitFor(() => expect(api.getVmHardware).toHaveBeenCalled());
+    expect((getByLabelText('vCPU') as HTMLInputElement).disabled).toBe(true);
+
+    // The VM stops: the panel must re-fetch and unlock without a refocus.
+    vi.mocked(api.getVmHardware).mockResolvedValue({
+      id: VM_ID,
+      cpus: 2,
+      memoryMb: 2048,
+      hostCpus: 8,
+      hostMemoryMb: 16384,
+      editable: true,
+    });
+    rerender(<HardwarePanel vmId={VM_ID} running={false} />);
+
+    await waitFor(() =>
+      expect((getByLabelText('vCPU') as HTMLInputElement).disabled).toBe(false),
+    );
+    expect(queryByText('Power off the VM to change hardware.')).toBeNull();
+  });
 });

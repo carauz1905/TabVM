@@ -6,6 +6,7 @@ import { useVmStatus } from '../hooks/useVmStatus';
 
 const mockRefresh = vi.fn();
 const RUNNING_ID = '11111111-1111-1111-1111-111111111111';
+const SECOND_ID = '22222222-2222-2222-2222-222222222222';
 
 vi.mock('../hooks/useHealth', () => ({
   useHealth: () => ({
@@ -56,6 +57,7 @@ vi.mock('../api/client', () => {
       getGuestAdditionsStatus: vi.fn(),
       installGuestAdditions: vi.fn(),
       getVmGuestOS: vi.fn(),
+      getVmHardware: vi.fn(),
       cloneVm: vi.fn(),
       exportVm: vi.fn(),
       pickHostFolder: vi.fn(),
@@ -79,6 +81,28 @@ function stoppedVm() {
     discovery: { found: true, version: '7.0.14r161095' },
     vms: [{ id: RUNNING_ID, name: 'VM One', state: 'powered off' }],
     refresh: mockRefresh,
+  };
+}
+
+function twoStoppedVms() {
+  return {
+    state: 'success' as const,
+    discovery: { found: true, version: '7.0.14r161095' },
+    vms: [
+      { id: RUNNING_ID, name: 'VM One', state: 'powered off' },
+      { id: SECOND_ID, name: 'VM Two', state: 'powered off' },
+    ],
+    refresh: mockRefresh,
+  };
+}
+
+function stoppedThenRunning() {
+  return {
+    ...twoStoppedVms(),
+    vms: [
+      { id: RUNNING_ID, name: 'VM One', state: 'powered off' },
+      { id: SECOND_ID, name: 'VM Two', state: 'running' },
+    ],
   };
 }
 
@@ -111,6 +135,14 @@ describe('MachinesView', () => {
       hostVersion: '7.0.14',
       updateAvailable: false,
       status: 'installed',
+    });
+    vi.mocked(api.getVmHardware).mockResolvedValue({
+      id: RUNNING_ID,
+      cpus: 2,
+      memoryMb: 4096,
+      hostCpus: 8,
+      hostMemoryMb: 16384,
+      editable: true,
     });
   });
 
@@ -248,31 +280,31 @@ describe('MachinesView', () => {
     expect(queryByRole('button', { name: 'Open VM One terminal in a new tab' })).toBeNull();
   });
 
-  it('shows crash-specific placeholder copy when the focused machine is aborted', () => {
+  it('shows crash-specific placeholder copy when the focused machine is aborted', async () => {
     vi.mocked(useVmStatus).mockReturnValue({
       ...stoppedVm(),
       vms: [{ id: RUNNING_ID, name: 'VM One', state: 'aborted' }],
     });
 
-    const { getByText } = render(<MachinesView />);
-    fireEvent.click(getByText('VM One'));
+    // The single machine is auto-focused, so no click is needed.
+    const { findByText } = render(<MachinesView />);
 
     expect(
-      getByText('This machine stopped unexpectedly (aborted). Start it to boot again.'),
+      await findByText('This machine stopped unexpectedly (aborted). Start it to boot again.'),
     ).toBeTruthy();
   });
 
-  it('shows resume placeholder copy when the focused machine has a saved state', () => {
+  it('shows resume placeholder copy when the focused machine has a saved state', async () => {
     vi.mocked(useVmStatus).mockReturnValue({
       ...stoppedVm(),
       vms: [{ id: RUNNING_ID, name: 'VM One', state: 'saved' }],
     });
 
-    const { getByText } = render(<MachinesView />);
-    fireEvent.click(getByText('VM One'));
+    // The single machine is auto-focused, so no click is needed.
+    const { findByText } = render(<MachinesView />);
 
     expect(
-      getByText('This machine is suspended — start it to resume exactly where it left off.'),
+      await findByText('This machine is suspended — start it to resume exactly where it left off.'),
     ).toBeTruthy();
   });
 
@@ -659,6 +691,150 @@ describe('MachinesView', () => {
     // The poll interval is 2s; give findByText room to see the resolved path.
     expect(await findByText('Exported to C:\\out\\VM One.ova', undefined, { timeout: 4000 })).toBeTruthy();
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('auto-focuses the first VM when nothing is selected and none is running', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(twoStoppedVms());
+
+    const { container } = render(<MachinesView />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM One'),
+    );
+  });
+
+  it('auto-focuses the first running VM over an earlier stopped one', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedThenRunning());
+
+    const { container } = render(<MachinesView />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM Two'),
+    );
+  });
+
+  it('keeps the auto-focused running VM selected after it stops', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedThenRunning());
+
+    const { container, rerender } = render(<MachinesView />);
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM Two'),
+    );
+
+    vi.mocked(useVmStatus).mockReturnValue(twoStoppedVms());
+    rerender(<MachinesView />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM Two'),
+    );
+  });
+
+  it('preserves the user selection across a refresh', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(twoStoppedVms());
+
+    const { container, getByText, rerender } = render(<MachinesView />);
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM One'),
+    );
+
+    fireEvent.click(getByText('VM Two'));
+    expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM Two');
+
+    // A refresh delivers a fresh array with the same machines: focus must stay.
+    vi.mocked(useVmStatus).mockReturnValue(twoStoppedVms());
+    rerender(<MachinesView />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.tv-vm.is-focused h3')?.textContent).toBe('VM Two'),
+    );
+  });
+
+  it('shows configured vCPU and memory in the rail for a stopped focused VM', async () => {
+    vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+    vi.mocked(api.getVmHardware).mockResolvedValue({
+      id: RUNNING_ID,
+      cpus: 3,
+      memoryMb: 2048,
+      hostCpus: 8,
+      hostMemoryMb: 16384,
+      editable: true,
+    });
+
+    const { container, getAllByText, queryByText, findByText } = render(<MachinesView />);
+
+    await waitFor(() =>
+      expect(container.querySelector('.tv-tele .big')?.textContent).toContain('3'),
+    );
+    expect(await findByText('2 GB')).toBeTruthy();
+    // Both rail groups read "Configured": these are settings, not live session data.
+    expect(getAllByText('Configured').length).toBe(2);
+    expect(queryByText('Session')).toBeNull();
+  });
+
+  it('shows the Guest Additions CTA as a focus notice instead of a row button', async () => {
+    vi.mocked(api.getGuestAdditionsStatus).mockResolvedValue({
+      id: RUNNING_ID,
+      installed: false,
+      updateAvailable: false,
+      status: 'not-detected',
+    });
+
+    const { container, findByRole } = render(<MachinesView />);
+
+    const install = await findByRole('button', { name: 'Install Guest Additions on VM One' });
+    const notice = container.querySelector('.tv-ga-notice');
+    expect(notice).toBeTruthy();
+    expect(notice?.contains(install)).toBe(true);
+    // The row action bar no longer hosts the CTA.
+    expect(container.querySelector('.tv-vm-actions .tv-abtn.ga')).toBeNull();
+  });
+
+  it('installs from the notice and shows the disc-inserted state there', async () => {
+    vi.mocked(api.getGuestAdditionsStatus).mockResolvedValue({
+      id: RUNNING_ID,
+      installed: false,
+      updateAvailable: false,
+      status: 'not-detected',
+    });
+    vi.mocked(api.installGuestAdditions).mockResolvedValue({
+      success: true,
+      vmId: RUNNING_ID,
+      controller: 'IDE',
+      port: 1,
+      device: 0,
+      message: 'Guest Additions disc inserted.',
+    });
+
+    const { container, findByRole } = render(<MachinesView />);
+    fireEvent.click(await findByRole('button', { name: 'Install Guest Additions on VM One' }));
+
+    await waitFor(() => expect(api.installGuestAdditions).toHaveBeenCalledWith(RUNNING_ID));
+    await waitFor(() =>
+      expect(container.querySelector('.tv-ga-notice')?.textContent).toContain(
+        'disc inserted · run installer in VM',
+      ),
+    );
+  });
+
+  it('offers the Guest Additions update in the focus notice, not the row', async () => {
+    vi.mocked(api.getGuestAdditionsStatus).mockResolvedValue({
+      id: RUNNING_ID,
+      installed: true,
+      version: '7.0.12',
+      hostVersion: '7.0.14',
+      updateAvailable: true,
+      status: 'installed',
+    });
+
+    const { container, findByRole } = render(<MachinesView />);
+
+    const update = await findByRole('button', { name: 'Update Guest Additions on VM One' });
+    const notice = container.querySelector('.tv-ga-notice');
+    expect(notice?.contains(update)).toBe(true);
+    expect(container.querySelector('.tv-vm-actions .tv-abtn.ga')).toBeNull();
+    // The notice explains the version jump.
+    expect(notice?.textContent).toContain('7.0.12');
+    expect(notice?.textContent).toContain('7.0.14');
   });
 
   it('surfaces an export error and keeps the dialog open', async () => {

@@ -5,6 +5,11 @@ import { useT } from '../i18n/i18n';
 
 interface HardwarePanelProps {
   vmId: string;
+  // running mirrors the focused VM's live state so the panel re-gates the
+  // moment the machine starts or stops, without waiting for a refocus. When it
+  // changes the hardware is re-fetched, and while true the panel is read-only
+  // even if the last response predates the start.
+  running?: boolean;
   // onChanged lets the parent refresh telemetry after a hardware change.
   onChanged?: () => void;
 }
@@ -14,7 +19,7 @@ const MIN_MEMORY_MB = 128;
 // HardwarePanel edits a VM's vCPU count and memory size. VirtualBox can only
 // change these on a powered-off machine, so a live VM renders read-only. The
 // inputs are bounded by what the host actually has.
-export function HardwarePanel({ vmId, onChanged }: HardwarePanelProps) {
+export function HardwarePanel({ vmId, running, onChanged }: HardwarePanelProps) {
   const { t, ts } = useT();
   const [hardware, setHardware] = useState<VmHardwareResponse | null>(null);
   const [cpus, setCpus] = useState('');
@@ -41,9 +46,11 @@ export function HardwarePanel({ vmId, onChanged }: HardwarePanelProps) {
     setHardware(null);
   }, [vmId]);
 
+  // Reload on focus change and whenever the VM's running state flips, so the
+  // editable flag always reflects the machine's current power state.
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, running]);
 
   const cpuValue = Number.parseInt(cpus, 10);
   const memValue = Number.parseInt(memory, 10);
@@ -54,7 +61,9 @@ export function HardwarePanel({ vmId, onChanged }: HardwarePanelProps) {
     Number.isInteger(memValue) && memValue >= MIN_MEMORY_MB && (!memMax || memValue <= memMax);
   const changed =
     hardware !== null && (cpuValue !== hardware.cpus || memValue !== hardware.memoryMb);
-  const editable = hardware?.editable ?? false;
+  // A live VM is never editable, even while the post-start re-fetch is still
+  // in flight and the last response predates the state change.
+  const editable = (hardware?.editable ?? false) && running !== true;
 
   const apply = useCallback(async () => {
     setBusy(true);
