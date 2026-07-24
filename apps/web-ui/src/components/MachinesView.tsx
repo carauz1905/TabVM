@@ -790,7 +790,7 @@ export function MachinesView() {
                         </div>
                         <button
                           type="button"
-                          className="tv-abtn"
+                          className="tv-abtn strong"
                           aria-label={tf('Open {vm} console in a new tab', { vm: vm.name })}
                           title={t('new tab')}
                           onClick={() => openConsoleTab(vm.id, vm.name)}
@@ -805,7 +805,7 @@ export function MachinesView() {
                         {termCapable[vm.id] && (
                           <button
                             type="button"
-                            className="tv-abtn"
+                            className="tv-abtn strong"
                             aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
                             title={t('terminal')}
                             onClick={() => openTerminalTab(vm.id, vm.name)}
