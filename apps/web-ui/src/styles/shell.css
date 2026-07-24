@@ -374,7 +374,7 @@
 
 /* Guest Additions call-to-action: draws the eye with a soft accent pulse while
    the VM is running without additions, and fills solid on hover. */
-.tv-abtn.ga { color: var(--accent); border-color: var(--accent); font-weight: 600; animation: tv-ga-pulse 2.4s var(--ease-out) infinite; }
+.tv-abtn.ga { color: var(--accent); border-color: var(--accent); font-weight: 600; animation: tv-ga-pulse 2.4s var(--ease-out) 6; }
 .tv-abtn.ga:hover { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .tv-abtn.ga:disabled { animation: none; }
 @keyframes tv-ga-pulse {
@@ -881,14 +881,22 @@
 .net-fwd-del:hover:not(:disabled) { color: var(--text); border-color: var(--line); }
 .net-fwd-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--text); }
 .net-fwd-del:disabled { opacity: 0.45; cursor: default; }
-.net-fwd-form { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.net-fwd-form { display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap; }
+/* Add-rule fields: a compact visible label stacked over each control, so the
+   row stays readable even when placeholders would truncate. */
+.net-fwd-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.net-fwd-field.grow { flex: 1 1 120px; }
+.net-fwd-field.port { flex: 0 1 92px; }
+.net-fwd-lab {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint); white-space: nowrap;
+}
 .net-fwd-input {
   font-family: var(--font-mono); font-size: 11.5px; color: var(--text);
   background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-sm);
   padding: 6px 8px; min-width: 0; max-width: 100%;
 }
-.net-fwd-input[type='text'] { flex: 1 1 120px; }
-.net-fwd-input[type='number'] { flex: 0 1 92px; }
+.net-fwd-field .net-fwd-input { width: 100%; }
 .net-fwd-input:focus { outline: none; border-color: var(--accent-line); }
 .net-fwd-input:disabled { opacity: 0.6; cursor: default; }
 

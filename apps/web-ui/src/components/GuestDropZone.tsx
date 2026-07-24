@@ -145,7 +145,7 @@ function GuestCredPrompt({ vmName, fileCount, onSubmit, onCancel }: GuestCredPro
         </label>
         <div className="ga-modal-actions">
           <button type="button" className="tv-abtn" onClick={onCancel}>
-            {t('cancel')}
+            {t('Cancel')}
           </button>
           <button
             type="button"

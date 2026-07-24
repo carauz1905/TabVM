@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { AppShell, type ShellView } from './AppShell';
+import { LanguageProvider } from '../i18n/i18n';
 
 function renderShell(overrides: { active?: ShellView; onNavigate?: (v: ShellView) => void } = {}) {
   const onNavigate = overrides.onNavigate ?? vi.fn();
@@ -87,6 +88,34 @@ describe('AppShell', () => {
     expect(localStorage.getItem('tabvm.theme')).toBe('dark');
     fireEvent.click(getByLabelText('Toggle theme'));
     expect(localStorage.getItem('tabvm.theme')).toBe('light');
+  });
+
+  it('exposes English aria-labels on the accent picker', () => {
+    const { getByLabelText } = renderShell();
+
+    fireEvent.click(getByLabelText('Accent color'));
+
+    for (const name of ['Teal', 'Pink', 'Orange', 'Yellow', 'Purple', 'Blue']) {
+      expect(getByLabelText(name)).toBeTruthy();
+    }
+  });
+
+  it('exposes Spanish aria-labels on the accent picker when the language is Spanish', () => {
+    localStorage.setItem('tabvm.lang', 'es');
+
+    const { getByLabelText } = render(
+      <LanguageProvider>
+        <AppShell active="machines" onNavigate={vi.fn()} crumb="machines" agentOnline>
+          <p>content</p>
+        </AppShell>
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(getByLabelText('Color de acento'));
+
+    for (const name of ['Verde azulado', 'Rosa', 'Naranja', 'Amarillo', 'Morado', 'Azul']) {
+      expect(getByLabelText(name)).toBeTruthy();
+    }
   });
 
   it('shows the agent offline state when not online', () => {

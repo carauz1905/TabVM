@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { CreateVmWizard } from './CreateVmWizard';
+import { LanguageProvider } from '../i18n/i18n';
 import { api, ApiError } from '../api/client';
 
 vi.mock('../api/client', () => {
@@ -41,6 +42,50 @@ describe('CreateVmWizard', () => {
     cleanup();
   });
 
+  it('uses the app-styled file picker instead of a raw file input', async () => {
+    vi.mocked(api.pickHostFile).mockResolvedValue({ path: OVA, cancelled: false });
+
+    const { container, getByRole, getByText, findByText } = render(
+      <CreateVmWizard onClose={vi.fn()} onCreated={vi.fn()} />,
+    );
+
+    // No raw <input type="file">: the agent opens the native OS dialog.
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+
+    const pick = getByRole('button', { name: 'Choose .ova/.ovf file' });
+    expect(pick.className).toContain('files-add');
+    expect(getByText('No file selected')).toBeTruthy();
+
+    fireEvent.click(pick);
+    // The visible filename reflects the chosen path (aria-live announces it).
+    const path = await findByText(OVA);
+    expect(path.className).toContain('tv-wiz-path');
+    expect(path.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('renders sentence-case modal action buttons in English', () => {
+    const { getByRole } = render(<CreateVmWizard onClose={vi.fn()} onCreated={vi.fn()} />);
+
+    expect(getByRole('button', { name: 'Cancel' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Import' })).toBeTruthy();
+  });
+
+  it('renders sentence-case modal action buttons in Spanish', () => {
+    localStorage.setItem('tabvm.lang', 'es');
+
+    const { getByRole } = render(
+      <LanguageProvider>
+        <CreateVmWizard onClose={vi.fn()} onCreated={vi.fn()} />
+      </LanguageProvider>,
+    );
+
+    expect(getByRole('button', { name: 'Cancelar' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Importar' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Elegir archivo .ova/.ovf' })).toBeTruthy();
+
+    localStorage.removeItem('tabvm.lang');
+  });
+
   it('renders the three creation mode tabs', () => {
     const { getByRole } = render(<CreateVmWizard onClose={vi.fn()} onCreated={vi.fn()} />);
 
@@ -71,7 +116,7 @@ describe('CreateVmWizard', () => {
     );
 
     fireEvent.change(getByPlaceholderText('lab-vm'), { target: { value: 'kali' } });
-    fireEvent.click(getByRole('button', { name: 'Choose .ova/.ovf…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .ova/.ovf file' }));
     await findByText(OVA);
 
     fireEvent.click(getByRole('button', { name: 'Import' }));
@@ -89,7 +134,7 @@ describe('CreateVmWizard', () => {
 
     fireEvent.click(getByRole('tab', { name: 'Install from ISO' }));
     fireEvent.change(getByPlaceholderText('lab-vm'), { target: { value: 'ubu' } });
-    fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .iso file' }));
     await findByText(ISO);
     fireEvent.change(getByLabelText('Guest password'), { target: { value: 'pw123' } });
     fireEvent.change(getByLabelText('Confirm password'), { target: { value: 'pw123' } });
@@ -121,7 +166,7 @@ describe('CreateVmWizard', () => {
 
     fireEvent.click(getByRole('tab', { name: 'Other OS (manual install)' }));
     fireEvent.change(getByPlaceholderText('lab-vm'), { target: { value: 'alp' } });
-    fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .iso file' }));
     await findByText(ISO);
 
     fireEvent.click(getByRole('button', { name: 'Create' }));
@@ -151,7 +196,7 @@ describe('CreateVmWizard', () => {
 
     // Install mode: name + ISO still needs the guest password.
     fireEvent.click(getByRole('tab', { name: 'Install from ISO' }));
-    fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .iso file' }));
     await findByText(ISO);
     expect((getByRole('button', { name: 'Create' }) as HTMLButtonElement).disabled).toBe(true);
 
@@ -173,7 +218,7 @@ describe('CreateVmWizard', () => {
 
     fireEvent.click(getByRole('tab', { name: 'Other OS (manual install)' }));
     fireEvent.change(getByPlaceholderText('lab-vm'), { target: { value: 'alp' } });
-    fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .iso file' }));
     await findByText(ISO);
 
     vi.useFakeTimers();
@@ -202,7 +247,7 @@ describe('CreateVmWizard', () => {
 
     fireEvent.click(getByRole('tab', { name: 'Other OS (manual install)' }));
     fireEvent.change(getByPlaceholderText('lab-vm'), { target: { value: 'alp' } });
-    fireEvent.click(getByRole('button', { name: 'Choose .iso…' }));
+    fireEvent.click(getByRole('button', { name: 'Choose .iso file' }));
     await findByText(ISO);
 
     vi.useFakeTimers();

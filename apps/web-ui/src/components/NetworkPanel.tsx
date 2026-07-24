@@ -21,6 +21,14 @@ function modeLabel(mode: string): string {
   return MODES.find((m) => m.value === mode)?.label ?? mode;
 }
 
+// formatMac groups a bare 12-hex-digit MAC (as VBoxManage reports it) into
+// colon-separated pairs: 080027C2FE52 -> 08:00:27:C2:FE:52. Case is preserved.
+// Anything else (already separated, wrong length, non-hex) is returned as-is.
+export function formatMac(mac: string): string {
+  if (!/^[0-9A-Fa-f]{12}$/.test(mac)) return mac;
+  return mac.match(/.{2}/g)!.join(':');
+}
+
 // A blank add-rule form. Ports are kept as strings while typing and parsed on
 // submit; host IP is optional and defaults to 127.0.0.1 on the agent.
 interface ForwardForm {
@@ -241,7 +249,7 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
               <li className="net-row" key={nic.slot}>
                 <div className="net-info">
                   <span className="net-slot">{t('Adapter')} {nic.slot}</span>
-                  {nic.mac && <span className="net-mac">{nic.mac}</span>}
+                  {nic.mac && <span className="net-mac">{formatMac(nic.mac)}</span>}
                   <span className="net-current">
                     {t('now')}: {t(modeLabel(nic.mode))}
                     {nic.adapter ? ` · ${nic.adapter}` : ''}
@@ -348,56 +356,74 @@ export function NetworkPanel({ vmId, onChanged }: NetworkPanelProps) {
                     )}
 
                     <div className="net-fwd-form">
-                      <input
-                        className="net-fwd-input"
-                        type="text"
-                        aria-label={`${t('Rule name')} (${t('Adapter')} ${nic.slot})`}
-                        placeholder={t('name')}
-                        value={form.name}
-                        disabled={fwBusy}
-                        onChange={(e) => setForm(nic.slot, { name: e.target.value })}
-                      />
-                      <select
-                        className="net-fwd-input"
-                        aria-label={`${t('Protocol')} (${t('Adapter')} ${nic.slot})`}
-                        value={form.protocol}
-                        disabled={fwBusy}
-                        onChange={(e) => setForm(nic.slot, { protocol: e.target.value })}
-                      >
-                        <option value="tcp">TCP</option>
-                        <option value="udp">UDP</option>
-                      </select>
-                      <input
-                        className="net-fwd-input"
-                        type="number"
-                        min={1}
-                        max={65535}
-                        aria-label={`${t('Host port')} (${t('Adapter')} ${nic.slot})`}
-                        placeholder={t('host port')}
-                        value={form.hostPort}
-                        disabled={fwBusy}
-                        onChange={(e) => setForm(nic.slot, { hostPort: e.target.value })}
-                      />
-                      <input
-                        className="net-fwd-input"
-                        type="number"
-                        min={1}
-                        max={65535}
-                        aria-label={`${t('Guest port')} (${t('Adapter')} ${nic.slot})`}
-                        placeholder={t('guest port')}
-                        value={form.guestPort}
-                        disabled={fwBusy}
-                        onChange={(e) => setForm(nic.slot, { guestPort: e.target.value })}
-                      />
-                      <input
-                        className="net-fwd-input"
-                        type="text"
-                        aria-label={`${t('Host IP (optional)')} (${t('Adapter')} ${nic.slot})`}
-                        placeholder="127.0.0.1"
-                        value={form.hostIp}
-                        disabled={fwBusy}
-                        onChange={(e) => setForm(nic.slot, { hostIp: e.target.value })}
-                      />
+                      {/* Each field pairs a small visible label with its input;
+                          placeholders stay short examples only. The aria-labels
+                          keep the adapter slot so fields stay unique across NICs. */}
+                      <label className="net-fwd-field grow">
+                        <span className="net-fwd-lab">{t('Rule name')}</span>
+                        <input
+                          className="net-fwd-input"
+                          type="text"
+                          aria-label={`${t('Rule name')} (${t('Adapter')} ${nic.slot})`}
+                          placeholder="ssh"
+                          value={form.name}
+                          disabled={fwBusy}
+                          onChange={(e) => setForm(nic.slot, { name: e.target.value })}
+                        />
+                      </label>
+                      <label className="net-fwd-field">
+                        <span className="net-fwd-lab">{t('Protocol')}</span>
+                        <select
+                          className="net-fwd-input"
+                          aria-label={`${t('Protocol')} (${t('Adapter')} ${nic.slot})`}
+                          value={form.protocol}
+                          disabled={fwBusy}
+                          onChange={(e) => setForm(nic.slot, { protocol: e.target.value })}
+                        >
+                          <option value="tcp">TCP</option>
+                          <option value="udp">UDP</option>
+                        </select>
+                      </label>
+                      <label className="net-fwd-field port">
+                        <span className="net-fwd-lab">{t('Host port')}</span>
+                        <input
+                          className="net-fwd-input"
+                          type="number"
+                          min={1}
+                          max={65535}
+                          aria-label={`${t('Host port')} (${t('Adapter')} ${nic.slot})`}
+                          placeholder="2222"
+                          value={form.hostPort}
+                          disabled={fwBusy}
+                          onChange={(e) => setForm(nic.slot, { hostPort: e.target.value })}
+                        />
+                      </label>
+                      <label className="net-fwd-field port">
+                        <span className="net-fwd-lab">{t('Guest port')}</span>
+                        <input
+                          className="net-fwd-input"
+                          type="number"
+                          min={1}
+                          max={65535}
+                          aria-label={`${t('Guest port')} (${t('Adapter')} ${nic.slot})`}
+                          placeholder="22"
+                          value={form.guestPort}
+                          disabled={fwBusy}
+                          onChange={(e) => setForm(nic.slot, { guestPort: e.target.value })}
+                        />
+                      </label>
+                      <label className="net-fwd-field grow">
+                        <span className="net-fwd-lab">{t('Host IP (optional)')}</span>
+                        <input
+                          className="net-fwd-input"
+                          type="text"
+                          aria-label={`${t('Host IP (optional)')} (${t('Adapter')} ${nic.slot})`}
+                          placeholder="127.0.0.1"
+                          value={form.hostIp}
+                          disabled={fwBusy}
+                          onChange={(e) => setForm(nic.slot, { hostIp: e.target.value })}
+                        />
+                      </label>
                       <button
                         type="button"
                         className="net-apply"
