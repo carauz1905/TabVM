@@ -22,18 +22,20 @@ func (s *service) ListSnapshots(ctx context.Context, id string) (models.Snapshot
 	}
 
 	result, runErr := s.runForVM(ctx, id, path, snapshotListArgs(id), 15*time.Second)
+	// A VM with no snapshots makes `snapshot list` print "This machine does not
+	// have any snapshots" and exit non-zero — which the runner surfaces as a
+	// non-nil error, so this must be checked BEFORE the error return below.
+	// It is an empty list, not a failure.
+	if strings.Contains(result.StandardOutput, "does not have any snapshots") ||
+		strings.Contains(result.StandardError, "does not have any snapshots") {
+		return models.SnapshotsResponse{Snapshots: []models.Snapshot{}}, nil
+	}
 	if runErr != nil {
 		return models.SnapshotsResponse{}, &ExecutionError{
 			ExitCode:      result.ExitCode,
 			StandardError: result.StandardError,
 			Message:       fmt.Sprintf("VBoxManage failed while listing snapshots: %v", runErr),
 		}
-	}
-	// A VM with no snapshots makes `snapshot list` print "This machine does not
-	// have any snapshots" and exit non-zero. That is an empty list, not an error.
-	if strings.Contains(result.StandardOutput, "does not have any snapshots") ||
-		strings.Contains(result.StandardError, "does not have any snapshots") {
-		return models.SnapshotsResponse{Snapshots: []models.Snapshot{}}, nil
 	}
 	if result.ExitCode != 0 {
 		return models.SnapshotsResponse{}, &ExecutionError{
