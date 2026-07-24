@@ -1,10 +1,10 @@
 {
-    "version": "0.3.2",
+    "version": "0.4.0",
     "description": "Manage your local VirtualBox VMs from browser tabs.",
     "homepage": "https://tabvm.com",
     "license": "AGPL-3.0-or-later",
-    "url": "https://github.com/carauz1905/TabVM/releases/download/v0.3.2/TabVM-portable.zip",
-    "hash": "ed59d92428e93ebda7b852eb6f6364ecc6b045c1cbe0e21a48a19b4ff9be1589",
+    "url": "https://github.com/carauz1905/TabVM/releases/download/v0.4.0/TabVM-portable.zip",
+    "hash": "e6a521eff5b33f7eae734869a0208ed494e5102fd00448adddf33c975154969f",
     "pre_install": [
         "Stop-Process -Name 'tabvm-agent' -Force -ErrorAction SilentlyContinue"
     ],
