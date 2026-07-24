@@ -26,6 +26,31 @@
   --font-display: var(--tabvm-font-display);
 }
 
+/* Success/error text for dashboard-rendered modals (wizard status, GA-update
+   result). The dark values are the original console-era greens/reds; the light
+   values are darkened so the same semantic text stays readable on white. */
+:root,
+:root[data-theme='light'] {
+  --ok-text: #0b7c6f;
+  --ok-line: rgba(11, 124, 111, 0.4);
+  --err-text: #c0454b;
+  --err-line: rgba(192, 69, 75, 0.4);
+}
+:root[data-theme='dark'] {
+  --ok-text: #2fd4a7;
+  --ok-line: rgba(47, 212, 167, 0.4);
+  --err-text: #e5866c;
+  --err-line: rgba(229, 96, 76, 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ok-text: #2fd4a7;
+    --ok-line: rgba(47, 212, 167, 0.4);
+    --err-text: #e5866c;
+    --err-line: rgba(229, 96, 76, 0.4);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -595,8 +620,8 @@ body {
 
 .shared-folders {
   padding: 0.7rem 0.8rem;
-  background: #10161a;
-  border-top: 1px solid #232d33;
+  background: var(--raise);
+  border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -662,14 +687,14 @@ body {
   flex: 1;
   min-width: 8rem;
   padding: 0.4rem 0.55rem;
-  background: #0b1015;
-  border: 1px solid #232d33;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
   border-radius: 6px;
-  color: var(--text-primary, #e6edf3);
+  color: var(--text);
   font-size: 0.78rem;
 }
 .shared-folders-input::placeholder {
-  color: #5c676d;
+  color: var(--faint);
 }
 .shared-folders-error {
   font-size: 0.76rem;
@@ -689,8 +714,8 @@ body {
 .ga-modal {
   width: 100%;
   max-width: 460px;
-  background: #0d1116;
-  border: 1px solid #232d33;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
   border-radius: 12px;
   padding: 1.1rem 1.2rem 1.2rem;
   box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
@@ -706,34 +731,34 @@ body {
 .ga-modal-head h3 {
   margin: 0;
   font-size: 1rem;
-  color: #e8eeeb;
+  color: var(--text);
 }
 .ga-x {
   background: none;
   border: none;
-  color: #8b979d;
+  color: var(--muted);
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
 }
 .ga-x:hover {
-  color: #e8eeeb;
+  color: var(--text);
 }
 .ga-modal-note {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.5;
-  color: #97a2a8;
+  color: var(--muted);
 }
 .ga-modal-note strong {
-  color: #cdd6da;
+  color: var(--text);
 }
 .ga-field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   font-size: 0.76rem;
-  color: #8b979d;
+  color: var(--muted);
 }
 /* .ga-field input/select styling lives in styles/shell.css, themed via CSS
    variables so the fields follow the active light/dark theme. The hardcoded
@@ -745,12 +770,12 @@ body {
   font-size: 0.8rem;
 }
 .ga-result.ok {
-  border: 1px solid rgba(47, 212, 167, 0.4);
-  color: #2fd4a7;
+  border: 1px solid var(--ok-line);
+  color: var(--ok-text);
 }
 .ga-result.err {
-  border: 1px solid rgba(229, 96, 76, 0.4);
-  color: #e5866c;
+  border: 1px solid var(--err-line);
+  color: var(--err-text);
 }
 .ga-result-log {
   margin: 0.5rem 0 0;
@@ -760,7 +785,7 @@ body {
   word-break: break-word;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.72rem;
-  color: #9aa6ac;
+  color: var(--muted);
 }
 .ga-modal-actions {
   display: flex;
@@ -768,12 +793,14 @@ body {
   gap: 0.5rem;
 }
 
-/* ===== Create-VM wizard ===== */
+/* ===== Create-VM wizard =====
+   The wizard renders inside the THEMED dashboard, so every surface and text
+   color rides the shell.css theme variables (light + dark), not console hexes. */
 .tv-wiz {
   width: 100%;
   max-width: 560px;
-  background: #0d1116;
-  border: 1px solid #232d33;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
   border-radius: 12px;
   padding: 1.1rem 1.2rem 1.2rem;
   box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
@@ -784,8 +811,8 @@ body {
 .tv-wiz-tabs {
   display: flex;
   gap: 0.4rem;
-  background: #0b1015;
-  border: 1px solid #232d33;
+  background: var(--raise);
+  border: 1px solid var(--line-2);
   border-radius: 8px;
   padding: 0.25rem;
 }
@@ -795,20 +822,21 @@ body {
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #8b979d;
+  color: var(--muted);
   font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .tv-wiz-tab.on {
-  background: #161d23;
-  color: #e8eeeb;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--line);
 }
 .tv-wiz-note {
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.5;
-  color: #97a2a8;
+  color: var(--muted);
 }
 .tv-wiz-file {
   display: flex;
@@ -820,7 +848,7 @@ body {
   min-width: 0;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.72rem;
-  color: #9aa6ac;
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -846,23 +874,23 @@ body {
 .tv-wiz-status p {
   margin: 0;
   font-size: 0.85rem;
-  color: #cdd6da;
+  color: var(--text);
 }
 .tv-wiz-sub {
   font-size: 0.78rem !important;
-  color: #97a2a8 !important;
+  color: var(--muted) !important;
 }
 .tv-wiz-ok {
-  color: #2fd4a7 !important;
+  color: var(--ok-text) !important;
 }
 .tv-wiz-err {
-  color: #e5866c !important;
+  color: var(--err-text) !important;
 }
 .tv-wiz-spin {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2.5px solid #232d33;
+  border: 2.5px solid var(--line-2);
   border-top-color: var(--accent, #2fe3ce);
   animation: tv-wiz-spin 0.8s linear infinite;
 }

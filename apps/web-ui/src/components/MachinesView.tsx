@@ -1041,7 +1041,7 @@ export function MachinesView() {
                 {clonePhase === 'error' && cloneError && <p className="tv-wiz-err">{ts(cloneError)}</p>}
                 <div className="ga-modal-actions">
                   <button type="button" className="tv-abtn" onClick={closeClone}>
-                    {t('cancel')}
+                    {t('Cancel')}
                   </button>
                   <button
                     type="button"
@@ -1078,7 +1078,7 @@ export function MachinesView() {
                 {exportPath && <p className="tv-wiz-note">{ts(exportPath)}</p>}
                 <div className="ga-modal-actions">
                   <button type="button" className="tv-abtn go" onClick={closeExport}>
-                    {t('done')}
+                    {t('Done')}
                   </button>
                 </div>
               </>
@@ -1092,7 +1092,7 @@ export function MachinesView() {
                 {exportPhase === 'error' && exportError && <p className="tv-wiz-err">{ts(exportError)}</p>}
                 <div className="ga-modal-actions">
                   <button type="button" className="tv-abtn" onClick={closeExport}>
-                    {t('cancel')}
+                    {t('Cancel')}
                   </button>
                   <button type="button" className="tv-abtn go" onClick={() => void submitExport()}>
                     {t('Choose folder & export')}
@@ -1147,7 +1147,7 @@ export function MachinesView() {
             )}
             <div className="ga-modal-actions">
               <button type="button" className="tv-abtn" onClick={closeGaUpdate} disabled={gaUpdateBusy}>
-                {gaUpdateResult?.success ? t('close') : t('cancel')}
+                {gaUpdateResult?.success ? t('Close') : t('Cancel')}
               </button>
               <button
                 type="button"

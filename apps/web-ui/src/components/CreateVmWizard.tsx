@@ -236,21 +236,33 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
 
             {mode === 'import' ? (
               <div className="tv-wiz-file">
-                <button type="button" className="tv-abtn" onClick={() => void pickFile(setOvaPath)}>
-                  {t('Choose .ova/.ovf…')}
+                {/* App-styled picker (mirrors the Files panel's add button). The
+                    native OS dialog is opened by the agent, so there is no raw
+                    <input type="file"> to hide; the chosen path is announced
+                    via the aria-live filename next to the button. */}
+                <button type="button" className="files-add" onClick={() => void pickFile(setOvaPath)}>
+                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 3v5h5" />
+                  </svg>
+                  {t('Choose .ova/.ovf file')}
                 </button>
-                <span className="tv-wiz-path" title={ovaPath}>
-                  {ovaPath || t('No file chosen')}
+                <span className="tv-wiz-path" aria-live="polite" title={ovaPath}>
+                  {ovaPath || t('No file selected')}
                 </span>
               </div>
             ) : (
               <>
                 <div className="tv-wiz-file">
-                  <button type="button" className="tv-abtn" onClick={() => void pickFile(setIsoPath)}>
-                    {t('Choose .iso…')}
+                  <button type="button" className="files-add" onClick={() => void pickFile(setIsoPath)}>
+                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 3v5h5" />
+                    </svg>
+                    {t('Choose .iso file')}
                   </button>
-                  <span className="tv-wiz-path" title={isoPath}>
-                    {isoPath || t('No file chosen')}
+                  <span className="tv-wiz-path" aria-live="polite" title={isoPath}>
+                    {isoPath || t('No file selected')}
                   </span>
                 </div>
                 {mode === 'manual' ? (
@@ -331,7 +343,7 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
 
             <div className="ga-modal-actions">
               <button type="button" className="tv-abtn" onClick={onClose}>
-                {t('cancel')}
+                {t('Cancel')}
               </button>
               <button type="button" className="tv-abtn go" disabled={!canSubmit} onClick={() => void submit()}>
                 {mode === 'import' ? t('Import') : t('Create')}
@@ -376,7 +388,7 @@ export function CreateVmWizard({ onClose, onCreated }: CreateVmWizardProps) {
             <p className="tv-wiz-err">{ts(message)}</p>
             <div className="ga-modal-actions">
               <button type="button" className="tv-abtn" onClick={onClose}>
-                {t('close')}
+                {t('Close')}
               </button>
               <button type="button" className="tv-abtn go" onClick={() => setPhase('form')}>
                 {t('Back')}

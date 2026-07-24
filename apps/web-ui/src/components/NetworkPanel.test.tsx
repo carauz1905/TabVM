@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { NetworkPanel } from './NetworkPanel';
+import { NetworkPanel, formatMac } from './NetworkPanel';
 import { api } from '../api/client';
 import type { PortForwardingRule } from '../types/api';
 
@@ -37,6 +37,65 @@ function natOptions(forwarding: PortForwardingRule[] = [], cableConnected = true
     hostOnlyAdapters: [],
   };
 }
+
+describe('formatMac', () => {
+  it('groups a bare 12-hex-digit MAC into colon-separated pairs', () => {
+    expect(formatMac('080027C2FE52')).toBe('08:00:27:C2:FE:52');
+  });
+
+  it('preserves the original casing', () => {
+    expect(formatMac('080027c2fe52')).toBe('08:00:27:c2:fe:52');
+  });
+
+  it('returns an already-separated MAC unchanged', () => {
+    expect(formatMac('08:00:27:C2:FE:52')).toBe('08:00:27:C2:FE:52');
+  });
+
+  it('returns wrong-length or non-hex input unchanged', () => {
+    expect(formatMac('080027C2FE5')).toBe('080027C2FE5');
+    expect(formatMac('080027C2FE521')).toBe('080027C2FE521');
+    expect(formatMac('080027C2FE5G')).toBe('080027C2FE5G');
+    expect(formatMac('')).toBe('');
+  });
+});
+
+describe('NetworkPanel adapter info', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => cleanup());
+
+  it('renders a bare VBoxManage MAC with colon separators', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue({
+      adapters: [{ slot: 1, mode: 'nat', mac: '080027C2FE52', cableConnected: true, forwarding: [] }],
+      bridgedAdapters: [],
+      hostOnlyAdapters: [],
+    });
+
+    const { container, findByText } = render(<NetworkPanel vmId={VM_ID} />);
+
+    expect(await findByText('08:00:27:C2:FE:52')).toBeTruthy();
+    expect(container.querySelector('.net-mac')?.textContent).toBe('08:00:27:C2:FE:52');
+  });
+
+  it('shows visible labels for the add-rule fields', async () => {
+    vi.mocked(api.getNetworkOptions).mockResolvedValue(natOptions());
+
+    const { getByText, getByLabelText } = render(<NetworkPanel vmId={VM_ID} />);
+    await waitFor(() => expect(api.getNetworkOptions).toHaveBeenCalled());
+
+    // Small visible labels above each field of the add-rule row.
+    expect(getByText('Rule name')).toBeTruthy();
+    expect(getByText('Protocol')).toBeTruthy();
+    expect(getByText('Host port')).toBeTruthy();
+    expect(getByText('Guest port')).toBeTruthy();
+    expect(getByText('Host IP (optional)')).toBeTruthy();
+    // The slot-scoped aria-labels stay for uniqueness across adapters.
+    expect(getByLabelText('Host port (Adapter 1)')).toBeTruthy();
+    expect(getByLabelText('Guest port (Adapter 1)')).toBeTruthy();
+  });
+});
 
 describe('NetworkPanel port forwarding', () => {
   beforeEach(() => {
