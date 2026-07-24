@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../i18n/i18n';
 import { BrandMark } from '../BrandMark';
 import { useDocs } from './content';
+import { matchesQuery, sectionHaystack } from './search';
 import {
   ConsoleBootDemo,
   DemoStage,
@@ -54,8 +55,9 @@ const ORDER: SectionId[] = [
 // animations rather than screenshots.
 export function DocsView() {
   const d = useDocs();
-  const { t } = useT();
+  const { t, tf } = useT();
   const [active, setActive] = useState<SectionId>('welcome');
+  const [query, setQuery] = useState('');
   // Replay counters remount scripted-animation demos to restart them.
   const [plays, setPlays] = useState<Record<string, number>>({});
   const replay = (key: string) => setPlays((p) => ({ ...p, [key]: (p[key] ?? 0) + 1 }));
@@ -63,14 +65,24 @@ export function DocsView() {
 
   const refs = useRef<Record<string, HTMLElement | null>>({});
 
+  // With a non-empty query, both the TOC and the rendered sections shrink to
+  // the sections whose active-language text matches it (case- and
+  // diacritic-insensitively). An empty query keeps every section, as before.
+  const q = query.trim();
+  const visible = ORDER.filter((id) => matchesQuery(sectionHaystack(d, id), q));
+  const show = (id: SectionId) => visible.includes(id);
+
   // Scroll-spy: highlight the section nearest the top of the scroll area.
+  // Re-created whenever the filtered set changes so it observes the freshly
+  // mounted section elements rather than nodes the filter unmounted.
+  const visibleKey = visible.join(',');
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        const topmost = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActive(visible.target.id as SectionId);
+        if (topmost) setActive(topmost.target.id as SectionId);
       },
       { rootMargin: '-20% 0px -70% 0px', threshold: 0 },
     );
@@ -79,7 +91,7 @@ export function DocsView() {
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, []);
+  }, [visibleKey]);
 
   const go = (id: SectionId) => refs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const setRef = (id: SectionId) => (el: HTMLElement | null) => {
@@ -89,9 +101,30 @@ export function DocsView() {
   return (
     <div className="docs">
       <aside className="docs-nav" aria-label={d.sectionNav}>
+        <label className="docs-search">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            value={query}
+            placeholder={t('Search the manual')}
+            aria-label={t('Search the manual')}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('');
+            }}
+          />
+          {query && (
+            <button type="button" className="clear" aria-label={t('Clear search')} onClick={() => setQuery('')}>
+              ×
+            </button>
+          )}
+        </label>
         <div className="docs-nav-label">{d.sectionNav}</div>
         <ul>
-          {ORDER.map((id) => (
+          {visible.map((id) => (
             <li key={id}>
               <button
                 type="button"
@@ -107,7 +140,14 @@ export function DocsView() {
       </aside>
 
       <div className="docs-main">
+        {q && visible.length === 0 && (
+          <div className="docs-noresults" role="status">
+            {tf('No results for "{q}"', { q })}
+          </div>
+        )}
+
         {/* Welcome */}
+        {show('welcome') && (
         <section id="welcome" ref={setRef('welcome')} className="docs-sec docs-hero tv-rise">
           <BrandMark className="docs-hero-mark" />
           <h1>{d.sections.welcome}</h1>
@@ -124,8 +164,10 @@ export function DocsView() {
           </div>
           <p className="docs-hint">{d.welcome.tryHint}</p>
         </section>
+        )}
 
         {/* Quick start */}
+        {show('quickStart') && (
         <section id="quickStart" ref={setRef('quickStart')} className="docs-sec">
           <h2>{d.sections.quickStart}</h2>
           <p className="docs-lead">{d.quickStart.lead}</p>
@@ -141,8 +183,10 @@ export function DocsView() {
             ))}
           </ol>
         </section>
+        )}
 
         {/* Operate */}
+        {show('operate') && (
         <section id="operate" ref={setRef('operate')} className="docs-sec">
           <h2>{d.sections.operate}</h2>
           <p className="docs-lead">{d.operate.lead}</p>
@@ -167,8 +211,10 @@ export function DocsView() {
           </DemoStage>
           <p className="docs-tip">{d.operate.tip}</p>
         </section>
+        )}
 
         {/* Terminal */}
+        {show('terminal') && (
         <section id="terminal" ref={setRef('terminal')} className="docs-sec">
           <h2>{d.sections.terminal}</h2>
           <p className="docs-lead">{d.terminal.lead}</p>
@@ -183,8 +229,10 @@ export function DocsView() {
           <p>{d.terminal.activate.body}</p>
           <TipBox label={d.tipLabel}>{d.terminal.tip}</TipBox>
         </section>
+        )}
 
         {/* Hardware */}
+        {show('hardware') && (
         <section id="hardware" ref={setRef('hardware')} className="docs-sec">
           <h2>{d.sections.hardware}</h2>
           <p className="docs-lead">{d.hardware.lead}</p>
@@ -205,8 +253,10 @@ export function DocsView() {
           </DemoStage>
           <TipBox label={d.tipLabel}>{d.hardware.tip}</TipBox>
         </section>
+        )}
 
         {/* Storage */}
+        {show('storage') && (
         <section id="storage" ref={setRef('storage')} className="docs-sec">
           <h2>{d.sections.storage}</h2>
           <p className="docs-lead">{d.storage.lead}</p>
@@ -244,8 +294,10 @@ export function DocsView() {
           <p>{d.storage.limits.body}</p>
           <TipBox label={d.tipLabel}>{d.storage.tip}</TipBox>
         </section>
+        )}
 
         {/* Files */}
+        {show('files') && (
         <section id="files" ref={setRef('files')} className="docs-sec">
           <h2>{d.sections.files}</h2>
           <p className="docs-lead">{d.files.lead}</p>
@@ -260,8 +312,10 @@ export function DocsView() {
           </DemoStage>
           <TipBox label={d.tipLabel}>{d.files.tip}</TipBox>
         </section>
+        )}
 
         {/* Snapshots */}
+        {show('snapshots') && (
         <section id="snapshots" ref={setRef('snapshots')} className="docs-sec">
           <h2>{d.sections.snapshots}</h2>
           <p className="docs-lead">{d.snapshots.lead}</p>
@@ -274,8 +328,10 @@ export function DocsView() {
           </DemoStage>
           <TipBox label={d.tipLabel}>{d.snapshots.tip}</TipBox>
         </section>
+        )}
 
         {/* Network */}
+        {show('network') && (
         <section id="network" ref={setRef('network')} className="docs-sec">
           <h2>{d.sections.network}</h2>
           <p className="docs-lead">{d.network.lead}</p>
@@ -298,8 +354,10 @@ export function DocsView() {
           <p>{d.network.link.body}</p>
           <TipBox label={d.tipLabel}>{d.network.tip}</TipBox>
         </section>
+        )}
 
         {/* USB */}
+        {show('usb') && (
         <section id="usb" ref={setRef('usb')} className="docs-sec">
           <h2>{d.sections.usb}</h2>
           <p className="docs-lead">{d.usb.lead}</p>
@@ -319,8 +377,10 @@ export function DocsView() {
           </div>
           <TipBox label={d.tipLabel}>{d.usb.tip}</TipBox>
         </section>
+        )}
 
         {/* Create */}
+        {show('create') && (
         <section id="create" ref={setRef('create')} className="docs-sec">
           <h2>{d.sections.create}</h2>
           <p className="docs-lead">{d.create.lead}</p>
@@ -358,8 +418,10 @@ export function DocsView() {
           </DemoStage>
           <p className="docs-tip">{d.create.note}</p>
         </section>
+        )}
 
         {/* Personalize */}
+        {show('personalize') && (
         <section id="personalize" ref={setRef('personalize')} className="docs-sec">
           <h2>{d.sections.personalize}</h2>
           <p className="docs-lead">{d.personalize.lead}</p>
@@ -384,8 +446,10 @@ export function DocsView() {
             />
           </DemoStage>
         </section>
+        )}
 
         {/* Troubleshoot */}
+        {show('troubleshoot') && (
         <section id="troubleshoot" ref={setRef('troubleshoot')} className="docs-sec">
           <h2>{d.sections.troubleshoot}</h2>
           <p className="docs-lead">{d.troubleshoot.lead}</p>
@@ -413,6 +477,7 @@ export function DocsView() {
             ))}
           </div>
         </section>
+        )}
 
         <CreditsSignature by={d.credits.by} name={d.credits.name} />
       </div>
