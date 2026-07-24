@@ -373,7 +373,10 @@
    terminal) read as real buttons at a glance, while .go (open console) keeps
    the accent as the row's primary action. */
 .tv-abtn.strong { color: var(--text); border-color: var(--line-2); background: var(--raise); font-weight: 500; }
-.tv-abtn.strong:hover { border-color: var(--accent-line); color: var(--text); background: var(--raise); }
+/* Hover mirrors .go's accent fill: the app's established signal that an
+   elevated action is interactive. Rest state stays neutral so "open console"
+   keeps the accent primacy at a glance. */
+.tv-abtn.strong:hover { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .tv-abtn.go { color: var(--accent); border-color: var(--accent-line); font-weight: 500; }
 .tv-abtn.go:hover { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
