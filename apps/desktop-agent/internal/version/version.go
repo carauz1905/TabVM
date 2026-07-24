@@ -5,4 +5,4 @@ package version
 
 // Version is the current TabVM release. Keep it in sync with
 // apps/web-ui/package.json.
-const Version = "0.3.2"
+const Version = "0.4.0"

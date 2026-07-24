@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-24
+
+### Added
+
+- In-manual search: filter the manual's table of contents and sections by any
+  text in the active language, case- and diacritic-insensitively, with a
+  no-results state and a clear button. (#58)
+- The Agent view shows the latest available release next to the runtime info,
+  reusing the update check. (#52)
+- USB device states are translated and carry explanatory tooltips (what Busy,
+  Available, Captured and Unavailable mean). (#52)
+- A stop request the guest ignores now surfaces: after a grace period the row
+  shows a dismissible notice and the force power-off action becomes visible.
+  (#46)
+- "New tab" and "terminal" have a visible secondary emphasis in the running
+  row — outlined at rest, filling with the accent on hover — so the most
+  powerful console features no longer look like minor actions. (#54)
+
+### Changed
+
+- The first VM is focused automatically on load (preferring a running one), so
+  the dashboard never opens onto an empty focus area. (#52)
+- The Install/Update Guest Additions call-to-action moved from the VM row to a
+  notice card in the focus section, keeping rows lean. (#52)
+- The telemetry rail shows the configured vCPU count and memory for stopped
+  VMs instead of dashes. (#52)
+- The activity log is readable: internal action codes render as localized
+  labels, success uses a distinct green dot, and timestamps follow the active
+  language's date format. (#48)
+- The Spanish UI and manual use one consistent formal register, and native
+  form controls follow the in-app theme instead of the OS preference. (#50,
+  #46)
+
+### Fixed
+
+- Focusing a VM without snapshots no longer produces a 502 and an error log
+  entry on every focus. (#44)
+- USB attach is disabled with an explanation when the VM has no USB
+  controller, instead of failing after the click. (#46)
+- Guest-control credential fields no longer render as black boxes in the light
+  theme when the OS prefers dark. (#46)
+- The serial terminal is no longer offered on stopped VMs. (#46)
+- Hardware and Storage panels re-gate immediately when the focused VM starts
+  or stops, instead of keeping a stale editable state. (#52)
+- Port-forwarding fields have visible labels instead of truncated
+  placeholders; MAC addresses render with separators; the Guest Additions
+  call-to-action no longer pulses forever. (#50)
+
 ## [0.3.2] - 2026-07-22
 
 ### Fixed
@@ -125,7 +173,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/carauz1905/TabVM/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/carauz1905/TabVM/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/carauz1905/TabVM/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/carauz1905/TabVM/compare/v0.2.0...v0.3.0
