@@ -270,6 +270,19 @@ describe('MachinesView', () => {
     expect(await findByRole('button', { name: 'Open VM One terminal in a new tab' })).toBeTruthy();
   });
 
+  it('gives new tab and terminal the visible secondary emphasis', async () => {
+    const { findByRole } = render(<MachinesView />);
+    const newTab = await findByRole('button', { name: 'Open VM One console in a new tab' });
+    const terminal = await findByRole('button', { name: 'Open VM One terminal in a new tab' });
+    // Secondary tier: real buttons at a glance, while "open console" keeps the
+    // accent as the primary action.
+    expect(newTab.className).toContain('strong');
+    expect(terminal.className).toContain('strong');
+    const openConsole = await findByRole('button', { name: 'Open console for VM One' });
+    expect(openConsole.className).toContain('go');
+    expect(openConsole.className).not.toContain('strong');
+  });
+
   it('does not offer the terminal for a stopped VM', async () => {
     vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
 

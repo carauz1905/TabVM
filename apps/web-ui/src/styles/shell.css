@@ -369,6 +369,11 @@
 .tv-abtn:active { transform: scale(0.98); }
 .tv-abtn:disabled { opacity: 0.55; cursor: default; }
 .tv-abtn.danger:hover { color: #c0454b; }
+/* Secondary emphasis tier: powerful-but-not-primary actions (new tab,
+   terminal) read as real buttons at a glance, while .go (open console) keeps
+   the accent as the row's primary action. */
+.tv-abtn.strong { color: var(--text); border-color: var(--line-2); background: var(--raise); font-weight: 500; }
+.tv-abtn.strong:hover { border-color: var(--accent-line); color: var(--text); background: var(--raise); }
 .tv-abtn.go { color: var(--accent); border-color: var(--accent-line); font-weight: 500; }
 .tv-abtn.go:hover { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 
