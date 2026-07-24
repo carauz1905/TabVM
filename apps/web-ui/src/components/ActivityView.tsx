@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useVmStatus } from '../hooks/useVmStatus';
 import type { ActivityEntry } from '../types/api';
 import { useT } from '../i18n/i18n';
+import { actionLabel } from '../lib/activityLabels';
 
 // ActivityView renders the agent's recorded operation log (start/stop/reset,
 // console prepare, shared-folder changes) from GET /api/activity. Each row shows
@@ -11,7 +12,7 @@ import { useT } from '../i18n/i18n';
 // list live across the action, machine name, id and message. Rows are collapsed
 // by default and only one is open at a time.
 export function ActivityView() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { vms } = useVmStatus();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -40,9 +41,18 @@ export function ActivityView() {
   // machine no longer exists (e.g. it was deleted after the operation).
   const vmName = (id: string) => vms.find((vm) => vm.id === id)?.name ?? id;
 
+  // Locale used for row timestamps: follows the active UI language so dates
+  // read day-first in Spanish and month-first in English.
+  const dateLocale = lang === 'es' ? 'es-ES' : 'en-US';
+
   const q = query.trim().toLowerCase();
+  // Match both the raw action code and the localized label so users can filter
+  // by what they see on screen as well as by the backend code.
   const matches = (e: ActivityEntry) =>
-    !q || `${e.action} ${vmName(e.vmId)} ${e.vmId} ${e.message ?? ''}`.toLowerCase().includes(q);
+    !q ||
+    `${e.action} ${t(actionLabel(e.action))} ${vmName(e.vmId)} ${e.vmId} ${e.message ?? ''}`
+      .toLowerCase()
+      .includes(q);
   const visibleCount = q ? entries.filter(matches).length : entries.length;
 
   return (
@@ -108,9 +118,9 @@ export function ActivityView() {
                     onClick={() => setOpenKey(isOpen ? null : key)}
                   >
                     <span className={`tv-log-dot ${entry.success ? 'ok' : 'fail'}`} />
-                    <span className="tv-log-action">{entry.action}</span>
+                    <span className="tv-log-action">{t(actionLabel(entry.action))}</span>
                     <span className="tv-log-vm">{name}</span>
-                    <span className="tv-log-time">{new Date(entry.recordedAt).toLocaleString()}</span>
+                    <span className="tv-log-time">{new Date(entry.recordedAt).toLocaleString(dateLocale)}</span>
                     <span className="tv-log-chev" aria-hidden="true">
                       ▸
                     </span>
