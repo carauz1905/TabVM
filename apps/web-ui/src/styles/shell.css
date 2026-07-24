@@ -344,6 +344,21 @@
 .tv-quiet { display: inline-flex; gap: 6px; opacity: 0; transform: translateX(4px); transition: opacity 0.22s var(--ease), transform 0.22s var(--ease); }
 .tv-vm:hover .tv-quiet,
 .tv-vm:focus-within .tv-quiet { opacity: 1; transform: none; }
+/* While the unresponsive-guest notice shows, the quiet group stays visible so
+   the force power-off affordance is not hover-only. */
+.tv-quiet--open { opacity: 1; transform: none; }
+/* Soft warning shown inline in a VM row when an ACPI stop went unanswered. */
+.tv-stop-notice {
+  display: flex; align-items: center; gap: 8px; align-self: flex-start;
+  padding: 5px 10px; border-radius: var(--r-sm);
+  font-family: var(--font-mono); font-size: 11px; color: #b3781f;
+  background: rgba(216, 151, 60, 0.08); border: 1px solid rgba(216, 151, 60, 0.3);
+}
+.tv-stop-notice-x {
+  background: none; border: none; color: inherit; cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 2px;
+}
+.tv-stop-notice-x:hover { color: var(--text); }
 .tv-abtn {
   display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px;
   padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--muted);
@@ -625,6 +640,19 @@
   background: var(--raise); color: var(--text);
 }
 .guestctl-input:focus { outline: none; border-color: var(--accent-line); }
+/* .ga-field inputs (guest-control credentials, GA-update modal, clone/wizard
+   forms) inherited a hardcoded dark look from index.css and rendered as black
+   fields inside the light theme. Mirror the app's themed input family
+   (.guestctl-input / .snap-input); shell.css loads after index.css, so this
+   equal-specificity rule wins and follows the active theme everywhere. */
+.ga-field input,
+.ga-field select {
+  font-family: var(--font-mono); font-size: 12.5px;
+  padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md);
+  background: var(--raise); color: var(--text);
+}
+.ga-field input:focus,
+.ga-field select:focus { outline: none; border-color: var(--accent-line); }
 .guestctl-result { display: flex; flex-direction: column; gap: 7px; }
 .guestctl-exit {
   align-self: flex-start; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;

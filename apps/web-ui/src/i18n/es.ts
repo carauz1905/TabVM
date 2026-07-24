@@ -90,6 +90,13 @@ export const es: Record<string, string> = {
   'Live console': 'Consola en vivo',
   Machine: 'Máquina',
   'This machine is powered off.': 'Esta máquina está apagada.',
+  'This machine stopped unexpectedly (aborted). Start it to boot again.':
+    'Esta máquina se detuvo de forma inesperada (abortada). Iníciela para arrancar de nuevo.',
+  'This machine is suspended — start it to resume exactly where it left off.':
+    'Esta máquina está suspendida: iníciela para reanudar donde quedó.',
+  'The guest did not respond to the shutdown signal. You can force power off.':
+    'El sistema invitado no respondió a la señal de apagado. Puede forzar el apagado.',
+  'Dismiss shutdown notice for {vm}': 'Descartar el aviso de apagado de {vm}',
   Configured: 'Configurado',
   Session: 'Sesión',
   Memory: 'Memoria',

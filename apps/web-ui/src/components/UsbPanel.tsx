@@ -86,6 +86,13 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
   const devices = data?.devices ?? [];
   const controllerMissing = data ? !data.usbControllerEnabled : false;
   const extensionMissing = data ? !data.extensionPackInstalled : false;
+  // Without a USB controller every attach is guaranteed to fail with a 400, so
+  // the buttons are disabled and carry this explanation as their tooltip. A
+  // missing Extension Pack must NOT block attach: USB 1.1 (OHCI) passthrough
+  // works without it, so that notice stays a soft warning only.
+  const controllerNotice = t(
+    'This VM has no USB controller enabled. Power the VM off and enable USB in its settings — the controller cannot be turned on while the VM is running.',
+  );
 
   return (
     <section className="net-panel usb-panel" aria-label="USB">
@@ -94,13 +101,7 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
         <span className="sub">{t('device passthrough')}</span>
       </div>
 
-      {controllerMissing && (
-        <div className="usb-notice">
-          {t(
-            'This VM has no USB controller enabled. Power the VM off and enable USB in its settings — the controller cannot be turned on while the VM is running.',
-          )}
-        </div>
-      )}
+      {controllerMissing && <div className="usb-notice">{controllerNotice}</div>}
       {extensionMissing && (
         <div className="usb-notice">
           {t(
@@ -145,7 +146,8 @@ export function UsbPanel({ vmId, onChanged }: UsbPanelProps) {
                       type="button"
                       className="net-apply"
                       aria-label={`${t('Attach')} ${label}`}
-                      disabled={busy}
+                      disabled={busy || controllerMissing}
+                      title={controllerMissing ? controllerNotice : undefined}
                       onClick={() => void run(device, api.attachUsb)}
                     >
                       {busy ? t('Working…') : t('Attach')}

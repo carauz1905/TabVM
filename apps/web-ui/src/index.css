@@ -735,18 +735,10 @@ body {
   font-size: 0.76rem;
   color: #8b979d;
 }
-.ga-field input {
-  background: #0b1015;
-  border: 1px solid #232d33;
-  border-radius: 6px;
-  padding: 0.45rem 0.55rem;
-  color: #e8eeeb;
-  font-size: 0.85rem;
-}
-.ga-field input:focus {
-  outline: none;
-  border-color: var(--accent-line, rgba(47, 227, 206, 0.4));
-}
+/* .ga-field input/select styling lives in styles/shell.css, themed via CSS
+   variables so the fields follow the active light/dark theme. The hardcoded
+   dark rules that used to live here painted black fields inside the light
+   theme. */
 .ga-result {
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
@@ -774,18 +766,6 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-}
-.ga-field select {
-  background: #0b1015;
-  border: 1px solid #232d33;
-  border-radius: 6px;
-  padding: 0.45rem 0.55rem;
-  color: #e8eeeb;
-  font-size: 0.85rem;
-}
-.ga-field select:focus {
-  outline: none;
-  border-color: var(--accent-line, rgba(47, 227, 206, 0.4));
 }
 
 /* ===== Create-VM wizard ===== */

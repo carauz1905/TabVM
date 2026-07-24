@@ -119,6 +119,48 @@ describe('UsbPanel', () => {
     expect(await findByText(/cannot be turned on while the VM is running/)).toBeTruthy();
   });
 
+  it('disables attach with an explanatory tooltip when the VM has no USB controller', async () => {
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({ usbControllerEnabled: false }));
+
+    const { findByRole } = render(<UsbPanel vmId={VM_ID} />);
+    const attach = (await findByRole('button', { name: /^Attach/ })) as HTMLButtonElement;
+
+    expect(attach.disabled).toBe(true);
+    expect(attach.title).toMatch(/no USB controller/);
+  });
+
+  it('keeps attach enabled when only the Extension Pack is missing', async () => {
+    // USB 1.1 (OHCI) passthrough works without the Extension Pack, so a missing
+    // pack must stay a soft warning and never block the attach action.
+    vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({ extensionPackInstalled: false }));
+
+    const { findByRole } = render(<UsbPanel vmId={VM_ID} />);
+    const attach = (await findByRole('button', { name: /^Attach/ })) as HTMLButtonElement;
+
+    expect(attach.disabled).toBe(false);
+  });
+
+  it('never disables detach by prerequisites: a captured device must be releasable', async () => {
+    vi.mocked(api.getVmUsb).mockResolvedValue(
+      usbResponse({ usbControllerEnabled: false, extensionPackInstalled: false }, [
+        {
+          uuid: SANDISK,
+          vendorId: '0x0781',
+          productId: '0x5567',
+          manufacturer: 'SanDisk',
+          product: 'Cruzer Blade',
+          state: 'Captured',
+          attachedHere: true,
+        },
+      ]),
+    );
+
+    const { findByRole } = render(<UsbPanel vmId={VM_ID} />);
+    const detach = (await findByRole('button', { name: /^Detach/ })) as HTMLButtonElement;
+
+    expect(detach.disabled).toBe(false);
+  });
+
   it('renders an empty state when the host has no USB devices', async () => {
     vi.mocked(api.getVmUsb).mockResolvedValue(usbResponse({}, []));
 
