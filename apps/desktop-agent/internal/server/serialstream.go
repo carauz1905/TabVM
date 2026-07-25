@@ -48,7 +48,8 @@ func (s *Server) handleVmSerialStream(w http.ResponseWriter, r *http.Request, id
 	}
 	defer pipe.Close()
 
-	conn, err := screenStreamUpgrader.Upgrade(w, r, nil)
+	upgrader := s.streamUpgrader()
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		s.logger.Error("serial stream: websocket upgrade failed", "vmId", id, "error", err)
 		return

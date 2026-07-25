@@ -8,7 +8,9 @@ import (
 	"image"
 	"image/jpeg"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -78,15 +80,49 @@ func (s *Server) handleScreenInput(id, vboxManage string, capturer *vmscreen.Cap
 // like the header, only the transport differs (see withAuth).
 const screenStreamTokenQueryParam = "token"
 
-// screenStreamUpgrader upgrades screen-stream HTTP requests to WebSockets.
-var screenStreamUpgrader = websocket.Upgrader{
-	ReadBufferSize:  64 * 1024,
-	WriteBufferSize: 64 * 1024,
-	// The spike test page (apps/web-ui/spike/screen-test.html) is served from
-	// the Vite dev server on a different origin than the agent, so origin
-	// checking is relaxed. Tighten this (or serve same-origin) before this
-	// leaves spike status.
-	CheckOrigin: func(r *http.Request) bool { return true },
+// vitePort is the Vite dev server's port. It proxies /api to the agent, so in a
+// development build its origin is a legitimate WebSocket caller.
+const vitePort = "5173"
+
+// streamUpgrader builds the WebSocket upgrader for the screen- and serial-stream
+// routes. It is constructed per request rather than kept as a package-level
+// value so CheckOrigin can consult this server's configuration.
+func (s *Server) streamUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  64 * 1024,
+		WriteBufferSize: 64 * 1024,
+		CheckOrigin:     s.checkStreamOrigin,
+	}
+}
+
+// checkStreamOrigin reports whether a WebSocket upgrade may proceed.
+//
+// The same-origin policy does not cover WebSockets, so without this check any
+// web page could open a socket against the agent and -- on the screen stream --
+// inject synthetic keyboard and mouse events into a running guest. Only the
+// agent's own loopback origin is accepted, plus the Vite dev server in a
+// development build.
+//
+// An absent Origin means a non-browser client (curl, a test harness). Those
+// cannot be driven cross-site by a web page, and the session token still gates
+// the route, so they are allowed through.
+func (s *Server) checkStreamOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	if !isLoopbackAuthority(u.Host) {
+		return false
+	}
+	if u.Port() == strconv.Itoa(s.cfg.BindPort) {
+		return true
+	}
+	return s.cfg.IsDevelopment() && u.Port() == vitePort
 }
 
 const (
@@ -172,7 +208,8 @@ func (s *Server) handleVmScreenStream(w http.ResponseWriter, r *http.Request, id
 		}
 	}()
 
-	conn, err := screenStreamUpgrader.Upgrade(w, r, nil)
+	upgrader := s.streamUpgrader()
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		s.logger.Error("screen stream: websocket upgrade failed", "vmId", id, "error", err)
 		return

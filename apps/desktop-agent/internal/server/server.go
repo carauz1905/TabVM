@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -98,7 +99,51 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/api/", http.StripPrefix("/api", s.withAuth(apiMux)))
 	mux.Handle("/", s.staticHandler())
-	return mux
+	return s.withHostCheck(mux)
+}
+
+// withHostCheck rejects any request whose Host header is not a loopback
+// authority.
+//
+// Binding to 127.0.0.1 keeps remote machines out, but it does not keep the local
+// browser out. A page served from attacker.example whose DNS record is
+// re-pointed at 127.0.0.1 is treated by the browser as same-origin with the
+// agent, so its script can read the response body -- including index.html, which
+// carries the session token. The attacker controls what a name resolves to, but
+// not the Host header the browser sends, so checking Host is what makes "binds
+// to loopback only" mean what it appears to mean.
+//
+// This deliberately wraps the entire mux rather than just /api. Both /health and
+// the static UI answer without a token, and the UI is where the token leaks, so
+// leaving either outside the check would leave the rebinding path open.
+func (s *Server) withHostCheck(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackAuthority(r.Host) {
+			http.Error(w, "Invalid Host header.", http.StatusMisdirectedRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// isLoopbackAuthority reports whether an HTTP authority ("host" or "host:port")
+// names the local machine. Bare "localhost" is accepted by name; everything else
+// must parse as a loopback IP, so a hostname that merely resolves to 127.0.0.1
+// is refused.
+func isLoopbackAuthority(authority string) bool {
+	host := authority
+	if h, _, err := net.SplitHostPort(authority); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 // staticHandler serves the embedded web UI for all non-API routes. Unknown
