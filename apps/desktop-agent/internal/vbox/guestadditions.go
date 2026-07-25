@@ -186,20 +186,13 @@ func (s *service) UpdateGuestAdditions(ctx context.Context, id, username, passwo
 		}
 	}
 
-	pwFile, err := os.CreateTemp("", "tabvm-ga-*.txt")
-	if err != nil {
-		return models.GuestAdditionsUpdateResponse{}, fmt.Errorf("creating credential file: %w", err)
-	}
-	pwPath := pwFile.Name()
-	defer os.Remove(pwPath)
-	_ = pwFile.Chmod(0o600)
 	// Trailing newline so `sudo -S` (which reads one line from stdin) accepts it;
 	// VBoxManage --passwordfile trims trailing whitespace, so this is harmless there.
-	if _, err := pwFile.WriteString(password + "\n"); err != nil {
-		pwFile.Close()
-		return models.GuestAdditionsUpdateResponse{}, fmt.Errorf("writing credential file: %w", err)
+	pwPath, err := s.writeCredentialFileNamed("tabvm-ga-*.txt", password+"\n")
+	if err != nil {
+		return models.GuestAdditionsUpdateResponse{}, err
 	}
-	pwFile.Close()
+	defer os.Remove(pwPath)
 
 	const failMsg = "Could not update Guest Additions inside the guest. Check the username/password, that the account is root or has sudo, and that the guest is a running Linux VM with Guest Additions already active."
 

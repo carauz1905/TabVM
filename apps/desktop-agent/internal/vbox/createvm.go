@@ -14,7 +14,11 @@ import (
 
 // vmNamePattern restricts VM names to a conservative, shell-safe set (spaces
 // allowed, but no path or quoting metacharacters).
-var vmNamePattern = regexp.MustCompile(`^[A-Za-z0-9 ._-]{1,64}$`)
+//
+// The first character may not be a dash: VBoxManage parses its own arguments,
+// so a VM named "--help" would be read as an option rather than as a name.
+// Dashes elsewhere ("Ubuntu_24.04-LTS") stay allowed.
+var vmNamePattern = regexp.MustCompile(`^[A-Za-z0-9 ._][A-Za-z0-9 ._-]{0,63}$`)
 
 // guestUserPattern matches the unattended install account name. It is broad
 // enough for both Linux (lowercase) and Windows (mixed case) local accounts,
@@ -158,22 +162,14 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 		}
 	}
 
-	// 3. Configure the unattended install. The password goes via a temp file so
-	// it never appears in the process argument list.
-	pwFile, err := os.CreateTemp("", "tabvm-unatt-*.txt")
+	// 3. Configure the unattended install. The password goes via a credential
+	// file so it never appears in the process argument list.
+	pwPath, err := s.writeCredentialFileNamed("tabvm-unatt-*.txt", req.Password+"\n")
 	if err != nil {
 		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
-		return models.VmCreateResponse{}, fmt.Errorf("creating credential file: %w", err)
+		return models.VmCreateResponse{}, err
 	}
-	pwPath := pwFile.Name()
 	defer os.Remove(pwPath)
-	_ = pwFile.Chmod(0o600)
-	if _, err := pwFile.WriteString(req.Password + "\n"); err != nil {
-		pwFile.Close()
-		s.cleanupFailedCreate(ctx, path, uuid, diskPath)
-		return models.VmCreateResponse{}, fmt.Errorf("writing credential file: %w", err)
-	}
-	pwFile.Close()
 
 	if err := s.runControlCommandTimeout(ctx, uuid, path, unattendedInstallArgs(uuid, req, pwPath), "configuring unattended install", createStepTimeout); err != nil {
 		s.logOperation(ctx, uuid, "vm.create", false, "VBoxManage unattended install failed.")

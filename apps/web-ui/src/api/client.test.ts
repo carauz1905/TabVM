@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { api, ApiError, configureSessionToken } from './client';
+import {
+  api,
+  ApiError,
+  configureSessionToken,
+  screenStreamUrl,
+  serialStreamUrl,
+  streamProtocols,
+} from './client';
 
 describe('api client', () => {
   beforeEach(() => {
@@ -515,4 +522,31 @@ describe('api client', () => {
     const requestInit = call[1] as RequestInit | undefined;
     return requestInit?.method;
   }
+});
+
+describe('console stream transport', () => {
+  beforeEach(() => {
+    configureSessionToken('test-token');
+  });
+
+  // A URL ends up in browser history, in Referer, and in any intermediary's
+  // logs. The session token used to ride in the query string of both console
+  // streams; it must not any more.
+  it('keeps the session token out of the stream URLs', () => {
+    expect(screenStreamUrl('vm-1')).not.toContain('test-token');
+    expect(serialStreamUrl('vm-1')).not.toContain('test-token');
+    expect(screenStreamUrl('vm-1')).not.toContain('?');
+    expect(serialStreamUrl('vm-1')).not.toContain('?');
+  });
+
+  it('carries the session token in the WebSocket subprotocol instead', () => {
+    expect(streamProtocols()).toEqual(['tabvm.token.test-token']);
+  });
+
+  // No token means no credential to offer, so the agent must refuse the upgrade
+  // rather than the UI opening an unauthenticated stream.
+  it('offers no subprotocol when no token is configured', () => {
+    configureSessionToken(undefined);
+    expect(streamProtocols()).toEqual([]);
+  });
 });

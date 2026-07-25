@@ -219,6 +219,7 @@ func (s *Server) handleCreateStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) startCreateJob(name string, work func(ctx context.Context) (models.VmCreateResponse, error)) string {
 	jobID := newJobID()
 	s.createMu.Lock()
+	s.sweepFinishedJobsLocked(time.Now())
 	s.createJobs[jobID] = &createJob{State: "running", Name: name}
 	s.createMu.Unlock()
 
@@ -233,6 +234,7 @@ func (s *Server) startCreateJob(name string, work func(ctx context.Context) (mod
 				if job := s.createJobs[jobID]; job != nil {
 					job.State = "error"
 					job.Message = "Internal server error."
+					job.endedAt = time.Now()
 				}
 			}
 		}()
@@ -247,6 +249,7 @@ func (s *Server) startCreateJob(name string, work func(ctx context.Context) (mod
 		if job == nil {
 			return
 		}
+		job.endedAt = time.Now()
 		if err != nil {
 			job.State = "error"
 			job.Message = s.jobErrorMessage(err)
@@ -261,6 +264,24 @@ func (s *Server) startCreateJob(name string, work func(ctx context.Context) (mod
 	}()
 
 	return jobID
+}
+
+// createJobRetention is how long a finished job stays queryable. The UI polls to
+// completion within seconds, so an hour comfortably covers a page reload during
+// a long import while still bounding the map.
+const createJobRetention = time.Hour
+
+// sweepFinishedJobsLocked drops jobs that finished longer ago than the retention
+// window. Running jobs are never touched, however long they run. Sweeping when a
+// new job starts avoids a timer per job and keeps eviction off the hot path.
+//
+// Callers must hold createMu.
+func (s *Server) sweepFinishedJobsLocked(now time.Time) {
+	for id, job := range s.createJobs {
+		if !job.endedAt.IsZero() && now.Sub(job.endedAt) > createJobRetention {
+			delete(s.createJobs, id)
+		}
+	}
 }
 
 // jobErrorMessage converts a service error into a user-safe message, mirroring

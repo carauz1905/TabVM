@@ -15,7 +15,12 @@ import (
 // sharedFolderNamePattern restricts share names to a conservative set that is
 // safe as both a VBoxManage argument and a guest mount point. It excludes path
 // separators, whitespace, and shell metacharacters.
-var sharedFolderNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
+//
+// The first character may not be a dash. exec.Command bypasses the shell, but
+// VBoxManage still parses its own arguments, so a share named "--transient"
+// would be read as an option rather than as the value of --name. A dash
+// elsewhere in the name stays allowed.
+var sharedFolderNamePattern = regexp.MustCompile(`^[A-Za-z0-9._][A-Za-z0-9._-]{0,63}$`)
 
 // statPath wraps os.Stat so host path validation can be stubbed in tests without
 // touching the real filesystem.

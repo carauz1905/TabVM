@@ -73,7 +73,7 @@ func (s *service) RunInGuest(ctx context.Context, id, exe string, args []string,
 		return models.VmGuestRunResponse{}, &ValidationError{Message: "The VM must be running with Guest Additions active to run a command in it."}
 	}
 
-	pwPath, err := writeCredentialFile(password)
+	pwPath, err := s.writeCredentialFile(password)
 	if err != nil {
 		return models.VmGuestRunResponse{}, err
 	}
@@ -167,7 +167,7 @@ func (s *service) CopyFromGuest(ctx context.Context, id, guestPath, hostDir, use
 		return models.VmGuestCopyFromResponse{}, &ValidationError{Message: "The VM must be running with Guest Additions active to copy a file out of it."}
 	}
 
-	pwPath, err := writeCredentialFile(password)
+	pwPath, err := s.writeCredentialFile(password)
 	if err != nil {
 		return models.VmGuestCopyFromResponse{}, err
 	}

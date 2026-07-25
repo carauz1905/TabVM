@@ -493,7 +493,7 @@ func newTestServer(t *testing.T, token string) (*Server, *fakeVboxService) {
 
 func TestHealthEndpointIsPublic(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newTestRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -510,7 +510,7 @@ func TestHealthEndpointIsPublic(t *testing.T) {
 
 func TestHealthEndpointReportsUptime(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newTestRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -522,7 +522,7 @@ func TestHealthEndpointReportsUptime(t *testing.T) {
 
 func TestApiEndpointRequiresToken(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodGet, "/api/vms", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -536,7 +536,7 @@ func TestApiEndpointAcceptsValidToken(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.vms = models.VmListResponse{VMs: []models.VmInfo{{ID: "11111111-1111-1111-1111-111111111111", Name: "VM", State: "listed"}}}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -562,7 +562,7 @@ func TestUpdateStatusEndpointReturnsStatus(t *testing.T) {
 		ReleaseURL:      "https://github.com/carauz1905/TabVM/releases/tag/v0.1.3",
 	}, time.Now()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/update-status", nil)
+	req := newTestRequest(http.MethodGet, "/api/update-status", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -585,7 +585,7 @@ func TestUpdateStatusEndpointReturnsStatus(t *testing.T) {
 
 func TestApiEndpointRejectsInvalidToken(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodGet, "/api/vms", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms", nil)
 	req.Header.Set("X-TabVM-Session-Token", "wrong")
 	rr := httptest.NewRecorder()
 
@@ -601,7 +601,7 @@ func TestVmGuestOSEndpoint(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.guestOS = models.VmGuestOSResponse{ID: id, OSType: "Ubuntu_64", Family: "linux", TerminalCapable: true}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/guest-os", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/"+id+"/guest-os", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -624,7 +624,7 @@ func TestSerialConsoleStatusEndpoint(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.serialStatus = models.VmSerialConsoleResponse{ID: id, Enabled: true, TerminalCapable: true, Running: true, Editable: false}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/serial-console", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/"+id+"/serial-console", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -646,7 +646,7 @@ func TestEnableSerialConsoleEndpoint(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.serialEnableResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Serial terminal enabled. Start the VM to use it."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -666,7 +666,7 @@ func TestEnableSerialGettyEndpoint(t *testing.T) {
 	fake.serialGettyResp = models.SerialGettyResponse{Success: true, VMID: id, Message: "Serial login enabled. Open the terminal to connect."}
 
 	body := strings.NewReader(`{"username":"root","password":"secret"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable-getty", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/serial-console/enable-getty", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -686,7 +686,7 @@ func TestDeleteVmEndpointDeletesVm(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.deleteResp = models.VmOperationResponse{Success: true, VMID: id, Message: "VM deleted."}
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/vms/"+id, nil)
+	req := newTestRequest(http.MethodDelete, "/api/vms/"+id, nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -708,7 +708,7 @@ func TestDeleteVmEndpointRejectsRunningVm(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.deleteErr = &vbox.ValidationError{Message: "The VM is running. Power it off before deleting it."}
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/vms/"+id, nil)
+	req := newTestRequest(http.MethodDelete, "/api/vms/"+id, nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -723,7 +723,7 @@ func TestDeleteVmEndpointRejectsSubpath(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 	id := "11111111-1111-1111-1111-111111111111"
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/vms/"+id+"/snapshots", nil)
+	req := newTestRequest(http.MethodDelete, "/api/vms/"+id+"/snapshots", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -739,7 +739,7 @@ func TestVmHardwareEndpointReturnsConfig(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.hardware = models.VmHardwareResponse{ID: id, CPUs: 2, MemoryMB: 2048, HostCPUs: 8, HostMemoryMB: 16384, Editable: true}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/hardware", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/"+id+"/hardware", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -761,7 +761,7 @@ func TestSetVmHardwareEndpointAppliesChange(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.setHardwareResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Hardware updated."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/hardware", strings.NewReader(`{"cpus":4,"memoryMb":4096}`))
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/hardware", strings.NewReader(`{"cpus":4,"memoryMb":4096}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -781,7 +781,7 @@ func TestSetVmHardwareEndpointRejectsRunningVm(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.setHardwareErr = &vbox.ValidationError{Message: "The VM is running. Power it off before changing vCPU or memory."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/hardware", strings.NewReader(`{"cpus":4,"memoryMb":4096}`))
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/hardware", strings.NewReader(`{"cpus":4,"memoryMb":4096}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -802,7 +802,7 @@ func TestVmStorageEndpointReturnsDisks(t *testing.T) {
 		Disks:    []models.DiskInfo{{UUID: "ca9ba73f-d0d3-4184-86f1-7206a952bc10", Name: "disk1.vdi", Format: "VDI", CapacityMB: 10240, Resizable: true}},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/storage", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/"+id+"/storage", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -824,7 +824,7 @@ func TestResizeDiskEndpointAppliesChange(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.resizeResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Disk resized."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/resize",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/resize",
 		strings.NewReader(`{"uuid":"ca9ba73f-d0d3-4184-86f1-7206a952bc10","sizeMb":20480}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -845,7 +845,7 @@ func TestResizeDiskEndpointRejectsShrink(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.resizeErr = &vbox.ValidationError{Message: "Disks can only grow."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/resize",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/resize",
 		strings.NewReader(`{"uuid":"ca9ba73f-d0d3-4184-86f1-7206a952bc10","sizeMb":100}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -863,7 +863,7 @@ func TestAddDiskEndpointCreatesDisk(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.resizeResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Added a disk."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/add",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/add",
 		strings.NewReader(`{"sizeMb":5120}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -884,7 +884,7 @@ func TestDetachDiskEndpointDetachesAndDeletes(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.resizeResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Disk detached."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/detach",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/detach",
 		strings.NewReader(`{"uuid":"ca9ba73f-d0d3-4184-86f1-7206a952bc10","deleteFile":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -905,7 +905,7 @@ func TestMountDvdEndpointMountsIso(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.dvdResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Mounted ubuntu.iso into the DVD drive."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
 		strings.NewReader(`{"isoPath":"C:\\ISOs\\ubuntu.iso"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -925,7 +925,7 @@ func TestMountDvdEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 	id := "11111111-1111-1111-1111-111111111111"
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
 		strings.NewReader(`{"isoPath":123}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -943,7 +943,7 @@ func TestMountDvdEndpointMapsValidationTo400(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.dvdErr = &vbox.ValidationError{Message: "The installer must be a .iso file."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd",
 		strings.NewReader(`{"isoPath":"C:\\ISOs\\bad.txt"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -961,7 +961,7 @@ func TestEjectDvdEndpointEmptiesDrive(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.dvdResp = models.VmOperationResponse{Success: true, VMID: id, Message: "Ejected the DVD medium; the drive is now empty."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd/eject", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/storage/dvd/eject", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -980,7 +980,7 @@ func TestDvdEndpointsRequireAuth(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 
 	for _, path := range []string{"/api/vms/" + id + "/storage/dvd", "/api/vms/" + id + "/storage/dvd/eject"} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"isoPath":"C:\\ISOs\\ubuntu.iso"}`))
+		req := newTestRequest(http.MethodPost, path, strings.NewReader(`{"isoPath":"C:\\ISOs\\ubuntu.iso"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 
@@ -997,7 +997,7 @@ func TestAddPortForwardingEndpointAppliesRule(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.portForwardOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: "Forwarding 127.0.0.1:2222 -> guest:22 added on adapter 1."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
 		strings.NewReader(`{"slot":1,"name":"ssh","protocol":"tcp","hostIp":"","hostPort":2222,"guestIp":"","guestPort":22}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1025,7 +1025,7 @@ func TestAddPortForwardingEndpointRejectsInvalidRule(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.portForwardErr = &vbox.ValidationError{Message: "Adapter 1 must be in NAT mode to add a port-forwarding rule."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding",
 		strings.NewReader(`{"slot":1,"name":"ssh","protocol":"tcp","hostPort":2222,"guestPort":22}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1043,7 +1043,7 @@ func TestDeletePortForwardingEndpointRemovesRule(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.portForwardOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: `Forwarding rule "ssh" removed from adapter 1.`}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding/delete",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/forwarding/delete",
 		strings.NewReader(`{"slot":1,"name":"ssh"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1064,7 +1064,7 @@ func TestSetLinkStateEndpointTogglesLink(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.linkOp = models.NetworkOperationResponse{Success: true, VMID: id, Message: "Adapter 1 cable disconnected."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
 		strings.NewReader(`{"slot":1,"connected":false}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1090,7 +1090,7 @@ func TestSetLinkStateEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 	id := "11111111-1111-1111-1111-111111111111"
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
 		strings.NewReader(`{"slot":}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1108,7 +1108,7 @@ func TestSetLinkStateEndpointRejectsInvalidSlot(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.linkErr = &vbox.ValidationError{Message: "Network adapter slot must be between 1 and 8."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/network/link",
 		strings.NewReader(`{"slot":9,"connected":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1130,7 +1130,7 @@ func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
 		Message: `"alpine" created. Start it and install the OS from the attached ISO.`,
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/create-manual",
+	req := newTestRequest(http.MethodPost, "/api/vms/create-manual",
 		strings.NewReader(`{"name":"alpine","osType":"Linux_64","isoPath":"C:\\iso\\alpine.iso","memoryMb":2048,"cpus":2,"diskGb":20}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -1150,7 +1150,7 @@ func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
 	// the job resolves.
 	deadline := time.Now().Add(3 * time.Second)
 	for {
-		sreq := httptest.NewRequest(http.MethodGet, "/api/vms/create/status?job="+job.JobID, nil)
+		sreq := newTestRequest(http.MethodGet, "/api/vms/create/status?job="+job.JobID, nil)
 		sreq.Header.Set("X-TabVM-Session-Token", "secret")
 		srr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(srr, sreq)
@@ -1190,7 +1190,7 @@ func TestCreateManualEndpointStartsJobAndDispatches(t *testing.T) {
 func TestConsoleProtocolsEndpointReturnsCapabilities(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/console/protocols", nil)
+	req := newTestRequest(http.MethodGet, "/api/console/protocols", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1218,7 +1218,7 @@ func TestConsoleProtocolsEndpointReturnsCapabilities(t *testing.T) {
 func TestConsoleProtocolsEndpointRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/console/protocols", nil)
+	req := newTestRequest(http.MethodGet, "/api/console/protocols", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -1232,7 +1232,7 @@ func TestDiscoveryEndpointProtected(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.discovery = models.VirtualBoxDiscovery{Found: true, Version: "7.0.14r161095"}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vbox/discovery", nil)
+	req := newTestRequest(http.MethodGet, "/api/vbox/discovery", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1263,7 +1263,7 @@ func TestAllApiRoutesRequireAuth(t *testing.T) {
 	}
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, route, nil)
+			req := newTestRequest(http.MethodGet, route, nil)
 			rr := httptest.NewRecorder()
 
 			srv.Handler().ServeHTTP(rr, req)
@@ -1289,7 +1289,7 @@ func TestVmLifecycleRoutesRequireAuth(t *testing.T) {
 	}
 	for _, route := range routes {
 		t.Run(route, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, route, nil)
+			req := newTestRequest(http.MethodPost, route, nil)
 			rr := httptest.NewRecorder()
 
 			srv.Handler().ServeHTTP(rr, req)
@@ -1304,7 +1304,7 @@ func TestVmLifecycleRoutesRequireAuth(t *testing.T) {
 func TestUnknownApiRouteIsUnauthorized(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/not-a-route", nil)
+	req := newTestRequest(http.MethodGet, "/api/not-a-route", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -1318,7 +1318,7 @@ func TestTokenCompareUsesFixedSizeHash(t *testing.T) {
 	srv, fake := newTestServer(t, "a")
 	fake.vms = models.VmListResponse{VMs: []models.VmInfo{{ID: "11111111-1111-1111-1111-111111111111", Name: "VM", State: "listed"}}}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms", nil)
 	req.Header.Set("X-TabVM-Session-Token", "a")
 	rr := httptest.NewRecorder()
 
@@ -1333,7 +1333,7 @@ func TestVmStatusEndpointReturnsStatus(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.status = models.VmStatusResponse{ID: "11111111-1111-1111-1111-111111111111", State: "running"}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/status", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/status", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1353,7 +1353,7 @@ func TestVmStartEndpointReturnsOperationResult(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.status = models.VmStatusResponse{ID: "11111111-1111-1111-1111-111111111111", State: "running"}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1376,7 +1376,7 @@ func TestVmStartEndpointReturnsOperationResult(t *testing.T) {
 func TestVmStopEndpointReturnsOperationResult(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/stop", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/stop", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1394,7 +1394,7 @@ func TestVmStopEndpointReturnsOperationResult(t *testing.T) {
 func TestVmSaveStateEndpointReturnsOperationResult(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1418,7 +1418,7 @@ func TestVmSaveStateEndpointMapsValidationErrorTo400(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.saveStateErr = &vbox.ValidationError{Message: "The VM is not running; there is no running state to save."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/savestate", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1432,7 +1432,7 @@ func TestVmSaveStateEndpointMapsValidationErrorTo400(t *testing.T) {
 func TestVmResetEndpointReturnsOperationResult(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/reset", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/reset", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1450,7 +1450,7 @@ func TestVmResetEndpointReturnsOperationResult(t *testing.T) {
 func TestVmOperationRejectsInvalidID(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/bad;id/start", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/bad;id/start", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1464,7 +1464,7 @@ func TestVmOperationRejectsInvalidID(t *testing.T) {
 func TestVmStatusRejectsInvalidID(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/bad;id/status", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/bad;id/status", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1486,7 +1486,7 @@ func TestVmStartReturnsConflictForConcurrentSameVMOperation(t *testing.T) {
 
 	go func() {
 		defer firstWg.Done()
-		req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
+		req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
 		req.Header.Set("X-TabVM-Session-Token", "secret")
 		rr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rr, req)
@@ -1498,7 +1498,7 @@ func TestVmStartReturnsConflictForConcurrentSameVMOperation(t *testing.T) {
 
 	// The second request must be issued while the first request still holds the
 	// lock, so it receives 409 Conflict deterministically.
-	req2 := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
+	req2 := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
 	req2.Header.Set("X-TabVM-Session-Token", "secret")
 	rr2 := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr2, req2)
@@ -1523,7 +1523,7 @@ func TestVmOperationSanitizesExecutionError(t *testing.T) {
 		Message:       "VBoxManage failed while starting VM: exec error",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1614,7 +1614,7 @@ func TestVmConsoleStatusEndpointReturnsStatus(t *testing.T) {
 		Target:  "127.0.0.1:5432",
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/console", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/console", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1644,7 +1644,7 @@ func TestVmConsolePrepareEndpointReturnsStatus(t *testing.T) {
 		Target:  "127.0.0.1:5432",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1667,7 +1667,7 @@ func TestVmConsolePrepareEndpointReturnsStatus(t *testing.T) {
 func TestVmConsoleDisableEndpointReturnsOperationResult(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/disable", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/disable", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1696,7 +1696,7 @@ func TestVmConsoleRoutesRequireAuth(t *testing.T) {
 	}
 	for _, r := range routes {
 		t.Run(r.route, func(t *testing.T) {
-			req := httptest.NewRequest(r.method, r.route, nil)
+			req := newTestRequest(r.method, r.route, nil)
 			rr := httptest.NewRecorder()
 
 			srv.Handler().ServeHTTP(rr, req)
@@ -1719,7 +1719,7 @@ func TestVmConsolePrepareConflictsWithConcurrentLifecycleOperation(t *testing.T)
 
 	go func() {
 		defer startWg.Done()
-		req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
+		req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/start", nil)
 		req.Header.Set("X-TabVM-Session-Token", "secret")
 		rr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rr, req)
@@ -1728,7 +1728,7 @@ func TestVmConsolePrepareConflictsWithConcurrentLifecycleOperation(t *testing.T)
 
 	<-fake.startEntered
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
@@ -1757,7 +1757,7 @@ func TestVmOperationsOnDifferentVMsAreNotBlocked(t *testing.T) {
 		wg.Add(1)
 		go func(vmID string) {
 			defer wg.Done()
-			req := httptest.NewRequest(http.MethodPost, "/api/vms/"+vmID+"/start", nil)
+			req := newTestRequest(http.MethodPost, "/api/vms/"+vmID+"/start", nil)
 			req.Header.Set("X-TabVM-Session-Token", "secret")
 			rr := httptest.NewRecorder()
 			srv.Handler().ServeHTTP(rr, req)
@@ -1777,7 +1777,7 @@ func TestVmOperationsOnDifferentVMsAreNotBlocked(t *testing.T) {
 func TestVmConsolePrepareRejectsInvalidID(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/bad;id/console/prepare", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/bad;id/console/prepare", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1796,7 +1796,7 @@ func TestVmConsolePrepareSanitizesExecutionError(t *testing.T) {
 		Message:       "VBoxManage failed while preparing console: exec error",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/console/prepare", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1818,7 +1818,7 @@ func TestVmConsolePrepareSanitizesExecutionError(t *testing.T) {
 func TestLocalStateStatusEndpointRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/local-state/status", nil)
+	req := newTestRequest(http.MethodGet, "/api/local-state/status", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -1831,7 +1831,7 @@ func TestLocalStateStatusEndpointRequiresAuth(t *testing.T) {
 func TestLocalStateStatusEndpointDoesNotExposePath(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/local-state/status", nil)
+	req := newTestRequest(http.MethodGet, "/api/local-state/status", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1862,7 +1862,7 @@ func TestVmTelemetryEndpointReturnsInterfaces(t *testing.T) {
 		},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/telemetry", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/telemetry", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1896,7 +1896,7 @@ func TestActivityEndpointReturnsRecordedOperations(t *testing.T) {
 	cfg := &config.Agent{BindAddress: "127.0.0.1", BindPort: 5230, SessionToken: "secret", Environment: "Development"}
 	srv := New(cfg, &fakeVboxService{}, db, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/activity", nil)
+	req := newTestRequest(http.MethodGet, "/api/activity", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1914,7 +1914,7 @@ func TestActivityEndpointReturnsRecordedOperations(t *testing.T) {
 func TestActivityEndpointRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/activity", nil)
+	req := newTestRequest(http.MethodGet, "/api/activity", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -1927,7 +1927,7 @@ func TestActivityEndpointRequiresAuth(t *testing.T) {
 func TestVmTelemetryEndpointRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/telemetry", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/telemetry", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -1945,7 +1945,7 @@ func TestListSharedFoldersEndpoint(t *testing.T) {
 		},
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1967,7 +1967,7 @@ func TestAddSharedFolderEndpointPassesNameAndPath(t *testing.T) {
 	fake.sharedFolderOp = models.SharedFolderOperationResponse{Success: true, VMID: "11111111-1111-1111-1111-111111111111", Message: "added"}
 
 	body := strings.NewReader(`{"name":"labshare","hostPath":"C:\\labs\\share"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -1985,7 +1985,7 @@ func TestAddSharedFolderEndpointRejectsUnknownFields(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
 	body := strings.NewReader(`{"name":"labshare","hostPath":"C:\\labs","evil":true}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2001,7 +2001,7 @@ func TestAddSharedFolderEndpointMapsValidationErrorTo400(t *testing.T) {
 	fake.sharedFolderOpErr = &vbox.ValidationError{Message: "Host path must be a directory."}
 
 	body := strings.NewReader(`{"name":"labshare","hostPath":"C:\\labs\\file.txt"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2017,7 +2017,7 @@ func TestRemoveSharedFolderEndpoint(t *testing.T) {
 	fake.sharedFolderOp = models.SharedFolderOperationResponse{Success: true, VMID: "11111111-1111-1111-1111-111111111111", Message: "removed"}
 
 	body := strings.NewReader(`{"name":"labshare"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders/remove", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders/remove", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2034,7 +2034,7 @@ func TestRemoveSharedFolderEndpoint(t *testing.T) {
 func TestSharedFoldersEndpointRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/shared-folders", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -2048,7 +2048,7 @@ func TestGetClipboardModeEndpoint(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.clipboard = models.ClipboardModeResponse{ID: "11111111-1111-1111-1111-111111111111", Mode: "bidirectional"}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2070,7 +2070,7 @@ func TestSetClipboardModeEndpointForwardsMode(t *testing.T) {
 	fake.clipboard = models.ClipboardModeResponse{ID: "11111111-1111-1111-1111-111111111111", Mode: "bidirectional"}
 
 	body := strings.NewReader(`{"mode":"bidirectional"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2089,7 +2089,7 @@ func TestSetClipboardModeEndpointMapsValidationErrorTo400(t *testing.T) {
 	fake.clipboardErr = &vbox.ValidationError{Message: "Clipboard mode must be one of: ..."}
 
 	body := strings.NewReader(`{"mode":"nonsense"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", body)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/clipboard", body)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2106,7 +2106,7 @@ func TestSetClipboardModeEndpointMapsValidationErrorTo400(t *testing.T) {
 
 func TestPickFolderRejectsNonPost(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodGet, "/api/host/pick-folder", nil)
+	req := newTestRequest(http.MethodGet, "/api/host/pick-folder", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2119,7 +2119,7 @@ func TestPickFolderRejectsNonPost(t *testing.T) {
 
 func TestPickFolderRequiresToken(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
-	req := httptest.NewRequest(http.MethodPost, "/api/host/pick-folder", nil)
+	req := newTestRequest(http.MethodPost, "/api/host/pick-folder", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -2138,7 +2138,7 @@ func (f *fakeVboxService) ForcePowerOff(ctx context.Context, id string) error {
 func TestVmPowerOffEndpointReturnsOperationResult(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -2161,7 +2161,7 @@ func TestVmPowerOffEndpointReturnsOperationResult(t *testing.T) {
 func TestVmPowerOffRouteRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
+	req := newTestRequest(http.MethodPost, "/api/vms/11111111-1111-1111-1111-111111111111/poweroff", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { screenStreamUrl } from '../api/client';
+import { screenStreamUrl, streamProtocols } from '../api/client';
 import { paintTiles } from '../lib/screenTiles';
 import { useT } from '../i18n/i18n';
 
@@ -25,7 +25,7 @@ export function ConsolePreview({ vmId, onOpen }: ConsolePreviewProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const socket = new WebSocket(screenStreamUrl(vmId));
+    const socket = new WebSocket(screenStreamUrl(vmId), streamProtocols());
     socket.binaryType = 'arraybuffer';
 
     socket.addEventListener('open', () => setState('live'));

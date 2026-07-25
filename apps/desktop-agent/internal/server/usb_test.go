@@ -21,7 +21,7 @@ func TestUsbEndpointListsDevices(t *testing.T) {
 		USBControllerEnabled:   true,
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/vms/"+id+"/usb", nil)
+	req := newTestRequest(http.MethodGet, "/api/vms/"+id+"/usb", nil)
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	rr := httptest.NewRecorder()
 
@@ -45,7 +45,7 @@ func TestUsbAttachEndpointCapturesDevice(t *testing.T) {
 	uuid := "2b7e1a10-1234-4abc-8def-0123456789ab"
 	fake.usbOp = models.UsbOperationResponse{Success: true, VMID: id, Message: "USB device attached to the VM."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
 		strings.NewReader(`{"deviceUuid":"`+uuid+`"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -70,7 +70,7 @@ func TestUsbDetachEndpointReleasesDevice(t *testing.T) {
 	uuid := "2b7e1a10-1234-4abc-8def-0123456789ab"
 	fake.usbOp = models.UsbOperationResponse{Success: true, VMID: id, Message: "USB device detached from the VM."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/usb/detach",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/usb/detach",
 		strings.NewReader(`{"deviceUuid":"`+uuid+`"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -91,7 +91,7 @@ func TestUsbAttachEndpointMapsValidationTo400(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	fake.usbOpErr = &vbox.ValidationError{Message: "The VM must be running to attach or detach USB devices."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
 		strings.NewReader(`{"deviceUuid":"2b7e1a10-1234-4abc-8def-0123456789ab"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -108,7 +108,7 @@ func TestUsbAttachEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 	id := "11111111-1111-1111-1111-111111111111"
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+id+"/usb/attach",
 		strings.NewReader(`{"deviceUuid":`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -134,7 +134,7 @@ func TestUsbEndpointsRequireAuth(t *testing.T) {
 		{http.MethodPost, "/api/vms/" + id + "/usb/detach"},
 	}
 	for _, c := range cases {
-		req := httptest.NewRequest(c.method, c.path, strings.NewReader(`{"deviceUuid":"2b7e1a10-1234-4abc-8def-0123456789ab"}`))
+		req := newTestRequest(c.method, c.path, strings.NewReader(`{"deviceUuid":"2b7e1a10-1234-4abc-8def-0123456789ab"}`))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 

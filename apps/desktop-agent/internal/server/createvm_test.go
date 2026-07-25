@@ -22,7 +22,7 @@ func pollJobUntil(t *testing.T, srv *Server, jobID string) models.VmCreateStatus
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
 	for {
-		sreq := httptest.NewRequest(http.MethodGet, "/api/vms/create/status?job="+jobID, nil)
+		sreq := newTestRequest(http.MethodGet, "/api/vms/create/status?job="+jobID, nil)
 		sreq.Header.Set("X-TabVM-Session-Token", "secret")
 		srr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(srr, sreq)
@@ -52,7 +52,7 @@ func TestCloneEndpointConflictsWhenVmLocked(t *testing.T) {
 	}
 	defer unlock()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":false}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -73,7 +73,7 @@ func TestCloneEndpointStartsJobAndSucceeds(t *testing.T) {
 		Message: "Full clone \"lab-clone\" created and registered.",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":false}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -102,7 +102,7 @@ func TestCloneEndpointForwardsLinkedFlag(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.createResp = models.VmCreateResponse{Success: true, VMID: "22222222-2222-2222-2222-222222222222", Name: "lab-clone"}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -126,7 +126,7 @@ func TestCloneEndpointRejectsRunningSource(t *testing.T) {
 	// the server maps to a 400 before any job is started.
 	fake.cloneValidateErr = &vbox.ValidationError{Message: "The VM is running. Power it off before cloning it."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":false}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -144,7 +144,7 @@ func TestCloneEndpointRejectsRunningSource(t *testing.T) {
 func TestCloneEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","bogus":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -161,7 +161,7 @@ func TestCloneJobRecordsFailure(t *testing.T) {
 	// Validation passes, but the clone itself fails inside the background job.
 	fake.createErr = &vbox.ExecutionError{ExitCode: 1, Message: "clone failed"}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":false}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -186,7 +186,7 @@ func TestCloneJobRecordsFailure(t *testing.T) {
 func TestCloneRouteRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/clone",
 		strings.NewReader(`{"name":"lab-clone","linked":false}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
@@ -216,7 +216,7 @@ func TestCreateJobRecoversFromServicePanic(t *testing.T) {
 	}
 	srv := New(cfg, &panickingVboxService{}, nil, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/create-manual",
+	req := newTestRequest(http.MethodPost, "/api/vms/create-manual",
 		strings.NewReader(`{"name":"alpine","osType":"Linux_64","isoPath":"C:\\iso\\alpine.iso","memoryMb":2048,"cpus":2,"diskGb":20}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -235,7 +235,7 @@ func TestCreateJobRecoversFromServicePanic(t *testing.T) {
 	// error state with a generic message and the process must survive.
 	deadline := time.Now().Add(3 * time.Second)
 	for {
-		sreq := httptest.NewRequest(http.MethodGet, "/api/vms/create/status?job="+job.JobID, nil)
+		sreq := newTestRequest(http.MethodGet, "/api/vms/create/status?job="+job.JobID, nil)
 		sreq.Header.Set("X-TabVM-Session-Token", "secret")
 		srr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(srr, sreq)

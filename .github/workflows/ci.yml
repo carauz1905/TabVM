@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check version manifests agree
+        run: npm run check:versions
+
       - name: Type-check web UI
         run: npm run webui:typecheck
 
@@ -48,3 +51,15 @@ jobs:
         # legitimately converts unsafe.Pointer for vtable and syscall calls; the
         # unsafeptr analyzer over-flags it. All other vet checks stay enabled.
         run: go vet -unsafeptr=false ./...
+
+      # Nothing scanned dependencies before, which is how a Go toolchain three
+      # patches out of date -- carrying five reachable stdlib vulnerabilities --
+      # ended up in a published release.
+      - name: govulncheck
+        working-directory: apps/desktop-agent
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: npm audit
+        run: npm audit --audit-level=high

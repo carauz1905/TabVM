@@ -2,7 +2,6 @@ package vbox
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -88,20 +87,13 @@ func (s *service) EnableSerialGetty(ctx context.Context, id, username, password 
 		}
 	}
 
-	pwFile, err := os.CreateTemp("", "tabvm-getty-*.txt")
-	if err != nil {
-		return models.SerialGettyResponse{}, fmt.Errorf("creating credential file: %w", err)
-	}
-	pwPath := pwFile.Name()
-	defer os.Remove(pwPath)
-	_ = pwFile.Chmod(0o600)
 	// Trailing newline so `sudo -S` accepts the single stdin line; VBoxManage
 	// --passwordfile trims trailing whitespace, so this is harmless there.
-	if _, err := pwFile.WriteString(password + "\n"); err != nil {
-		pwFile.Close()
-		return models.SerialGettyResponse{}, fmt.Errorf("writing credential file: %w", err)
+	pwPath, err := s.writeCredentialFileNamed("tabvm-getty-*.txt", password+"\n")
+	if err != nil {
+		return models.SerialGettyResponse{}, err
 	}
-	pwFile.Close()
+	defer os.Remove(pwPath)
 
 	const failMsg = "Could not enable the serial login inside the guest. Check the username/password, that the account is root or has sudo, and that this is a running Linux guest with Guest Additions active."
 

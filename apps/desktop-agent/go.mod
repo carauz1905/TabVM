@@ -2,6 +2,13 @@ module github.com/tabvm/desktop-agent
 
 go 1.25.0
 
+// Pin the minimum toolchain. 1.26.2 shipped with five reachable standard
+// library vulnerabilities (GO-2026-5856, -5039, -5037, -4971 and -4918), all
+// fixed by 1.26.5, and a release built locally picked them up because nothing
+// declared a floor. Releases are cut by hand, so the floor belongs here rather
+// than only in CI.
+toolchain go1.26.5
+
 require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/getlantern/systray v1.2.2

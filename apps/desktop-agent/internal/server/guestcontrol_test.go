@@ -22,7 +22,7 @@ func TestGuestRunEndpointReturnsExitCodeAndOutput(t *testing.T) {
 		Message:  "Command finished with exit code 0.",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
 		strings.NewReader(`{"exe":"/bin/echo","args":["hello"],"username":"root","password":"secret"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -53,7 +53,7 @@ func TestGuestRunEndpointPromptsForMissingCredentials(t *testing.T) {
 		Message:             "Running a command in the guest needs the guest username and password.",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
 		strings.NewReader(`{"exe":"/bin/ls"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -71,7 +71,7 @@ func TestGuestRunEndpointPromptsForMissingCredentials(t *testing.T) {
 func TestGuestRunEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
 		strings.NewReader(`{"exe":"/bin/ls","bogus":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -87,7 +87,7 @@ func TestGuestRunEndpointMapsValidationTo400(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.guestRunErr = &vbox.ValidationError{Message: "The guest command must be an absolute path (for example /bin/ls)."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/run",
 		strings.NewReader(`{"exe":"ls","username":"root","password":"secret"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -108,7 +108,7 @@ func TestGuestCopyFromEndpointReturnsHostPath(t *testing.T) {
 		Message:  `Copied "report.txt" from the guest to C:\dst\report.txt.`,
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
 		strings.NewReader(`{"guestPath":"/home/root/report.txt","directory":"C:\\dst","username":"root","password":"secret"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -138,7 +138,7 @@ func TestGuestCopyFromEndpointPromptsForMissingCredentials(t *testing.T) {
 		Message:             "Copying a file out of the guest needs the guest username and password.",
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
 		strings.NewReader(`{"guestPath":"/home/root/report.txt","directory":"C:\\dst"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -157,7 +157,7 @@ func TestGuestCopyFromEndpointMapsValidationTo400(t *testing.T) {
 	srv, fake := newTestServer(t, "secret")
 	fake.guestCopyFromErr = &vbox.ValidationError{Message: "The destination directory must be an absolute path."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+guestVmID+"/guest/copyfrom",
 		strings.NewReader(`{"guestPath":"/home/root/report.txt","directory":"relative","username":"root","password":"secret"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -182,7 +182,7 @@ func TestGuestControlEndpointsConflictWhenVmLocked(t *testing.T) {
 		"/api/vms/" + guestVmID + "/guest/copyfrom": `{"guestPath":"/home/root/a.txt","directory":"C:\\dst","username":"root","password":"secret"}`,
 	}
 	for path, body := range cases {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req := newTestRequest(http.MethodPost, path, strings.NewReader(body))
 		req.Header.Set("X-TabVM-Session-Token", "secret")
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
@@ -201,7 +201,7 @@ func TestGuestControlRoutesRequireAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
 	for _, path := range []string{"/api/vms/" + guestVmID + "/guest/run", "/api/vms/" + guestVmID + "/guest/copyfrom"} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req := newTestRequest(http.MethodPost, path, strings.NewReader(`{}`))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rr, req)
