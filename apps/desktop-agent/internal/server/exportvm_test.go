@@ -19,7 +19,7 @@ func TestExportEndpointStartsJobAndSucceeds(t *testing.T) {
 		Message: `Exported to C:\out\lab-vm.ova`,
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"C:\\out"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -53,7 +53,7 @@ func TestExportEndpointRejectsRunningSource(t *testing.T) {
 	// the server maps to a 400 before any job is started.
 	fake.exportValidateErr = &vbox.ValidationError{Message: "The VM is running. Power it off before exporting it."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"C:\\out"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -74,7 +74,7 @@ func TestExportEndpointRejectsInvalidDirectory(t *testing.T) {
 	// ValidationError, which the server maps to a 400 before any job is started.
 	fake.exportValidateErr = &vbox.ValidationError{Message: "The destination directory must be an absolute path."}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"relative/dir"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -92,7 +92,7 @@ func TestExportEndpointRejectsInvalidDirectory(t *testing.T) {
 func TestExportEndpointRejectsInvalidBody(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"C:\\out","bogus":true}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -113,7 +113,7 @@ func TestExportEndpointConflictsWhenVmLocked(t *testing.T) {
 	}
 	defer unlock()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"C:\\out"}`))
 	req.Header.Set("X-TabVM-Session-Token", "secret")
 	req.Header.Set("Content-Type", "application/json")
@@ -131,7 +131,7 @@ func TestExportEndpointConflictsWhenVmLocked(t *testing.T) {
 func TestExportRouteRequiresAuth(t *testing.T) {
 	srv, _ := newTestServer(t, "secret")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
+	req := newTestRequest(http.MethodPost, "/api/vms/"+cloneSourceID+"/export",
 		strings.NewReader(`{"directory":"C:\\out"}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
