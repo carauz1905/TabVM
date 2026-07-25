@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-25
+
+Security release. Everyone running 0.4.0 or earlier should update.
+
+### Security
+
+- The agent no longer answers requests whose `Host` header is not a loopback
+  name. It previously served the UI document — which carries the session token —
+  to any caller, so a page whose DNS record was re-pointed at `127.0.0.1` could
+  read that token and then drive the whole API: run commands inside a guest,
+  share a host drive into a VM, or delete VMs. Binding to `127.0.0.1` keeps
+  remote machines out but never kept the local browser out.
+- WebSocket upgrades now verify the request's `Origin`. The check had been
+  relaxed to accept everything for a development spike and shipped that way,
+  which left the screen and serial streams reachable cross-site.
+- The UI document is served with a per-response Content-Security-Policy nonce,
+  `frame-ancestors 'none'`, `X-Content-Type-Options` and `Referrer-Policy`.
+- The session token now travels in the WebSocket subprotocol instead of the
+  query string, keeping it out of browser history, `Referer` and proxy logs.
+- Guest credential files moved from the shared temp directory to the per-user
+  data directory. Windows ignores the owner-only mode Go requests and applies
+  the containing directory's ACL instead, so the location was doing the work.
+- Shared folder and VM names can no longer begin with a dash, which `VBoxManage`
+  would parse as an option rather than as a name.
+- Release builds are pinned to Go 1.26.5 or newer. 0.4.0 was built with 1.26.2,
+  which carried five reachable standard-library vulnerabilities.
+
+### Changed
+
+- Quitting from the tray now drains in-flight requests and closes the database
+  instead of exiting from under a running `VBoxManage` command.
+- The HTTP server sets read-header and idle timeouts. Upload and console-stream
+  deadlines stay unset so large transfers and long-lived consoles are unaffected.
+- Finished VM create, import, clone and export jobs are evicted an hour after
+  they end, instead of accumulating for the life of the process.
+
+### Fixed
+
+- The root `package.json` version had drifted to 0.1.1 while the agent and web UI
+  shipped 0.4.0. All three manifests now agree, and CI fails if they diverge.
+
 ## [0.4.0] - 2026-07-24
 
 ### Added
@@ -173,7 +214,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/carauz1905/TabVM/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/carauz1905/TabVM/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/carauz1905/TabVM/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/carauz1905/TabVM/compare/v0.3.0...v0.3.1
