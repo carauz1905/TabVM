@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze ${{ matrix.language }}
+    name: Analyze
     # The agent uses Windows-only APIs (COM screen capture, syscall interop), so
     # the Go build CodeQL traces has to run on Windows for the same reason the
     # main CI job does.
@@ -24,24 +24,20 @@ jobs:
       actions: read
       contents: read
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [go, javascript-typescript]
-
     steps:
       - uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          language: ${{ matrix.language }}
-          queries: security-and-quality
+          # Both languages in one init, named explicitly. Leaving this out lets
+          # CodeQL auto-detect, which also picks up `actions` -- and the Actions
+          # extractor cannot run on a Windows runner, so the job fails at
+          # finalize with "could not process any of it".
+          languages: go,javascript-typescript
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:${{ matrix.language }}"
