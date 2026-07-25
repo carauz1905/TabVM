@@ -1,12 +1,13 @@
 {
   "name": "tabvm",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.4.1",
   "description": "Local VirtualBox workspace for students",
   "scripts": {
     "dev": "powershell -File scripts/dev-start.ps1",
     "build": "npm run webui:build && node scripts/embed-ui.mjs && npm run agent:build",
     "test": "npm run webui:test && npm run agent:test",
+    "check:versions": "node scripts/check-versions.mjs",
     "webui:typecheck": "cd apps/web-ui && npm run typecheck",
     "webui:build": "cd apps/web-ui && npm run build",
     "webui:test": "cd apps/web-ui && npm run test",
