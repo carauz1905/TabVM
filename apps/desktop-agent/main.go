@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/tabvm/desktop-agent/internal/config"
 	"github.com/tabvm/desktop-agent/internal/runner"
@@ -62,17 +65,35 @@ func main() {
 	// runTray and we exit cleanly. Without a tray (other platforms) we block so
 	// the agent keeps serving.
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
+		// ErrServerClosed is the expected result of a tray-initiated Shutdown,
+		// not a failure.
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("agent stopped", "error", err)
 			os.Exit(1)
 		}
 	}()
 
 	if runTray(logger) {
+		// os.Exit skips deferred calls, so drain and close explicitly. A
+		// VBoxManage command can be in flight when the user quits; Shutdown lets
+		// it finish instead of killing it partway through.
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			logger.Warn("agent did not shut down cleanly", "error", err)
+		}
+		if err := db.Close(); err != nil {
+			logger.Warn("failed to close the local state database", "error", err)
+		}
 		os.Exit(0)
 	}
 	select {}
 }
+
+// shutdownTimeout bounds how long a tray quit waits for in-flight requests. Long
+// operations (import, export, clone) run on background jobs with their own
+// contexts, so this only has to cover a normal request finishing.
+const shutdownTimeout = 5 * time.Second
 
 // ensureSessionToken returns a stable per-machine session token, reading it from
 // (or creating it in) a token file. dataDir is used when set; otherwise the

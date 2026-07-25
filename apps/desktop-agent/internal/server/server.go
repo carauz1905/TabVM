@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +41,7 @@ type Server struct {
 	startedAt  time.Time
 	mu         sync.Mutex
 	devToken   string
+	httpServer *http.Server
 	opMu       sync.Mutex
 	ops        map[string]*sync.Mutex
 	pickMu     sync.Mutex
@@ -167,6 +170,9 @@ func (s *Server) staticHandler() http.Handler {
 			return
 		}
 
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+
 		clean := strings.TrimPrefix(r.URL.Path, "/")
 		if clean != "" && !strings.HasSuffix(r.URL.Path, "/") {
 			if f, err := sub.Open(clean); err == nil {
@@ -179,27 +185,117 @@ func (s *Server) staticHandler() http.Handler {
 	})
 }
 
+// inlineScriptNonceMarker is the placeholder attribute the UI template carries
+// on its inline scripts. serveIndex swaps it for the response's real CSP nonce,
+// so the template never has to know the nonce and the policy can stay
+// nonce-based instead of falling back to script-src 'unsafe-inline'.
+const inlineScriptNonceMarker = "data-tabvm-nonce"
+
 // serveIndex writes index.html with the resolved session token injected as a
-// window global. The token is JSON-encoded so it is always a safe string
-// literal. Injection happens at serve time, so each machine's own token is used.
+// window global and a fresh CSP nonce applied to every inline script. The token
+// is JSON-encoded so it is always a safe string literal. Injection happens at
+// serve time, so each machine's own token is used.
 func (s *Server) serveIndex(w http.ResponseWriter, template []byte) {
+	nonce, err := newCSPNonce()
+	if err != nil {
+		s.logger.Error("failed to generate a CSP nonce", "error", err)
+		http.Error(w, "Web UI is unavailable.", http.StatusInternalServerError)
+		return
+	}
+
 	tokenJSON, err := json.Marshal(s.resolveToken())
 	if err != nil {
 		tokenJSON = []byte(`""`)
 	}
-	script := "<script>window.__TABVM_SESSION_TOKEN__=" + string(tokenJSON) + ";</script></head>"
-	html := strings.Replace(string(template), "</head>", script, 1)
 
+	html := strings.ReplaceAll(string(template), inlineScriptNonceMarker, `nonce="`+nonce+`"`)
+	script := `<script nonce="` + nonce + `">window.__TABVM_SESSION_TOKEN__=` + string(tokenJSON) + `;</script></head>`
+	html = strings.Replace(html, "</head>", script, 1)
+
+	w.Header().Set("Content-Security-Policy", s.contentSecurityPolicy(nonce))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(html))
 }
 
-// ListenAndServe starts the HTTP server on the configured address.
+// newCSPNonce returns a fresh nonce for one response's inline scripts.
+func newCSPNonce() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+// contentSecurityPolicy builds the policy for the UI document.
+//
+// script-src carries the per-response nonce instead of 'unsafe-inline', so the
+// two inline scripts the app genuinely needs -- the pre-paint theme boot and the
+// injected session token -- run, while anything injected into the page does not.
+// That matters here beyond ordinary XSS defence: the token lives in the DOM, so
+// the policy is also what stops a stolen token from being posted anywhere.
+//
+// style-src keeps 'unsafe-inline' because xterm.js and React style attributes
+// both need it; inline style is a far smaller risk than inline script.
+//
+// connect-src names the WebSocket origins explicitly rather than relying on
+// 'self', because not every browser matches a ws:// URL against 'self'. Getting
+// that wrong would silently break the console.
+func (s *Server) contentSecurityPolicy(nonce string) string {
+	port := strconv.Itoa(s.cfg.BindPort)
+	return strings.Join([]string{
+		"default-src 'self'",
+		"script-src 'self' 'nonce-" + nonce + "'",
+		"style-src 'self' 'unsafe-inline'",
+		"img-src 'self' data: blob:",
+		"media-src 'self'",
+		"font-src 'self'",
+		"connect-src 'self' ws://" + s.cfg.ListenAddress() + " ws://localhost:" + port,
+		"frame-ancestors 'none'",
+		"base-uri 'none'",
+		"form-action 'none'",
+		"object-src 'none'",
+	}, "; ")
+}
+
+// ListenAndServe starts the HTTP server on the configured address. It returns
+// http.ErrServerClosed after a call to Shutdown, which callers should treat as a
+// clean stop rather than a failure.
 func (s *Server) ListenAndServe() error {
 	addr := s.cfg.ListenAddress()
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		// ReadTimeout and WriteTimeout stay at zero deliberately. A drag-drop
+		// transfer may upload 256 MB, and the screen and serial streams are
+		// long-lived WebSockets; a blanket deadline would cut both off
+		// mid-flight. ReadHeaderTimeout bounds the part an idle or slow client
+		// can hold open without committing to a request.
+	}
+
+	s.mu.Lock()
+	s.httpServer = srv
+	s.mu.Unlock()
+
 	s.logger.Info("starting TabVM agent", "address", addr)
-	return http.ListenAndServe(addr, s.Handler())
+	return srv.ListenAndServe()
+}
+
+// Shutdown stops accepting connections and waits for in-flight requests to
+// finish, bounded by ctx. Quitting from the tray previously called os.Exit while
+// a VBoxManage command could still be running, which killed it mid-operation.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.mu.Lock()
+	srv := s.httpServer
+	s.mu.Unlock()
+
+	if srv == nil {
+		return nil
+	}
+	return srv.Shutdown(ctx)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

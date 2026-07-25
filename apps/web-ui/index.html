@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>TabVM — Local VirtualBox workspace</title>
-    <script>
+    <!--
+      data-tabvm-nonce is a placeholder the agent swaps for this response's real
+      CSP nonce when it serves the page (see serveIndex). It lets the policy stay
+      nonce-based instead of falling back to script-src 'unsafe-inline'.
+    -->
+    <script data-tabvm-nonce>
       // Apply the persisted theme before first paint so the splash and app open
       // in the user's chosen theme with no flash. No stored value means the app
       // follows the OS preference (prefers-color-scheme).
