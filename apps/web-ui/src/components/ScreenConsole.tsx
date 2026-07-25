@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, screenStreamUrl } from '../api/client';
+import { api, screenStreamUrl, streamProtocols } from '../api/client';
 import type { VmTelemetryResponse } from '../types/api';
 import { paintTiles } from '../lib/screenTiles';
 import { GuestDropZone } from './GuestDropZone';
@@ -151,7 +151,7 @@ export function ScreenConsole({ vmId, vmName, onClose, fullscreen = false }: Scr
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const socket = new WebSocket(screenStreamUrl(vmId));
+    const socket = new WebSocket(screenStreamUrl(vmId), streamProtocols());
     socket.binaryType = 'arraybuffer';
     socketRef.current = socket;
 

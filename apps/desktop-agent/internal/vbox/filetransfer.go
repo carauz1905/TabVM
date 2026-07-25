@@ -87,7 +87,7 @@ func (s *service) TransferFileToGuest(ctx context.Context, id, filename string, 
 	}
 	defer os.Remove(tmpPath)
 
-	pwPath, err := writeCredentialFile(password)
+	pwPath, err := s.writeCredentialFile(password)
 	if err != nil {
 		return models.VmFileTransferResponse{}, err
 	}
@@ -186,15 +186,27 @@ func writeTempFile(pattern string, data []byte) (string, error) {
 	return f.Name(), nil
 }
 
-// writeCredentialFile writes a password to a 0600 temp file so it can be passed
-// to VBoxManage via --passwordfile instead of on the command line.
-func writeCredentialFile(password string) (string, error) {
-	f, err := os.CreateTemp("", "tabvm-xfer-pw-*.txt")
+// writeCredentialFile writes a password to a short-lived file so it can be
+// passed to VBoxManage via --passwordfile instead of on the command line, where
+// it would show up in the process list.
+//
+// The file goes in the service's credential directory rather than %TEMP%: the
+// 0600 mode below is honoured on Unix but ignored by Windows, so on the target
+// platform the real protection is the directory's ACL. Callers must remove the
+// file when the command finishes.
+func (s *service) writeCredentialFile(password string) (string, error) {
+	return s.writeCredentialFileNamed("tabvm-xfer-pw-*.txt", password)
+}
+
+// writeCredentialFileNamed is writeCredentialFile with a caller-chosen name
+// pattern, so each call site stays identifiable in the credential directory.
+func (s *service) writeCredentialFileNamed(pattern, contents string) (string, error) {
+	f, err := os.CreateTemp(s.credDir, pattern)
 	if err != nil {
 		return "", fmt.Errorf("creating credential file: %w", err)
 	}
 	_ = f.Chmod(0o600)
-	if _, err := f.WriteString(password); err != nil {
+	if _, err := f.WriteString(contents); err != nil {
 		f.Close()
 		os.Remove(f.Name())
 		return "", fmt.Errorf("writing credential file: %w", err)

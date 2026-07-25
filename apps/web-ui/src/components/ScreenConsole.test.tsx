@@ -8,6 +8,7 @@ import { api } from '../api/client';
 // exercise the independent telemetry panel. Only the client is mocked.
 vi.mock('../api/client', () => ({
   screenStreamUrl: () => 'ws://localhost/api/vms/x/screen-stream',
+  streamProtocols: () => ['tabvm.token.test-token'],
   ApiError: class ApiError extends Error {},
   api: {
     getVmTelemetry: vi.fn(),

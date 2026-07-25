@@ -73,12 +73,59 @@ func (s *Server) handleScreenInput(id, vboxManage string, capturer *vmscreen.Cap
 // quality trades bandwidth for fidelity. These are deliberately conservative
 // defaults for a first end-to-end slice; tile-diffing (send only changed
 // regions) is the planned next optimization.
-// screenStreamTokenQueryParam is the query-string parameter carrying the
-// session token on the screen-stream WebSocket route. Browsers' native
-// WebSocket API cannot set request headers, so the token cannot travel in
-// X-TabVM-Session-Token for this route; it is resolved and compared exactly
-// like the header, only the transport differs (see withAuth).
+// screenStreamTokenQueryParam is the legacy query-string parameter that carried
+// the session token on the WebSocket routes. The UI no longer sends it; it is
+// still accepted so a non-browser client written against the old form keeps
+// working. Prefer streamTokenSubprotocolPrefix.
 const screenStreamTokenQueryParam = "token"
+
+// streamTokenSubprotocolPrefix marks the WebSocket subprotocol entry that
+// carries the session token.
+const streamTokenSubprotocolPrefix = "tabvm.token."
+
+// streamTokenFromRequest extracts the session token from a WebSocket upgrade.
+//
+// The browser WebSocket API cannot set request headers, so the token cannot ride
+// in X-TabVM-Session-Token here. It travels in Sec-WebSocket-Protocol -- which
+// that API can set -- rather than in the query string, because a URL ends up in
+// the browser's history, in Referer, and in any intermediary's logs, and a
+// long-lived session token has no business in any of those.
+//
+// The query parameter is still read as a fallback; see
+// screenStreamTokenQueryParam.
+func streamTokenFromRequest(r *http.Request) string {
+	if proto := tokenSubprotocol(r); proto != "" {
+		return strings.TrimPrefix(proto, streamTokenSubprotocolPrefix)
+	}
+	return r.URL.Query().Get(screenStreamTokenQueryParam)
+}
+
+// tokenSubprotocol returns the full token-bearing subprotocol the client
+// offered, or "" when it offered none.
+func tokenSubprotocol(r *http.Request) string {
+	for _, value := range r.Header.Values("Sec-WebSocket-Protocol") {
+		for _, proto := range strings.Split(value, ",") {
+			proto = strings.TrimSpace(proto)
+			if strings.HasPrefix(proto, streamTokenSubprotocolPrefix) {
+				return proto
+			}
+		}
+	}
+	return ""
+}
+
+// streamResponseHeader echoes the token-bearing subprotocol back to the client.
+// A browser fails the connection outright if the server does not select one of
+// the subprotocols it offered, so this is required, not cosmetic.
+func streamResponseHeader(r *http.Request) http.Header {
+	proto := tokenSubprotocol(r)
+	if proto == "" {
+		return nil
+	}
+	h := http.Header{}
+	h.Set("Sec-WebSocket-Protocol", proto)
+	return h
+}
 
 // vitePort is the Vite dev server's port. It proxies /api to the agent, so in a
 // development build its origin is a legitimate WebSocket caller.
@@ -130,7 +177,7 @@ const (
 	// free and these favor fidelity and smoothness over byte count. Capture is
 	// ~15-20ms/frame (see vmscreen), leaving headroom under a ~30ms tick.
 	screenFrameInterval = 30 * time.Millisecond // ~33 fps ceiling
-	screenJPEGQuality   = 90                     // sharper text/edges; loopback pays no bandwidth cost
+	screenJPEGQuality   = 90                    // sharper text/edges; loopback pays no bandwidth cost
 	// screenResolutionPoll is how often the stream re-checks the guest's native
 	// resolution so it can follow a mode change (e.g. after Guest Additions
 	// loads) without the user reopening the console.
@@ -209,7 +256,7 @@ func (s *Server) handleVmScreenStream(w http.ResponseWriter, r *http.Request, id
 	}()
 
 	upgrader := s.streamUpgrader()
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, streamResponseHeader(r))
 	if err != nil {
 		s.logger.Error("screen stream: websocket upgrade failed", "vmId", id, "error", err)
 		return

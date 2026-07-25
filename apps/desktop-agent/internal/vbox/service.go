@@ -42,6 +42,10 @@ type Config struct {
 	// Store is optional. When provided, console port assignments are persisted
 	// across agent restarts.
 	Store *store.Store
+	// CredentialDir is where short-lived guest-credential files are written.
+	// Optional; when empty the per-user config directory is used. See
+	// resolveCredentialDir for why this is not the OS temp directory.
+	CredentialDir string
 }
 
 // Default discovery paths on Windows when none are configured.
@@ -57,13 +61,49 @@ func NewService(runner Runner, cfg Config) Service {
 	if len(paths) == 0 {
 		paths = defaultPaths
 	}
-	return &service{runner: runner, paths: paths, store: cfg.Store, vmLocks: newVMLocker()}
+	return &service{
+		runner:  runner,
+		paths:   paths,
+		store:   cfg.Store,
+		credDir: resolveCredentialDir(cfg.CredentialDir),
+		vmLocks: newVMLocker(),
+	}
+}
+
+// resolveCredentialDir picks the directory guest-credential files are written
+// to, creating it if needed.
+//
+// Go passes the 0600 mode straight to Windows, which ignores it: a file created
+// by os.CreateTemp inherits its directory's ACL instead. %TEMP% is a shared
+// scratch area, so writing a password there and calling it owner-only was
+// wishful. A per-user directory under %APPDATA%\TabVM inherits the profile ACL,
+// which grants the owning user, SYSTEM and Administrators, and nobody else.
+//
+// Returning "" makes os.CreateTemp fall back to the OS temp directory. That is
+// the previous behaviour and only happens when no per-user directory resolves at
+// all, which would otherwise leave guest control unusable.
+func resolveCredentialDir(configured string) string {
+	dir := strings.TrimSpace(configured)
+	if dir == "" {
+		base, err := os.UserConfigDir()
+		if err != nil {
+			return ""
+		}
+		dir = filepath.Join(base, "TabVM")
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return ""
+	}
+	return dir
 }
 
 type service struct {
 	runner Runner
 	paths  []string
 	store  *store.Store
+	// credDir is where guest-credential files are written; "" means the OS temp
+	// directory. See resolveCredentialDir.
+	credDir string
 	// vmLocks serializes VBoxManage executions per VM id so concurrent commands
 	// targeting the same machine never contend for the VirtualBox machine lock.
 	vmLocks *vmLocker

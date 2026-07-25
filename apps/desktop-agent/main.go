@@ -57,6 +57,10 @@ func main() {
 	vboxService := vbox.NewService(r, vbox.Config{
 		CandidatePaths: cfg.VBoxManagePaths,
 		Store:          db,
+		// Guest credentials are written here rather than %TEMP%; see
+		// vbox.resolveCredentialDir for why the directory, not the file mode, is
+		// what protects them on Windows.
+		CredentialDir: cfg.DataDir,
 	})
 	srv := server.New(cfg, vboxService, db, logger)
 

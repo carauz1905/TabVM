@@ -97,23 +97,33 @@ export function getSessionToken(): string | undefined {
   return sessionToken;
 }
 
+// The session token rides in the WebSocket subprotocol rather than the URL. The
+// browser WebSocket API cannot set request headers, so X-TabVM-Session-Token is
+// unavailable here, but it can set subprotocols -- and unlike a query string
+// those never reach the browser's history, a Referer header, or an
+// intermediary's logs. The agent echoes the value back to complete the
+// handshake.
+const TOKEN_SUBPROTOCOL_PREFIX = 'tabvm.token.';
+
+// streamProtocols returns the subprotocol list to open a console socket with.
+// Empty when no token is configured, which makes the agent reject the upgrade
+// rather than open an unauthenticated stream.
+export function streamProtocols(): string[] {
+  return sessionToken ? [`${TOKEN_SUBPROTOCOL_PREFIX}${sessionToken}`] : [];
+}
+
 // screenStreamUrl builds the WebSocket URL for a VM's live COM screen stream.
-// It targets the current origin (the agent in production, or the Vite dev
-// proxy in development) and carries the session token as a query parameter,
-// because the browser WebSocket API cannot set the X-TabVM-Session-Token
-// header.
+// It targets the current origin: the agent in production, or the Vite dev proxy
+// in development.
 export function screenStreamUrl(id: string): string {
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const query = sessionToken ? `?token=${encodeURIComponent(sessionToken)}` : '';
-  return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/screen-stream${query}`;
+  return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/screen-stream`;
 }
 
 // serialStreamUrl builds the WebSocket URL for a VM's serial-console terminal.
-// Same transport and token-as-query-param reasoning as screenStreamUrl.
 export function serialStreamUrl(id: string): string {
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const query = sessionToken ? `?token=${encodeURIComponent(sessionToken)}` : '';
-  return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/serial-stream${query}`;
+  return `${proto}://${window.location.host}/api/vms/${encodeURIComponent(id)}/serial-stream`;
 }
 
 function hasString(value: unknown, key: string): boolean {

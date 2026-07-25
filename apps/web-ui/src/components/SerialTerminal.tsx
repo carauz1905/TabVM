@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import { serialStreamUrl } from '../api/client';
+import { serialStreamUrl, streamProtocols } from '../api/client';
 
 export type SerialStatus = 'connecting' | 'open' | 'closed' | 'error';
 
@@ -51,7 +51,7 @@ export function SerialTerminal({
     term.focus();
 
     onStatus?.('connecting');
-    const socket = new WebSocket(serialStreamUrl(vmId));
+    const socket = new WebSocket(serialStreamUrl(vmId), streamProtocols());
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {

@@ -59,6 +59,10 @@ type createJob struct {
 	Message string
 	VMID    string
 	Name    string
+	// endedAt is when the job reached a terminal state, and stays zero while it
+	// runs. It drives eviction (see sweepFinishedJobsLocked) and is never part
+	// of the response.
+	endedAt time.Time
 }
 
 // New creates a new HTTP server for the TabVM local agent.
@@ -1511,13 +1515,7 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 
 		presented := r.Header.Get(sessionTokenHeader)
 		if presented == "" && (isScreenStreamPath(r.URL.Path) || isSerialStreamPath(r.URL.Path)) {
-			// Browsers' native WebSocket API cannot set arbitrary request
-			// headers, so a WebSocket upgrade request cannot carry
-			// X-TabVM-Session-Token. Fall back to a query parameter for this
-			// WebSocket route only. This is still the same token, resolved
-			// the same way, compared the same way -- only the transport
-			// differs. See screenstream.go.
-			presented = r.URL.Query().Get(screenStreamTokenQueryParam)
+			presented = streamTokenFromRequest(r)
 		}
 
 		if presented == "" || !constantTimeEqual(presented, token) {
