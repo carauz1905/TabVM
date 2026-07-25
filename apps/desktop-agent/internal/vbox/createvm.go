@@ -141,7 +141,11 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 	if uuid == "" {
 		return models.VmCreateResponse{}, &ExecutionError{ExitCode: -1, Message: "Could not determine the new VM identifier."}
 	}
-	diskPath := filepath.Join(filepath.Dir(settingsFile), req.Name+".vdi")
+	diskPath, err := vmDiskPath(settingsFile, req.Name)
+	if err != nil {
+		s.cleanupFailedCreate(ctx, path, uuid, "")
+		return models.VmCreateResponse{}, err
+	}
 
 	// 2. Hardware, disk, and controller.
 	steps := []struct {
@@ -225,7 +229,11 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 	if uuid == "" {
 		return models.VmCreateResponse{}, &ExecutionError{ExitCode: -1, Message: "Could not determine the new VM identifier."}
 	}
-	diskPath := filepath.Join(filepath.Dir(settingsFile), req.Name+".vdi")
+	diskPath, err := vmDiskPath(settingsFile, req.Name)
+	if err != nil {
+		s.cleanupFailedCreate(ctx, path, uuid, "")
+		return models.VmCreateResponse{}, err
+	}
 
 	// 2. Hardware, disk, controller, and the installer ISO as a DVD. The disk
 	// sits on port 0 and the ISO on port 1, so the VM boots the installer first
@@ -449,6 +457,28 @@ func hostnameFor(hostname, name string) string {
 }
 
 // --- validation ---
+
+// vmDiskPath builds the path of a new VM's disk image inside that machine's own
+// settings directory, refusing any name that would land outside it.
+//
+// The name is caller-supplied. validateVmName already rejects path separators,
+// so it cannot traverse out today -- but that guarantee lives in a regular
+// expression in another part of this file, and it is exactly the kind of
+// invariant that breaks quietly when someone relaxes the pattern. The cleanup
+// path deletes this file, so the containment check belongs next to where the
+// path is built, not inferred from a validator three hundred lines away.
+func vmDiskPath(settingsFile, name string) (string, error) {
+	dir := filepath.Dir(settingsFile)
+	candidate := filepath.Clean(filepath.Join(dir, name+".vdi"))
+
+	// The image must be a direct child of the machine's settings directory --
+	// not merely somewhere beneath it, and certainly not outside it. Comparing
+	// the parent covers both in one check.
+	if filepath.Dir(candidate) != dir {
+		return "", &ValidationError{Message: "The VM name does not produce a valid disk file name."}
+	}
+	return candidate, nil
+}
 
 func validateVmName(name string) error {
 	if !vmNamePattern.MatchString(strings.TrimSpace(name)) {

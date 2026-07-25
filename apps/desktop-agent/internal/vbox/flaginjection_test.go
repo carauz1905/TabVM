@@ -58,3 +58,30 @@ func TestValidatorsStillAcceptOrdinaryNames(t *testing.T) {
 		})
 	}
 }
+
+// vmDiskPath keeps a caller-supplied VM name from producing a disk path outside
+// the machine's own settings directory. validateVmName already rejects path
+// separators, so this is the second lock on the same door -- the one that stays
+// shut if the name pattern is ever relaxed.
+func TestVmDiskPathStaysInsideTheSettingsDirectory(t *testing.T) {
+	const settings = `C:\VMs\demo\demo.vbox`
+
+	t.Run("ordinary name", func(t *testing.T) {
+		got, err := vmDiskPath(settings, "demo")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if want := `C:\VMs\demo\demo.vdi`; got != want {
+			t.Fatalf("vmDiskPath() = %q, want %q", got, want)
+		}
+	})
+
+	for _, name := range []string{`..\..\evil`, `../../evil`, `sub\evil`, `C:\Windows\evil`} {
+		t.Run("rejected name "+name, func(t *testing.T) {
+			got, err := vmDiskPath(settings, name)
+			if err == nil {
+				t.Fatalf("expected %q to be refused, got path %q", name, got)
+			}
+		})
+	}
+}
