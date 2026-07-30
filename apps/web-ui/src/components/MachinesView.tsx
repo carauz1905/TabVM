@@ -704,6 +704,26 @@ export function MachinesView() {
               // surface the notice and keep the force affordance visible.
               const showStopNotice =
                 cls === 'running' && forceOffered[vm.id] === true && !stopNoticeDismissed[vm.id];
+              // Offered in both the running and stopped rows, because the two
+              // halves of the feature live in opposite states: a running VM is
+              // where the terminal is used, and a stopped one is the only place
+              // the serial port can be wired (modifyvm refuses a live VM).
+              // Rendering it in just one of them makes the other unreachable.
+              const terminalButton = termCapable[vm.id] ? (
+                <button
+                  type="button"
+                  className="tv-abtn strong"
+                  aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
+                  title={t('terminal')}
+                  onClick={() => openTerminalTab(vm.id, vm.name)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 17l6-6-6-6" />
+                    <path d="M12 19h8" />
+                  </svg>
+                  {t('terminal')}
+                </button>
+              ) : null;
               return (
                 <div
                   className={`tv-vm ${cls} ${focusVm?.id === vm.id ? 'is-focused' : ''}`}
@@ -802,21 +822,7 @@ export function MachinesView() {
                           </svg>
                           {t('new tab')}
                         </button>
-                        {termCapable[vm.id] && (
-                          <button
-                            type="button"
-                            className="tv-abtn strong"
-                            aria-label={tf('Open {vm} terminal in a new tab', { vm: vm.name })}
-                            title={t('terminal')}
-                            onClick={() => openTerminalTab(vm.id, vm.name)}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 17l6-6-6-6" />
-                              <path d="M12 19h8" />
-                            </svg>
-                            {t('terminal')}
-                          </button>
-                        )}
+                        {terminalButton}
                         <button
                           type="button"
                           className="tv-abtn go"
@@ -884,6 +890,7 @@ export function MachinesView() {
                           </svg>
                           {t('export')}
                         </button>
+                        {terminalButton}
                         <button
                           type="button"
                           className="tv-abtn go"

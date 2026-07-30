@@ -283,8 +283,25 @@ describe('MachinesView', () => {
     expect(openConsole.className).not.toContain('strong');
   });
 
-  it('does not offer the terminal for a stopped VM', async () => {
+  // A stopped VM is the only state in which the serial port can be wired
+  // (modifyvm refuses a live VM), so hiding the terminal here made the "Enable
+  // serial terminal" action unreachable: visible only when off, entered only
+  // when running.
+  it('offers the terminal for a stopped VM, where the serial port can be wired', async () => {
     vi.mocked(useVmStatus).mockReturnValue(stoppedVm());
+
+    const { findByRole } = render(<MachinesView />);
+
+    expect(await findByRole('button', { name: 'Open VM One terminal in a new tab' })).toBeTruthy();
+  });
+
+  it('does not offer the terminal for a guest that is not terminal-capable', async () => {
+    vi.mocked(api.getVmGuestOS).mockResolvedValue({
+      id: RUNNING_ID,
+      osType: 'Windows11_64',
+      family: 'windows',
+      terminalCapable: false,
+    });
 
     const { queryByRole } = render(<MachinesView />);
     // Flush the guest-OS probe so termCapable is resolved before asserting.
