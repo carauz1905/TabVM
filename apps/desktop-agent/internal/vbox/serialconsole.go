@@ -26,7 +26,7 @@ func (s *service) SerialConsoleStatus(ctx context.Context, id string) (models.Vm
 		return models.VmSerialConsoleResponse{}, err
 	}
 
-	enabled, _ := parseSerialConsole(info)
+	enabled := serialConsoleEnabledFor(info, id)
 	family := guestFamily(parseGuestOSType(info))
 	live := vmStateIsLive(parseVmState(info))
 	return models.VmSerialConsoleResponse{
@@ -113,6 +113,37 @@ func (s *service) DisableSerialConsole(ctx context.Context, id string) (models.V
 // bridge a VM's first serial port (COM1) to the host agent.
 func SerialPipeName(id string) string {
 	return `\\.\pipe\tabvm-serial-` + id
+}
+
+// serialConsoleEnabledFor reports whether this VM's COM1 is wired to the pipe
+// this VM's terminal actually dials.
+//
+// A configured port is not enough. VirtualBox copies the pipe path verbatim
+// into a clone and into an exported appliance, so a VM can arrive carrying a
+// path that names a different machine. Its terminal would then wait forever on
+// a pipe nobody creates. Treating a foreign path as "not enabled" surfaces the
+// normal "Enable serial terminal" action, which re-points it correctly.
+//
+// Windows named pipes are case-insensitive, so the comparison is too.
+func serialConsoleEnabledFor(info, id string) bool {
+	enabled, pipe := parseSerialConsole(info)
+	return enabled && strings.EqualFold(pipe, SerialPipeName(id))
+}
+
+// wireSerialConsole points a VM's COM1 at its own host pipe, so the serial
+// terminal is ready without the user having to power the machine off and enable
+// it by hand.
+//
+// Best-effort by design: the VM is complete and usable whether or not this
+// lands, so a failure is logged and never fails the create or clone that
+// triggered it. The user can still enable the port from the terminal tab.
+func (s *service) wireSerialConsole(ctx context.Context, path, id string) {
+	args := enableSerialConsoleArgs(id, SerialPipeName(id))
+	if err := s.runControlCommandTimeout(ctx, id, path, args, "wiring the serial console", createStepTimeout); err != nil {
+		s.logOperation(ctx, id, "vm.serial.autowire", false, "Could not wire the serial console; it can be enabled from the terminal tab.")
+		return
+	}
+	s.logOperation(ctx, id, "vm.serial.autowire", true, "")
 }
 
 // enableSerialConsoleArgs builds the modifyvm command that wires COM1 (0x3F8,

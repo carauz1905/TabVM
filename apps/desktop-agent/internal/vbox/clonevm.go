@@ -64,6 +64,19 @@ func (s *service) CloneVM(ctx context.Context, sourceID, name string, linked boo
 	}
 
 	uuid := s.resolveVmUUID(ctx, path, name)
+
+	// A clone inherits the source's COM1 pipe path verbatim, and that path names
+	// the source VM. Left as-is the clone's terminal would dial a pipe nobody
+	// ever creates, and running both machines at once would have them fight over
+	// a single pipe name. Re-point it at the clone's own pipe.
+	if uuid != "" {
+		if info, infoErr := s.readShowVmInfo(ctx, path, uuid, "reading the clone's serial console"); infoErr == nil {
+			if wired, _ := parseSerialConsole(info); wired {
+				s.wireSerialConsole(ctx, path, uuid)
+			}
+		}
+	}
+
 	s.logOperation(ctx, uuid, "vm.clone", true, "")
 
 	kind := "Full"

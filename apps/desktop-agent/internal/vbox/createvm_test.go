@@ -247,6 +247,87 @@ func TestCreateVmManual_HappyPath(t *testing.T) {
 	}
 }
 
+// createManualRunner builds the command map for a manual create of `lab`, with
+// the caller free to add or omit the serial-console step.
+func createManualRunner(t *testing.T, path, uuid, osType, iso, settings, disk string) *recordingRunner {
+	t.Helper()
+	return &recordingRunner{
+		results: map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " createvm --name lab --ostype " + osType + " --register": {
+				ExitCode:       0,
+				StandardOutput: "UUID: " + uuid + "\nSettings file: '" + settings + "'\n",
+			},
+			path + " modifyvm " + uuid + " --memory 2048 --cpus 2 --ioapic on --nic1 nat --vram 33 --graphicscontroller vmsvga": {ExitCode: 0},
+			path + " createmedium disk --filename " + disk + " --size 20480 --format VDI":                                       {ExitCode: 0},
+			path + " storagectl " + uuid + " --name SATA --add sata --controller IntelAhci --portcount 2 --bootable on":         {ExitCode: 0},
+			path + " storageattach " + uuid + " --storagectl SATA --port 0 --device 0 --type hdd --medium " + disk:              {ExitCode: 0},
+			path + " storageattach " + uuid + " --storagectl SATA --port 1 --device 0 --type dvddrive --medium " + iso:          {ExitCode: 0},
+			path + " modifyvm " + uuid + " --uart1 0x3F8 4 --uartmode1 server " + SerialPipeName(uuid):                          {ExitCode: 0},
+		},
+	}
+}
+
+// A new VM is powered off, the one state modifyvm accepts a serial port in, so
+// wiring it at creation saves the user a shutdown later. Before this, the only
+// route to a serial terminal was to power the machine off by hand and enable it.
+func TestCreateVmManual_WiresSerialConsoleForALinuxGuest(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	dir := t.TempDir()
+	iso := filepath.Join(dir, "alpine.iso")
+	if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	uuid := "12345678-1234-1234-1234-1234567890ab"
+	run := createManualRunner(t, path, uuid, "Linux_64", iso,
+		filepath.Join(dir, "lab", "lab.vbox"), filepath.Join(dir, "lab", "lab.vdi"))
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if _, err := svc.CreateVmManual(context.Background(), models.VmCreateManualRequest{
+		Name: "lab", OsType: "Linux_64", IsoPath: iso, MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	joined := strings.Join(run.calls, "\n")
+	if !strings.Contains(joined, "--uart1 0x3F8 4 --uartmode1 server "+SerialPipeName(uuid)) {
+		t.Fatalf("expected COM1 wired to the VM's own pipe; calls:\n%s", joined)
+	}
+}
+
+func TestCreateVmManual_DoesNotWireSerialForANonLinuxGuest(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	dir := t.TempDir()
+	iso := filepath.Join(dir, "boot.iso")
+	if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	uuid := "12345678-1234-1234-1234-1234567890ab"
+	run := createManualRunner(t, path, uuid, "Other_64", iso,
+		filepath.Join(dir, "lab", "lab.vbox"), filepath.Join(dir, "lab", "lab.vdi"))
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if _, err := svc.CreateVmManual(context.Background(), models.VmCreateManualRequest{
+		Name: "lab", OsType: "Other_64", IsoPath: iso, MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// A serial login is a Linux affordance; EnableSerialConsole refuses anything
+	// else, so creation must not hand out a port that could never be used.
+	if joined := strings.Join(run.calls, "\n"); strings.Contains(joined, "--uart1") {
+		t.Fatalf("a non-Linux guest must not get a serial port; calls:\n%s", joined)
+	}
+}
+
 func TestCreateVmManual_RejectsUnsupportedOsType(t *testing.T) {
 	dir := t.TempDir()
 	iso := filepath.Join(dir, "alpine.iso")

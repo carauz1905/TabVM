@@ -166,6 +166,14 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 		}
 	}
 
+	// The VM is powered off right now, which is the only state modifyvm accepts
+	// for a serial port, so wire it here. Doing it later would cost the user a
+	// shutdown. Linux only, matching EnableSerialConsole: a serial login is a
+	// Linux affordance.
+	if guestFamily(req.OsType) == "linux" {
+		s.wireSerialConsole(ctx, path, uuid)
+	}
+
 	// 3. Configure the unattended install. The password goes via a credential
 	// file so it never appears in the process argument list.
 	pwPath, err := s.writeCredentialFileNamed("tabvm-unatt-*.txt", req.Password+"\n")
@@ -255,6 +263,12 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
 		}
+	}
+
+	// Same as the unattended path: the VM is powered off now, which is the only
+	// state that accepts a serial port change.
+	if guestFamily(req.OsType) == "linux" {
+		s.wireSerialConsole(ctx, path, uuid)
 	}
 
 	s.logOperation(ctx, uuid, "vm.create", true, "")
