@@ -166,6 +166,14 @@ func (s *service) CreateVmUnattended(ctx context.Context, req models.VmCreateReq
 		}
 	}
 
+	// The VM is powered off right now, which is the only state modifyvm accepts
+	// for a serial port, so wire it here. Doing it later would cost the user a
+	// shutdown. Linux only, matching EnableSerialConsole: a serial login is a
+	// Linux affordance.
+	if guestFamily(req.OsType) == "linux" {
+		s.wireSerialConsole(ctx, path, uuid)
+	}
+
 	// 3. Configure the unattended install. The password goes via a credential
 	// file so it never appears in the process argument list.
 	pwPath, err := s.writeCredentialFileNamed("tabvm-unatt-*.txt", req.Password+"\n")
@@ -255,6 +263,12 @@ func (s *service) CreateVmManual(ctx context.Context, req models.VmCreateManualR
 			s.cleanupFailedCreate(ctx, path, uuid, diskPath)
 			return models.VmCreateResponse{}, err
 		}
+	}
+
+	// Same as the unattended path: the VM is powered off now, which is the only
+	// state that accepts a serial port change.
+	if guestFamily(req.OsType) == "linux" {
+		s.wireSerialConsole(ctx, path, uuid)
 	}
 
 	s.logOperation(ctx, uuid, "vm.create", true, "")
@@ -421,11 +435,28 @@ func storageAttachDvdArgs(uuid, isoPath string) []string {
 	return storageAttachDvdMediumArgs(uuid, "SATA", 1, 0, isoPath)
 }
 
+// serialLoginPostInstall turns the serial login on from inside the installer.
+//
+// This is the cheap half of the serial terminal. The installer already runs as
+// root in the target system, so it needs no Guest Additions, no guest password
+// and no init-system detection -- the three things that make the runtime path
+// (see gettyEnableScript) fragile and interactive. A VM TabVM installs should
+// simply come with a working terminal.
+//
+// `enable` is the right verb here and `start` would be wrong, the exact mirror
+// of the runtime script: the target system is not running yet, and surviving
+// the first boot is precisely the goal. Modern Ubuntu and Debian ship
+// serial-getty@.service with an [Install] section, so enable works there.
+//
+// `|| true` keeps a failure from taking the whole install down. A missing
+// serial login is a small loss; a failed install is not.
+const serialLoginPostInstall = "systemctl enable serial-getty@ttyS0.service || true"
+
 // unattendedInstallArgs configures (does not start) the automated install with
 // Guest Additions. The install runs on the next VM boot, watched via the TabVM
 // console. --hostname must be a dotted FQDN, so a lab suffix is appended.
 func unattendedInstallArgs(uuid string, req models.VmCreateRequest, pwFilePath string) []string {
-	return []string{
+	args := []string{
 		"unattended", "install", uuid,
 		"--iso=" + req.IsoPath,
 		"--user=" + req.Username,
@@ -437,6 +468,12 @@ func unattendedInstallArgs(uuid string, req models.VmCreateRequest, pwFilePath s
 		"--time-zone=Etc/UTC",
 		"--install-additions",
 	}
+	// Linux only: Windows serial is SAC rather than a login shell, and the
+	// command would be meaningless there anyway.
+	if guestFamily(req.OsType) == "linux" {
+		args = append(args, "--post-install-command="+serialLoginPostInstall)
+	}
+	return args
 }
 
 // hostnameFor returns a dotted hostname VBox unattended accepts. It prefers the

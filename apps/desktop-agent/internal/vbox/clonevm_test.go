@@ -125,6 +125,72 @@ func TestCloneVM_FullHappyPath(t *testing.T) {
 	}
 }
 
+// VirtualBox copies the source's COM1 pipe path into the clone verbatim, so the
+// clone would dial a pipe nobody creates -- and if both machines ran at once
+// they would fight over one pipe name. The clone must be re-pointed at its own.
+func TestCloneVM_RepointsInheritedSerialPipeAtTheClone(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	id := "11111111-1111-1111-1111-111111111111"
+	newUUID := "22222222-2222-2222-2222-222222222222"
+	path := createTempExecutable(t)
+	inherited := `uart1="0x03f8,4"` + "\n" + `uartmode1="server,` + SerialPipeName(id) + `"` + "\n"
+	run := &recordingRunner{
+		results: map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " showvminfo " + id + " --machinereadable":        {ExitCode: 0, StandardOutput: `VMState="poweroff"`},
+			path + " clonevm " + id + " --name lab-clone --register": {ExitCode: 0},
+			path + " showvminfo lab-clone --machinereadable":         {ExitCode: 0, StandardOutput: `UUID="` + newUUID + `"`},
+			path + " showvminfo " + newUUID + " --machinereadable":   {ExitCode: 0, StandardOutput: inherited},
+			path + " modifyvm " + newUUID + " --uart1 0x3F8 4 --uartmode1 server " + SerialPipeName(newUUID): {ExitCode: 0},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if _, err := svc.CloneVM(context.Background(), id, "lab-clone", false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	joined := strings.Join(run.calls, "\n")
+	if !strings.Contains(joined, "modifyvm "+newUUID+" --uart1 0x3F8 4 --uartmode1 server "+SerialPipeName(newUUID)) {
+		t.Fatalf("expected the clone's serial port re-pointed at its own pipe; calls:\n%s", joined)
+	}
+	// The source's pipe must not survive into any command aimed at the clone.
+	if strings.Contains(joined, "modifyvm "+newUUID+" --uart1 0x3F8 4 --uartmode1 server "+SerialPipeName(id)) {
+		t.Fatalf("the clone must not keep the source's pipe; calls:\n%s", joined)
+	}
+}
+
+func TestCloneVM_LeavesSerialAloneWhenSourceHadNone(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	id := "11111111-1111-1111-1111-111111111111"
+	newUUID := "22222222-2222-2222-2222-222222222222"
+	path := createTempExecutable(t)
+	run := &recordingRunner{
+		results: map[string]runner.Result{
+			path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+			path + " showvminfo " + id + " --machinereadable":        {ExitCode: 0, StandardOutput: `VMState="poweroff"`},
+			path + " clonevm " + id + " --name lab-clone --register": {ExitCode: 0},
+			path + " showvminfo lab-clone --machinereadable":         {ExitCode: 0, StandardOutput: `UUID="` + newUUID + `"`},
+			path + " showvminfo " + newUUID + " --machinereadable":   {ExitCode: 0, StandardOutput: `uart1="off"` + "\n"},
+		},
+	}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	if _, err := svc.CloneVM(context.Background(), id, "lab-clone", false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if joined := strings.Join(run.calls, "\n"); strings.Contains(joined, "--uart1") {
+		t.Fatalf("a clone of a VM with no serial port must not gain one; calls:\n%s", joined)
+	}
+}
+
 func TestCloneVM_LinkedHappyPath(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("VirtualBox discovery is Windows-only in this test")

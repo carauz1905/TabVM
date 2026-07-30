@@ -2,6 +2,7 @@ package vbox
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -29,6 +30,34 @@ func TestDisableSerialConsoleArgs(t *testing.T) {
 	want := []string{"modifyvm", "vm-1", "--uart1", "off"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("disableSerialConsoleArgs = %v, want %v", got, want)
+	}
+}
+
+func TestSerialConsoleEnabledFor(t *testing.T) {
+	id := "11111111-1111-1111-1111-111111111111"
+	other := "22222222-2222-2222-2222-222222222222"
+	info := func(pipe string) string {
+		return `uart1="0x03f8,4"` + "\n" + `uartmode1="server,` + pipe + `"` + "\n"
+	}
+
+	if !serialConsoleEnabledFor(info(SerialPipeName(id)), id) {
+		t.Error("a port wired to this VM's own pipe must count as enabled")
+	}
+
+	// VirtualBox copies the pipe path verbatim into clones and exported
+	// appliances, so a VM can carry a path naming a different machine. Its
+	// terminal would wait on a pipe nobody creates, so it is not enabled.
+	if serialConsoleEnabledFor(info(SerialPipeName(other)), id) {
+		t.Error("a port wired to another VM's pipe must not count as enabled")
+	}
+
+	// Windows named pipes are case-insensitive.
+	if !serialConsoleEnabledFor(info(strings.ToUpper(SerialPipeName(id))), id) {
+		t.Error("pipe comparison must be case-insensitive")
+	}
+
+	if serialConsoleEnabledFor(`uart1="off"`+"\n", id) {
+		t.Error("an off port must not count as enabled")
 	}
 }
 
