@@ -155,6 +155,38 @@ func TestUnattendedInstallArgs(t *testing.T) {
 	}
 }
 
+// The installer runs as root inside the target system, so it can turn the
+// serial login on with no Guest Additions, no guest credentials and no init
+// detection -- the three things that make the runtime path fragile. `enable` is
+// the right verb here, the mirror of the runtime script where `start` is: the
+// target is not running yet, and persistence across the first boot is exactly
+// what is wanted.
+func TestUnattendedInstallArgs_BakesTheSerialLoginIntoLinuxGuests(t *testing.T) {
+	args := unattendedInstallArgs("uuid-1", models.VmCreateRequest{
+		Name: "lab", OsType: "Ubuntu_64", IsoPath: "/iso/ubuntu.iso", Username: "student", Password: "pw",
+	}, "/tmp/pw.txt")
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--post-install-command=systemctl enable serial-getty@ttyS0.service") {
+		t.Errorf("expected the serial getty enabled at install time; got %q", joined)
+	}
+	// A failure here must not take the whole install down with it.
+	if !strings.Contains(joined, "|| true") {
+		t.Errorf("the post-install command must not be able to fail the install; got %q", joined)
+	}
+}
+
+func TestUnattendedInstallArgs_LeavesWindowsGuestsAlone(t *testing.T) {
+	args := unattendedInstallArgs("uuid-1", models.VmCreateRequest{
+		Name: "lab", OsType: "Windows11_64", IsoPath: "/iso/win.iso", Username: "student", Password: "pw",
+	}, "/tmp/pw.txt")
+
+	// Windows serial is SAC, not a login shell, and systemctl means nothing there.
+	if joined := strings.Join(args, " "); strings.Contains(joined, "--post-install-command") {
+		t.Errorf("a Windows guest must not get the Linux serial login command; got %q", joined)
+	}
+}
+
 func TestStorageAttachDvdArgs(t *testing.T) {
 	args := storageAttachDvdArgs("uuid-1", "/iso/alpine.iso")
 	joined := strings.Join(args, " ")
@@ -569,6 +601,82 @@ func TestCreateVmManual_CleansUpOnPostRegisterFailure(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// permissiveRunner succeeds for every command and records it, with optional
+// canned output for the few that are read back. The unattended path cannot be
+// driven by an exact command map: its install step embeds a random
+// credential-file path, which is why it had no happy-path test at all.
+type permissiveRunner struct {
+	calls   []string
+	outputs map[string]runner.Result
+}
+
+func (r *permissiveRunner) RunContext(ctx context.Context, name string, args []string, timeout time.Duration) (runner.Result, error) {
+	key := name + " " + joinArgs(args)
+	r.calls = append(r.calls, key)
+	if result, ok := r.outputs[key]; ok {
+		return result, nil
+	}
+	return runner.Result{ExitCode: 0}, nil
+}
+
+func TestCreateVmUnattended_HappyPathProvisionsTheSerialTerminal(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("VirtualBox discovery is Windows-only in this test")
+	}
+
+	path := createTempExecutable(t)
+	dir := t.TempDir()
+	iso := filepath.Join(dir, "ubuntu.iso")
+	if err := os.WriteFile(iso, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	uuid := "12345678-1234-1234-1234-1234567890ab"
+	settings := filepath.Join(dir, "lab", "lab.vbox")
+
+	run := &permissiveRunner{outputs: map[string]runner.Result{
+		path + " --version": {ExitCode: 0, StandardOutput: "7.0.14r161095\n"},
+		path + " createvm --name lab --ostype Ubuntu_64 --register": {
+			ExitCode:       0,
+			StandardOutput: "UUID: " + uuid + "\nSettings file: '" + settings + "'\n",
+		},
+	}}
+
+	svc := NewService(run, Config{CandidatePaths: []string{path}})
+	resp, err := svc.CreateVmUnattended(context.Background(), models.VmCreateRequest{
+		Name: "lab", OsType: "Ubuntu_64", IsoPath: iso, Username: "student", Password: "secretpw",
+		MemoryMB: 2048, Cpus: 2, DiskGB: 20,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Success || resp.VMID != uuid {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+
+	joined := strings.Join(run.calls, "\n")
+	// Both halves of the serial terminal are provisioned during creation: the
+	// host-side port, and the guest-side login baked into the install.
+	if !strings.Contains(joined, "--uart1 0x3F8 4 --uartmode1 server "+SerialPipeName(uuid)) {
+		t.Errorf("expected COM1 wired at creation; calls:\n%s", joined)
+	}
+	if !strings.Contains(joined, "--post-install-command="+serialLoginPostInstall) {
+		t.Errorf("expected the serial login baked into the install; calls:\n%s", joined)
+	}
+	if !strings.Contains(joined, "--install-additions") {
+		t.Errorf("expected Guest Additions installed; calls:\n%s", joined)
+	}
+	// The port must be wired before the install is configured: modifyvm only
+	// accepts it while the VM is powered off.
+	if strings.Index(joined, "--uart1") > strings.Index(joined, "unattended install") {
+		t.Errorf("the serial port must be wired before the install step; calls:\n%s", joined)
+	}
+	for _, call := range run.calls {
+		if strings.Contains(call, "secretpw") {
+			t.Fatalf("password leaked into argv: %q", call)
+		}
 	}
 }
 
