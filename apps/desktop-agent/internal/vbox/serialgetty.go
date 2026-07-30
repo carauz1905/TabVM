@@ -9,13 +9,32 @@ import (
 	"github.com/tabvm/desktop-agent/internal/models"
 )
 
-// gettyEnableScript enables and immediately starts a login getty on the guest's
-// first serial port, detecting the init system so it works across most distros:
-// systemd (systemctl) for the majority, and an /etc/inittab entry + init reload
-// (kill -HUP 1) for busybox/sysvinit/Alpine/Devuan. It deliberately contains no
-// single quotes so it can be wrapped in `sh -c '...'` under sudo without escaping.
-const gettyEnableScript = "if command -v systemctl >/dev/null 2>&1; then " +
-	"systemctl enable --now serial-getty@ttyS0.service; " +
+// gettyEnableScript starts a login getty on the guest's first serial port,
+// detecting the init system so it works across most distros: systemd
+// (systemctl) for the majority, and an /etc/inittab entry + init reload
+// (kill -HUP 1) for busybox/sysvinit/Alpine/Devuan.
+//
+// Three properties are deliberate, and each one cost a real guest to learn:
+//
+//   - `start` decides the outcome, not `enable`. Starting is what gives the user
+//     a login prompt; enabling only makes it survive a reboot, and it fails
+//     legitimately wherever serial-getty@.service is static -- it carries no
+//     [Install] section on systemd 208, so `enable` reports "The unit files have
+//     no [Install] section" there. Its failure is therefore silenced and ignored.
+//   - `--now` is not used. It only exists from systemd 220 on; CentOS 7 ships
+//     208 and answers with "unrecognized option '--now'".
+//   - The inittab branch hangs off the same condition as the systemd branch
+//     rather than off `command -v systemctl`, so a systemd that is present but
+//     unusable still falls through to it. As an `elif` guarded only by whether
+//     systemctl exists, it could never be reached on a systemd guest.
+//
+// It stays a single if/fi statement because guestControlEnableGettyArgs appends
+// ` 2>&1` to it, which only folds stderr for the whole script while it remains
+// one compound command. It also contains no single quotes, so it can be wrapped
+// in `sh -c '...'` under sudo without escaping.
+const gettyEnableScript = "if command -v systemctl >/dev/null 2>&1 && " +
+	"{ systemctl enable serial-getty@ttyS0.service >/dev/null 2>&1 || true; " +
+	"systemctl start serial-getty@ttyS0.service; }; then :; " +
 	"elif [ -f /etc/inittab ]; then " +
 	"grep -q ttyS0 /etc/inittab || echo ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100 >> /etc/inittab; " +
 	"kill -HUP 1; " +
