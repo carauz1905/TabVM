@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-30
+
+The serial terminal release. The feature shipped in earlier versions but could
+not actually be reached: this makes it work, and makes new Linux machines come
+with it already set up.
+
+### Added
+
+- Machines TabVM creates now arrive with the serial terminal ready. The serial
+  port is wired while the machine is still powered off — the only state
+  VirtualBox accepts it in — and for an automated install the guest login is
+  turned on during setup, so nothing has to be configured afterwards. Linux
+  guests only.
+- Two troubleshooting answers in the manual, for a console that is frozen and
+  for a console showing unreadable noise. Neither can be detected reliably from
+  the host, and the first now says to read the screen before resetting: a
+  kernel panic leaves its last screen painted, and a reset erases it.
+
+### Fixed
+
+- The serial terminal could not be reached at all on any Linux machine. The
+  terminal button appeared only while a machine was running, but the action
+  that sets the port up only appears while it is powered off, so following the
+  manual made the entry point disappear. The button is now offered in both
+  states.
+- Turning the guest login on failed on older Linux guests. It used a systemctl
+  option that only exists from systemd 220 on, it judged the result by whether
+  the service could be enabled rather than started, and its fallback for
+  non-systemd machines could never be reached. CentOS 7 and anything of that
+  generation now work.
+- When turning the guest login on failed, the machine's own error is now shown.
+  It was already being collected and sent to the browser, and then discarded in
+  favour of a generic message that guessed at four possible causes.
+- A cloned machine no longer inherits the original's serial port address. It
+  would have waited on a connection that never arrives, and two such machines
+  running together would have fought over the same one.
+
 ## [0.4.1] - 2026-07-25
 
 Security release. Everyone running 0.4.0 or earlier should update.
@@ -214,7 +251,8 @@ Security release. Everyone running 0.4.0 or earlier should update.
 - Windows packaging: portable ZIP and Inno Setup installer with the web UI
   embedded via `go:embed`.
 
-[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/carauz1905/TabVM/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/carauz1905/TabVM/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/carauz1905/TabVM/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/carauz1905/TabVM/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/carauz1905/TabVM/compare/v0.3.1...v0.3.2

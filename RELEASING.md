@@ -15,12 +15,19 @@ Ship bug fixes as prompt patch releases; batch features into the next minor.
 - `gh` authenticated with push + release access to `carauz1905/TabVM`.
 - On `main`, clean tree, all release PRs merged, CI green.
 
-## 1. Bump the version (two files, kept in sync)
+## 1. Bump the version (three files, kept in sync)
 
-The version lives in two places that MUST match:
+The version lives in three places that MUST match:
 
 - `apps/desktop-agent/internal/version/version.go` — `const Version = "X.Y.Z"`
 - `apps/web-ui/package.json` — `"version": "X.Y.Z"`
+- `package.json` (repo root) — `"version": "X.Y.Z"`
+
+Then confirm they agree — this catches the one that is easy to forget:
+
+```bash
+npm run check:versions
+```
 
 ## 2. Update the changelog
 
