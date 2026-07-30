@@ -34,6 +34,11 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [actMsg, setActMsg] = useState<string | null>(null);
+  // The guest's own stdout+stderr from the activation attempt. The agent has
+  // always sent it alongside the summary; showing it is the difference between
+  // "check your password" and the actual reason, which is often neither the
+  // password nor anything else the summary guesses at.
+  const [actOutput, setActOutput] = useState<string | null>(null);
 
   useEffect(() => {
     const previous = document.title;
@@ -91,9 +96,11 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
   const activate = async () => {
     setBusy(true);
     setActMsg(null);
+    setActOutput(null);
     try {
       const result = await api.enableSerialGetty(vmId, user, pass);
       setActMsg(result.message);
+      setActOutput(result.output?.trim() ? result.output : null);
       if (result.success) {
         setPass('');
         receivedRef.current = false;
@@ -195,6 +202,7 @@ export function TerminalTab({ vmId, vmName }: TerminalTabProps) {
               {t('Activate terminal')}
             </button>
             {actMsg && <p className="tv-termtab-note">{actMsg}</p>}
+            {actOutput && <pre className="ga-result-log">{actOutput}</pre>}
           </form>
         </div>
       )}
