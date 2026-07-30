@@ -337,7 +337,8 @@ const en: DocsStrings = {
     faqs: [
       { q: 'The dashboard says the agent is offline.', a: 'The TabVM agent is not running. Launch TabVM again; the dashboard reconnects on its own within a few seconds.' },
       { q: 'My machines do not appear.', a: 'TabVM needs Oracle VirtualBox installed. Check the Agent page under System — it reports whether VBoxManage was found.' },
-      { q: 'The console screen is frozen.', a: 'The machine may still be booting, or Guest Additions is not active yet. Give it a moment; if it persists, reset the machine and reopen the console.' },
+      { q: 'The console screen is frozen.', a: 'The machine may still be booting, or Guest Additions is not active yet — give it a moment. If the picture never changes again, the guest itself may have stopped: a Linux kernel panic leaves the last screen painted forever. Read what is on screen before resetting, because a reset erases the reason.' },
+      { q: 'The console shows noise or unreadable garbage.', a: 'The guest is drawing a screen its graphics adapter cannot present back. It is most common on older Linux guests using VMSVGA without Guest Additions. Power the machine off and switch its graphics controller to VBoxVGA, which needs no guest driver: VBoxManage modifyvm "<name>" --graphicscontroller vboxvga --vram 128' },
       { q: 'A shared folder is not visible in the guest.', a: 'Guest Additions must be running inside the machine, and your guest user must be in the vboxsf group. Reboot the guest after adding the folder.' },
       { q: 'The Windows install stops asking for a product key.', a: 'Some Windows ISOs require an edition or key that automated install cannot supply. Pick an ISO that installs without one, or enter it in the guest when prompted.' },
     ],
@@ -557,7 +558,8 @@ const es: DocsStrings = {
     faqs: [
       { q: 'El panel dice que el agente está desconectado.', a: 'El agente de TabVM no está corriendo. Abra TabVM de nuevo; el panel se reconecta solo en unos segundos.' },
       { q: 'Mis máquinas no aparecen.', a: 'TabVM necesita Oracle VirtualBox instalado. Revise la página Agente en Sistema: indica si se encontró VBoxManage.' },
-      { q: 'La pantalla de la consola está congelada.', a: 'La máquina puede seguir arrancando, o Guest Additions aún no está activo. Dele un momento; si persiste, reinicie la máquina y reabra la consola.' },
+      { q: 'La pantalla de la consola está congelada.', a: 'La máquina puede seguir arrancando, o Guest Additions aún no está activo: dele un momento. Si la imagen ya no cambia nunca más, es posible que el guest se haya detenido: un kernel panic de Linux deja la última pantalla pintada para siempre. Lea lo que hay en pantalla antes de reiniciar, porque el reinicio borra el motivo.' },
+      { q: 'La consola muestra ruido o basura ilegible.', a: 'El guest dibuja una pantalla que su adaptador gráfico no logra devolver. Es habitual en guests Linux antiguos que usan VMSVGA sin Guest Additions. Apague la máquina y cambie su controlador gráfico a VBoxVGA, que no necesita driver en el guest: VBoxManage modifyvm "<nombre>" --graphicscontroller vboxvga --vram 128' },
       { q: 'Una carpeta compartida no se ve en el guest.', a: 'Guest Additions debe estar corriendo dentro de la máquina, y su usuario del guest debe estar en el grupo vboxsf. Reinicie el guest tras agregar la carpeta.' },
       { q: 'La instalación de Windows se detiene pidiendo una clave de producto.', a: 'Algunas ISOs de Windows requieren una edición o clave que la instalación automatizada no puede aportar. Use una ISO que instale sin ella, o ingrésela en el guest cuando la pida.' },
     ],
