@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v4.37.3
         with:
           # Both languages in one init, named explicitly. Leaving this out lets
           # CodeQL auto-detect, which also picks up `actions` -- and the Actions
@@ -37,7 +37,7 @@ jobs:
           languages: go,javascript-typescript
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@v4.37.3
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@v4.37.3
